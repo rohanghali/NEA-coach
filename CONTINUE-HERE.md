@@ -868,6 +868,29 @@ config pointed at, leaving `pdfFile` dangling and the next scan silently text-on
 Copying the file back fixed it. **Never delete a file under `state/portfolio/` that
 `config.json` references** — check `pdfFile` and `deckFile` first.
 
+### The allowance meter shows a percentage again
+
+Reported: *"today's free allowance isn't showing as a percentage"*. That was my doing — an
+earlier pass decided the percentage was dishonest while the daily limit was only the app's
+assumption, so it showed a bare request count until a 429 confirmed the real limit.
+
+**That was honest and unreadable.** "14 requests" tells a student nothing about how close
+they are to running out, and the student had explicitly asked for a percentage. Corrected:
+
+- **A percentage is always shown**, worked out from the model with the most used, so it
+  reflects whichever allowance will run out first.
+- **What changes is the LABEL, not whether a number appears.** Confirmed limit: exact.
+  Assumed limit: marked `(estimated)`, with a footnote saying the counts are exact while
+  the limit is Google's and unpublished.
+- **Every model row shows its own percentage** (`14 of 20 used · 70%`), so the reader can
+  see which allowance is closest to running out without doing arithmetic.
+- **The bar is drawn again** whenever there is a percentage — it had been conditioned on
+  the limit being confirmed, so the meter had no bar at all on a fresh key.
+- The zero state shows `0%` rather than a bare `0`.
+
+The server still distinguishes confirmed from assumed (`limitKnown`, `limitAssumed`), which
+is what makes the honest labelling possible; only the client's presentation changed.
+
 ### A Past checks row could not be closed
 
 Reported: *"you can't close the past checks expansion thing when you click on it"*. The

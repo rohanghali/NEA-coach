@@ -2616,10 +2616,22 @@
         : 'resets at midnight Pacific');
     }
 
+    /*
+     * A percentage is ALWAYS shown, because that is what the student asked for and it is
+     * what makes the meter readable at a glance. What changes is the LABEL, not whether
+     * the number appears:
+     *
+     *   - once Google has refused a request it states the real daily limit, and the
+     *     percentage is exact;
+     *   - until then the limit is the app's conservative assumption, and the percentage
+     *     is marked "estimated" so it is never mistaken for a measured figure.
+     *
+     * The previous version showed only a raw count until the limit was confirmed. That
+     * was honest but unreadable — "14 requests" tells a student nothing about how close
+     * they are to running out.
+     */
     if (!quota || !quota.models || !quota.models.length) {
-      // Nothing used yet today. State the fact that IS known, not a percentage
-      // derived from a limit nobody has confirmed.
-      host.appendChild(statBlock('0', 'AI requests used today', 'the structural checks never use any'));
+      host.appendChild(statBlock('0%', 'of today\u2019s allowance used', 'no AI requests yet today'));
       setText(ui.costNote, quota && quota.resetInMinutes
         ? 'The free allowance resets in ' + durationMinutes(quota.resetInMinutes) + '.'
         : 'The free allowance resets at midnight Pacific time.');
@@ -2628,26 +2640,28 @@
 
     var worst = quota.models[0];
     /*
-     * The count is the headline, because it is the one number the app actually
-     * knows. A percentage is shown ONLY when Google has told us the real limit by
-     * refusing a request — the app previously showed a confident percentage derived
-     * from an assumed limit of 20, which the student had no way to tell apart from a
-     * measured one.
+     * The percentage is worked out from the model with the most used, so it reflects
+     * whichever allowance will run out first.
+     *
+     * When the limit is Google's real figure the number is exact. When it is still the
+     * app's assumption the percentage is marked "estimated" — the student asked for a
+     * percentage, and a labelled estimate is more use than a bare count, but it must
+     * never be presented as measured.
      */
-    if (worst.limitKnown) {
-      host.appendChild(statBlock(worst.percent + '%', 'of today\u2019s allowance used',
-        worst.used + ' of ' + worst.limit + ' requests, confirmed by Google'));
-    } else {
-      host.appendChild(statBlock(String(quota.totalUsed), 'AI requests used today',
-        'across ' + plural(quota.models.length, 'model')));
+    var pct = worst.percent;
+    if (pct == null) {
+      // Should not happen now the server always reports a percentage, but guard it:
+      // a missing limit must not blank the meter.
+      pct = Math.min(100, Math.round((worst.used / (worst.limit || 20)) * 100));
     }
+    host.appendChild(statBlock(pct + '%', 'of today\u2019s allowance used',
+      worst.used + ' of ' + worst.limit + ' requests on ' + worst.model
+      + (worst.limitKnown ? '' : ' (limit estimated — see below)')));
 
-    if (worst.limitKnown) {
-      var pct = Math.max(0, Math.min(100, worst.percent));
-      host.appendChild(el('div', { cls: 'bar quota-bar' }, [
-        el('div', { cls: 'bar-fill ' + quotaFillClass(pct), attrs: { style: 'width:' + pct + '%' } })
-      ]));
-    }
+    var barPct = Math.max(0, Math.min(100, pct));
+    host.appendChild(el('div', { cls: 'bar quota-bar' }, [
+      el('div', { cls: 'bar-fill ' + quotaFillClass(barPct), attrs: { style: 'width:' + barPct + '%' } })
+    ]));
 
     var rows = el('div', { cls: 'quota-rows' });
     for (var i = 0; i < quota.models.length; i++) {
@@ -2659,9 +2673,16 @@
        * "14 requests" is true. "14 / 20" would imply the 20 is known, and it is not,
        * so the limit is only shown when Google confirmed it.
        */
-      var countText = m.limitKnown
-        ? m.used + ' of ' + m.limit + ' used, ' + m.remaining + ' left'
-        : plural(m.used, 'request');
+      /*
+       * Every row states its own percentage, so the reader can see which allowance is
+       * closest to running out without doing the arithmetic.
+       */
+      var rowPct = m.percent;
+      if (rowPct == null) {
+        rowPct = Math.min(100, Math.round((m.used / (m.limit || 20)) * 100));
+      }
+      var countText = m.used + ' of ' + m.limit + ' used \u00b7 ' + rowPct + '%'
+        + (m.limitKnown ? '' : ' (estimated)');
       rows.appendChild(el('div', { cls: 'quota-row' }, [
         el('span', { cls: 'quota-model', text: m.model + (tags.length ? '  (' + tags.join(', ') + ')' : '') }),
         el('span', { cls: 'quota-count', text: countText })
@@ -2679,9 +2700,9 @@
 
     if (quota.anyAssumed) {
       host.appendChild(el('p', { cls: 'muted small', text:
-        'Google does not publish the daily request limit for each model, so the app shows the exact number of '
-        + 'requests it has made rather than a percentage it cannot know. Once Google refuses a request and states '
-        + 'the real limit, the app uses that and shows a percentage instead.' }));
+        'The request counts are exact. The daily limit is Google\u2019s, and Google does not publish it per model, '
+        + 'so the percentage is based on a conservative estimate until a check is refused \u2014 at which point '
+        + 'Google states the real limit and the percentage becomes exact.' }));
     }
   }
 

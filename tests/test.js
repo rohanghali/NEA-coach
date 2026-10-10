@@ -1464,11 +1464,26 @@ section('11z. No money, honest meter, stats, export');
   ok('the cost-based sort is gone', !/estimatedScanGbp \?/.test(page));
 
   /* --- The percentage is only shown from a CONFIRMED limit --- */
+  /*
+   * The SERVER still distinguishes a confirmed limit from an assumed one, and that
+   * distinction must survive: it is what lets the UI label an estimate honestly.
+   * The UI shows a percentage either way, because the student asked for one — what
+   * changes is the label, not whether a number appears.
+   */
   const assumed = quotaReport('m-assumed', null);
-  ok('with no learned limit the percentage is null, not a guess',
-    assumed.models.length === 0 || assumed.worstPercent === null, JSON.stringify(assumed.worstPercent));
-  ok('the report says whether the limit is known',
+  ok('the report says whether the limit is confirmed',
     /limitKnown: !!learned/.test(serverSrc));
+  ok('an unconfirmed limit is labelled assumed', /limitAssumed: !learned/.test(serverSrc));
+  ok('and no percentage is claimed as measured when it is not',
+    /percent: learned \? Math\.round/.test(serverSrc));
+  ok('the UI always renders a percentage',
+    /host\.appendChild\(statBlock\(pct \+ '%'/.test(page));
+  ok('and labels it estimated when the limit is not confirmed',
+    /limit estimated/.test(page) && /estimated\)/.test(page));
+  ok('the bar is rendered whenever there is a percentage',
+    /var barPct = Math\.max\(0, Math\.min\(100, pct\)\);/.test(page));
+  // The counts themselves are always exact, and that must stay true.
+  ok('the exact request counts are still shown', /m\.used \+ ' of ' \+ m\.limit \+ ' used/.test(page));
   /*
    * The quota percentage must not be clamped, or exceeding the limit would look like
    * exactly hitting it. The document tidiness score DOES clamp to 0-100, correctly,
@@ -1478,8 +1493,8 @@ section('11z. No money, honest meter, stats, export');
     /percent: learned \? Math\.round\(\(used \/ learned\) \* 100\) : null/.test(serverSrc));
   // The assumed figure must still be exposed, labelled.
   ok('the assumed limit is still reported, labelled', /anyAssumed:/.test(serverSrc));
-  ok('the UI says why it shows a count instead of a percentage',
-    /does not publish the daily request limit/.test(page));
+  ok('the UI explains why the percentage may be estimated',
+    /does not publish it per model/.test(page));
 
   /* --- Stats --- */
   const { parsePresentation } = require(path.join(ROOT, 'lib', 'pptx'));
