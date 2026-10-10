@@ -495,6 +495,10 @@
   .history-row { cursor: pointer; }
   .history-row:hover, .history-row:focus { background: var(--fill-soft); outline: none; }
   .history-detail { margin-top: 12px; }
+  /* A filename can be long; let it wrap rather than widen the table. */
+  .history-file { font-size: 13px; overflow-wrap: anywhere; max-width: 220px; }
+  .history-file > span { display: block; }
+  .history-model { font-size: 11.5px; }
   .connect-url { font-size: 13.5px; padding: 3px 6px; background: var(--fill-soft); border: 1px solid var(--line); border-radius: 6px; }
 
   /* ---------- tiles ---------- */
@@ -4252,6 +4256,12 @@
       var table = el('table', { cls: 'slides-table history-table' });
       var head = el('tr', {}, [
         el('th', { text: 'When' }),
+        /*
+         * Which file was checked. A student who has reviewed their own portfolio, a
+         * friend's and a draft has several entries in this list, and without the
+         * filename the marks beside them are impossible to tell apart.
+         */
+        el('th', { text: 'Portfolio' }),
         el('th', { text: 'Pages' }),
         el('th', { text: 'Changed' }),
         el('th', { text: 'Mark' }),
@@ -4262,8 +4272,23 @@
 
       for (var i = scans.length - 1; i >= 0; i--) {
         var sc = scans[i];
+        var name = sc.deck ? String(sc.deck) : '';
         var row = el('tr', { cls: 'history-row', attrs: { 'data-index': String(sc.index), tabindex: '0' } }, [
           el('td', { text: relativeTime(sc.at) }),
+          el('td', { cls: 'history-file' }, [
+            name
+              ? el('span', { text: name, attrs: { title: name } })
+              // An older entry written before the filename was recorded.
+              : el('span', { cls: 'muted', text: 'not recorded' }),
+            /*
+             * The marking model, because the same portfolio scores differently across
+             * models. Without it, a mark that moved because the model changed looks
+             * like a mark that moved because the work changed.
+             */
+            sc.visionModel
+              ? el('span', { cls: 'muted small history-model', text: 'marked by ' + String(sc.visionModel) })
+              : null
+          ]),
           el('td', { cls: 'num', text: String(sc.pages) }),
           el('td', { cls: 'num', text: String(sc.changedPages == null ? '—' : sc.changedPages) }),
           el('td', { cls: 'num', text: sc.predictedPercent == null ? '—' : sc.predictedPercent + '%' }),
@@ -4286,6 +4311,9 @@
           if (!sc) { return; }
           clearNode(detail);
           detail.appendChild(el('h3', { cls: 'sub', text: 'Check from ' + relativeTime(sc.at) }));
+          if (sc.deck) {
+            detail.appendChild(el('p', { cls: 'muted small', text: 'Portfolio: ' + String(sc.deck) }));
+          }
           var bits = [];
           bits.push(sc.pages + ' pages, ' + (sc.changedPages || 0) + ' changed since the check before');
           if (sc.predictedPercent != null) bits.push('predicted ' + sc.predictedMarks + '/' + sc.maximum + ' (' + sc.predictedPercent + '%)');

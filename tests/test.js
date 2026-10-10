@@ -1211,6 +1211,46 @@ section('11h. Calibration against known marks');
  *     something working.
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ * 12c. Past checks name the portfolio that was checked
+ *
+ * Requested because the list was ambiguous: a student who has reviewed their own
+ * portfolio, a friend's and a draft had several entries whose marks could not be told
+ * apart. The filename was already in the snapshot — it was simply never shown.
+ * ------------------------------------------------------------------ */
+
+section('12c. Past checks name the file');
+{
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const serverSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const { snapshotOf } = require(path.join(ROOT, 'server.js'));
+
+  // The snapshot must record the file, and does.
+  const snap = snapshotOf(JSON.parse(fs.readFileSync(path.join(ROOT, 'state', 'last-report.json'), 'utf8')));
+  ok('a snapshot records which file was checked', !!snap.deck, String(snap.deck));
+  ok('and which model marked it', !!snap.visionModel, String(snap.visionModel));
+
+  // The list endpoint must pass both through, or the UI has nothing to show.
+  ok('the history list returns the filename', /index: i, at: s\.at, deck: s\.deck/.test(serverSrc));
+  ok('and the marking model', /visionModel: s\.visionModel \|\| null,/.test(serverSrc));
+
+  // ...and the UI must actually render them.
+  ok('the table has a Portfolio column', /el\('th', \{ text: 'Portfolio' \}\)/.test(page));
+  ok('the row shows the filename', /cls: 'history-file'/.test(page) && /text: name, attrs: \{ title: name \}/.test(page));
+  ok('the row shows the model that marked it', /marked by ' \+ String\(sc\.visionModel\)/.test(page));
+  /*
+   * Entries written before the filename was recorded have no deck. They must say so
+   * rather than render an empty cell, which reads as a fault.
+   */
+  ok('an older entry without a filename says so rather than being blank',
+    /el\('span', \{ cls: 'muted', text: 'not recorded' \}\)/.test(page));
+  ok('a long filename wraps instead of widening the table',
+    /history-file \{ font-size: 13px; overflow-wrap: anywhere/.test(page));
+  // The detail view names the file too, so a clicked row is unambiguous.
+  ok('the opened entry names the portfolio as well',
+    /text: 'Portfolio: ' \+ String\(sc\.deck\)/.test(page));
+}
+
 section('12b. Coverage dropdown');
 {
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');

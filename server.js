@@ -2664,6 +2664,12 @@ async function handle(req, res) {
           index: i, at: s.at, deck: s.deck, pages: s.pages,
           predictedPercent: s.predictedPercent, findingsTotal: s.findingsTotal,
           changedPages: s.changedPages, costGbp: s.costGbp,
+          /*
+           * Which model decided the mark. The same portfolio can score differently
+           * across models, so without this a change in the mark looks like a change in
+           * the work.
+           */
+          visionModel: s.visionModel || null,
         })),
       });
     }

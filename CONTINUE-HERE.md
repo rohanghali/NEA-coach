@@ -868,6 +868,25 @@ config pointed at, leaving `pdfFile` dangling and the next scan silently text-on
 Copying the file back fixed it. **Never delete a file under `state/portfolio/` that
 `config.json` references** — check `pdfFile` and `deckFile` first.
 
+### Past checks now name the file that was checked
+
+Requested because the list was ambiguous: a student who has reviewed their own portfolio,
+a friend's and a draft had several entries whose marks could not be told apart.
+
+**The filename was already in the snapshot and already returned by `/api/history` — it was
+simply never rendered.** So this was a display omission, not missing data, and every
+existing entry shows its file immediately with no re-scan.
+
+- A **Portfolio** column, with the filename wrapping rather than widening the table.
+- An older entry written before the filename was recorded says **"not recorded"** rather
+  than rendering an empty cell, which would read as a fault.
+- The **marking model** is shown under the filename. This one matters more than it looks:
+  the same portfolio scores differently across models, and without it a mark that moved
+  because the model changed looks like a mark that moved because the work changed.
+- Opening an entry repeats the portfolio name, so a clicked row is unambiguous.
+
+Tests: section 12c.
+
 ### Tidy-up pass: first impression, summary, and the prose
 
 Asked for after the student looked at it on their own machine: the ring was the first
