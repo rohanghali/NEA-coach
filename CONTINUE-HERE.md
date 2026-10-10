@@ -868,6 +868,48 @@ config pointed at, leaving `pdfFile` dangling and the next scan silently text-on
 Copying the file back fixed it. **Never delete a file under `state/portfolio/` that
 `config.json` references** — check `pdfFile` and `deckFile` first.
 
+### Sharing it: packaged for Windows, and on GitHub
+
+Written up for the student in **`PUBLISHING.md`** — account, repository, push, build,
+release, and the link to send people.
+
+**`tools/package.sh`** builds the distributable. It exists because the working folder
+holds **556 MB of the student's own work** in `state/` — the report, a copy of the
+portfolio, the scan history and the API key — plus a 104 MB Node runtime that only runs
+on the machine that made it. Neither belongs in something sent to someone else.
+
+| Build | Contains | Size |
+|---|---|---|
+| Windows | app + `node.exe` (79 MB, uncompressed) | **31 MB zipped** |
+| Mac | app only; the launcher downloads the matching Node | ~1 MB |
+
+The Windows zip needs **no installation at all** — Node is inside it, and the `.bat`
+already looks for `runtime\node.exe` before PATH or the standard install folders. It
+also carries a `START HERE.txt` for someone who has just unzipped it.
+
+**Two things found while doing this, both of which would have bitten a recipient rather
+than us:**
+
+1. **`.gitignore` had to exist before anything was committed.** `state/` contains the API
+   key in plain text, and a key pushed to a public repository is scraped within minutes.
+   The ignore file also covers the Dropbox `conflicted copy` files, which have contained
+   a key before. **Verified by initialising the repository and inspecting every staged
+   path: 28 files, zero from `state/`, `runtime/` or `dist/`, and a grep for the key's
+   prefix across all 28 found nothing.**
+2. **The `.bat` had Unix line endings** — 172 bare LFs and no CRLF, because editors on
+   macOS strip them. `cmd.exe` can mis-parse that, and it would fail on the recipient's
+   machine. `package.sh` now converts the file at build time with `perl -pi`, and the
+   packaged copy is verified as CRLF.
+
+**Monetisation, answered honestly:** GitHub gives a free permanent link and **cannot take
+payment**. If the student charges later, that is Stripe or Gumroad. More importantly,
+**each buyer must supply their own Google API key** — Google's terms do not permit
+reselling API access, and a shared key would make the seller liable for every check every
+buyer ran. Both points are in `PUBLISHING.md` so the decision is not made blind.
+
+Committed locally as a fresh repository (`4bdfc00`), ready to push once the student gives
+their GitHub username.
+
 ### The predicted-mark panel was restructured (student: "looks a bit messy")
 
 It was a flex row: a **128px column** holding the percentage, the marks, the run count,

@@ -112,6 +112,16 @@ EOF
 
   # The Mac launcher is noise on Windows.
   rm -f "$target/Start NEA Coach.command"
+
+  # .bat files MUST have CRLF line endings, and an editor on macOS or Linux will
+  # happily strip them. cmd.exe can mis-parse a bare-LF batch file, and it would fail
+  # on the recipient's machine rather than here, which is the worst place for it to
+  # surface. Converted at package time so it cannot regress.
+  local bat="$target/Start NEA Coach.bat"
+  if [ -f "$bat" ]; then
+    perl -pi -e 's/\r?\n/\r\n/' "$bat"
+    say "converted Start NEA Coach.bat to CRLF line endings"
+  fi
   ( cd "$DIST" && zip -qr "NEA-Coach-windows.zip" "NEA-Coach-windows" )
   say "wrote $DIST/NEA-Coach-windows.zip ($(du -h "$DIST/NEA-Coach-windows.zip" | cut -f1 | tr -d ' '))"
 }
