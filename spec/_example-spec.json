@@ -1,0 +1,55 @@
+{
+  "_comment": "EXAMPLE ONLY. Replace with your real Eduqas DTA criteria and rename this file, then delete this one. The app loads every .md/.txt/.json file in the spec/ folder.",
+  "_source": "Generic UK A-level Design & Technology NEA expectations. NOT the official Eduqas mark scheme.",
+  "criteria": [
+    {
+      "id": "c1",
+      "name": "Client and problem definition",
+      "weight": 10,
+      "description": "Identifies a real client or user group and a clearly justified design problem worth solving.",
+      "evidence": "A brief naming the client, their needs, and why the problem matters."
+    },
+    {
+      "id": "c2",
+      "name": "Research and analysis",
+      "weight": 20,
+      "description": "Focused research into existing products, materials, processes and users, analysed rather than merely described, and explicitly linked to the design decisions that follow.",
+      "evidence": "Research pages that end in conclusions, not just information."
+    },
+    {
+      "id": "c3",
+      "name": "Design specification",
+      "weight": 10,
+      "description": "A justified, testable specification derived from the research, with measurable points.",
+      "evidence": "Points that can be tested against later, with dimensions or values."
+    },
+    {
+      "id": "c4",
+      "name": "Design ideas and development",
+      "weight": 20,
+      "description": "A range of initial ideas, then iterative development showing modelling, testing, client feedback and reasoned change.",
+      "evidence": "Visible evidence of iteration: what changed, why, and what it fixed."
+    },
+    {
+      "id": "c5",
+      "name": "Manufacturing plan and making",
+      "weight": 15,
+      "description": "A detailed, sequenced plan with tools, processes, quality checks and safety, followed by clear evidence of manufacture.",
+      "evidence": "Stage-by-stage plan and photographs of the making process."
+    },
+    {
+      "id": "c6",
+      "name": "Testing and evaluation",
+      "weight": 15,
+      "description": "Testing against the specification, honest evaluation of strengths and weaknesses, and specific, justified improvements.",
+      "evidence": "Test results, client feedback, and reasoning about what to change."
+    },
+    {
+      "id": "c7",
+      "name": "Communication and presentation",
+      "weight": 10,
+      "description": "Clear, consistent, well-organised presentation that a moderator can navigate and read easily.",
+      "evidence": "Titled pages, readable text, annotated images, consistent typography."
+    }
+  ]
+}

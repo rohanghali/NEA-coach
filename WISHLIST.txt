@@ -1,0 +1,75 @@
+# WISHLIST
+
+Write anything you want changed or added here, in your own words. Don't worry
+about technical language or spelling — just describe what you want.
+
+Then, when you talk to any AI at home, say:
+
+> Read NEA-Coach/CONTINUE-HERE.md first, then look at NEA-Coach/WISHLIST.txt
+> and do the top item. Test against both decks before telling me it works.
+
+Delete items once they are done, or move them to the DONE section at the bottom.
+
+---
+
+## To do
+
+- Nothing outstanding from the requested list. The one thing still open is
+  accuracy on a WEAK portfolio: the app is proven within 2-4 marks on two strong
+  ones (99/100 and 96/100), but nobody has measured a low-scoring portfolio, so it
+  is unknown whether it would over-mark one. A weak portfolio with a known mark
+  would close it.
+
+- **Improve the predicted-mark accuracy.** The measurement is now done: the app
+  is REPRODUCIBLE (four repeats of one portfolio gave 82, 81, 82, 80 — spread of
+  2 marks), so the remaining problem is not precision but ACCURACY. It settles on
+  about 81% for a portfolio whose true mark is higher. A consistent error like
+  that cannot be averaged away; it needs a known mark to calibrate against. Still
+  needed: a portfolio with known per-criterion marks, or even one section marked
+  by a teacher. See CONTINUE-HERE.md rule 16b and section 7.
+- (add your ideas here)
+
+
+---
+
+## Done
+
+- A section for spell checks. (Done — ~40 clear-cut misspellings, each naming the
+  wrong word, the right word and the pages. Correct words are never flagged:
+  millimetres, dependant as a person, publically.)
+- Per-page last-modified tracking. (Done — a "Changed" column in the Slides table,
+  from the app's own record, because PowerPoint does not keep a per-slide date.
+  Pages are compared by content, so an inserted page does not mark the whole deck
+  as edited.)
+- History of past scans which can be viewed. (Done — the last 25 checks, each a
+  small summary rather than a whole report, with the top findings on selection.)
+- Drag and drop for the portfolio upload. (Done — drop a .pptx or a PDF anywhere
+  on the page; anything else is refused by name.)
+
+- Compare two scans. (Done — "Since your last check": mark before and after, per
+  criterion movement, what is fixed, what is new. Findings are matched on what they
+  are ABOUT, because their reference number changes on every scan.)
+- Dark / light mode. (Done — follows the system by default, with an explicit
+  Light/Dark choice that overrides it. Applied before the first paint.)
+- Deep thinking should explain what it does. (Done — what it adds, when it helps,
+  when it does not, what it costs, and how to judge it yourself.)
+- Make the predicted mark optional. (Done — "Predict a mark" in Settings. Off is
+  about a third of the price and still gives the whole fix list.)
+- Fill in the real per-criterion marks for AQA GCSE. (Done — 10 + 10 + 20 + 20 +
+  20 + 20, read from the official AQA 8552 specification v1.2, sections 4.4.4.1
+  to 4.4.4.6, including the band boundaries.)
+- Let me pick AQA GCSE or Eduqas A-level. (Done — Settings → Exam board. One
+  board is loaded at a time, and changing it clears the cached AI judgement.)
+- Give me a predicted score for each section and a percentage. (Done — the
+  "Predicted mark" panel, plus a mark on each row of the coverage grid. It is
+  labelled as an estimate, not a grade.)
+- An easy way to get my portfolio in. (Done — Settings → choose your file. It is
+  copied into `state/portfolio` and read from there; the original is untouched.)
+- Make it work on Windows so I can send it to other people. (Done — `Start NEA
+  Coach.bat`. Not yet tested on a real Windows machine; see CONTINUE-HERE.md.)
+- A third section showing things worth adding, ranked by importance and how long
+  they take. (Done — see the "Worth adding" tab.)
+- Stop it complaining about image resolution when the picture is actually fine.
+  (Done — the threshold was far too strict.)
+- Don't show a mark out of 100, it looked like a grade and was misleading.
+  (Done — it now shows a count of points to check.)

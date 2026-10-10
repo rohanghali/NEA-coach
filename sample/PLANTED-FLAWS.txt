@@ -1,0 +1,180 @@
+PLANTED FLAWS - ANSWER KEY
+File : NEA-Coach/sample/AQA-GCSE-Portfolio-SAMPLE.pptx
+Deck : 24 slides, A3 landscape (16.54 in x 11.69 in), blank layout + manual textboxes
+Topic: AQA GCSE Design & Technology NEA portfolio - "Modular Desk Organiser" for a
+       Year 11 client with a 1,200 x 600 mm desk and limited space.
+Use  : Ground truth for checking whether an automated portfolio-review tool raises the
+       right flags. Categories below match the numbered brief.
+
+=====================================================================
+CATEGORY SUMMARY
+=====================================================================
+Cat 1  - no title text at all ................. slides 4, 13, 21
+Cat 2  - extremely text-heavy (250-400 words at 11-12pt in ONE textbox)
+         ..................................... slides 9 (363 w, Calibri 12pt),
+                                                   18 (379 w, Times New Roman 11pt)
+Cat 3  - tiny-pixel image stretched large (low-resolution image)
+         ..................................... slides 6, 7 (40x30 px @ 5.0 x 3.75 in),
+                                                   14 (48x36 px @ 5.5 x 4.12 in)
+Cat 4  - duplicate slide pairs ................. slides 11 = 12, slides 23 = 24
+Cat 5  - inconsistent fonts / title sizes ...... slides 8, 14, 18, 19
+Cat 6  - image present but NO caption anywhere . slides 6, 7
+Cat 7  - near-empty slide (4-8 words) .......... slides 16 (7 w), 17 (6 w)
+Cat 8  - speaker notes with design justification / evaluation
+         ..................................... slides 1, 10, 15   [POSITIVE - should
+                                               NOT be flagged as a defect]
+Cat 9  - realistic AQA NEA section structure ... whole deck     [POSITIVE]
+Cat 10 - typos / inconsistent spelling ......... slides 2, 8, 20, 22
+Cat 11 - no images at all (text only) .......... 21 of 24 slides (all except 6, 7, 14)
+
+Image-bearing slides: 6, 7, 14 (three only). Text-only slides: the other 21,
+comfortably above the "at least 6" requirement.
+
+=====================================================================
+SLIDE-BY-SLIDE KEY
+=====================================================================
+Slide 1  | Client Brief and Context
+         | Cat 8  - speaker notes: client needs, research findings, material choice
+         |          justification (12 mm beech ply over MDF), testing against spec,
+         |          strengths/weaknesses, further development.
+         | Cat 11 - text only. Otherwise a GOOD control slide.
+
+Slide 2  | The Client and the Design Context
+         | Cat 10 - typo: "wich" (should be "which").
+         | Cat 11 - text only.
+
+Slide 3  | Research: Existing Products
+         | Cat 11 - text only (no product photographs - "no visual evidence").
+         | CLEAN control slide otherwise: 4 named existing products with dimensions.
+
+Slide 4  | (no title - body starts at top of slide)
+         | Cat 1  - NO title textbox at all. Content is the client interview findings.
+         | Cat 11 - text only.
+
+Slide 5  | Design Specification
+         | Cat 11 - text only.
+         | CLEAN control slide: 10 numbered, measurable specification points (mm, kg,
+         | test methods) - should score well.
+
+Slide 6  | Initial Ideas
+         | Cat 3  - 40x30 px PNG (assets/sketch_ideas_40x30.png) placed at
+         |          Inches(9), Inches(5) and stretched to 5.0 x 3.75 in.
+         | Cat 6  - image has NO caption anywhere on the slide.
+         | Cat 11 - (has an image, so not text-only).
+
+Slide 7  | Design Development: Iteration Two
+         | Cat 3  - 40x30 px PNG (assets/iteration2_40x30.png) at
+         |          Inches(9), Inches(5), stretched to 5.0 x 3.75 in.
+         | Cat 6  - image has NO caption anywhere on the slide.
+         | Cat 5  - title is Calibri 28pt, breaking the deck's 32/36pt pattern.
+
+Slide 8  | Materials and Component Research
+         | Cat 5  - whole slide is Arial (title 28pt, body 16pt) vs Calibri elsewhere.
+         | Cat 10 - typos: "seperate" (separate), "recieved" (received), and
+         |          "Aluminium" vs "aluminum" used inconsistently in the same slide;
+         |          also lowercase "american".
+         | Cat 11 - text only.
+
+Slide 9  | Anthropometrics and Ergonomic Research
+         | Cat 2  - TEXT HEAVY: 363 words of body text at 12pt crammed into a single
+         |          textbox. Should trigger "too much text / font too small".
+         | Cat 5  - title 24pt (deck otherwise uses 28/32/36).
+         | Cat 11 - text only.
+
+Slide 10 | Modelling and Testing
+         | Cat 8  - speaker notes: 5-stage test evidence judged against the
+         |          specification, client feedback, material justification re-checked.
+         | Cat 11 - text only. GOOD control slide otherwise.
+         | NOTE: no image, despite being a "modelling and testing" section - can also
+         |       be read as a missing-visual-evidence flag.
+
+Slide 11 | Final Design: Modular Desk Organiser
+         | Cat 4  - DUPLICATE of slide 12 (identical title and body text, different
+         |          slide position). Renders byte-identical to slide 12.
+         | Cat 11 - text only.
+
+Slide 12 | Final Design: Modular Desk Organiser
+         | Cat 4  - DUPLICATE of slide 11.
+         | Cat 11 - text only.
+
+Slide 13 | (no title - body starts at top of slide)
+         | Cat 1  - NO title textbox at all. Content is "Evidence of manufacture".
+         | Cat 11 - text only (no photographs of making, despite the section).
+
+Slide 14 | Manufacturing Plan
+         | Cat 3  - 48x36 px PNG (assets/cutting_plan_48x36.png) at
+         |          Inches(9.5), Inches(4.8), stretched to 5.5 x 4.12 in.
+         | Cat 5  - whole slide is Times New Roman (title 28pt, body 16pt).
+         | Cat 11 - (has an image).
+         | CONTROL for Cat 6: this image DOES have a caption
+         |       ("Figure 3: Cutting plan for the 12 mm beech ply sheet...").
+
+Slide 15 | Testing and Evaluation Against the Specification
+         | Cat 8  - speaker notes: spec point-by-point evaluation, client feedback,
+         |          strengths, weaknesses, improvements, further development.
+         | Cat 11 - text only. GOOD control slide otherwise.
+
+Slide 16 | Client Feedback Summary
+         | Cat 7  - NEAR EMPTY: body is 7 words ("Client very happy. Desk much
+         |          tidier now.") - the whole slide body is a single short line.
+         | Cat 11 - text only.
+
+Slide 17 | Improvements and Further Development
+         | Cat 7  - NEAR EMPTY: body is 6 words ("Widen drainage gap. Add cable tidy.").
+         | Cat 11 - text only.
+
+Slide 18 | Evaluation of Strengths and Weaknesses
+         | Cat 2  - TEXT HEAVY: 379 words of body text at 11pt in a single textbox.
+         | Cat 5  - Times New Roman title 24pt / body 11pt (smallest body in the deck).
+         | Cat 11 - text only.
+
+Slide 19 | Health, Safety and Risk Assessment
+         | Cat 5  - whole slide is Arial, title 36pt (the largest title in the deck).
+         | Cat 11 - text only.
+
+Slide 20 | Project Timeline and Review Points
+         | Cat 10 - typo: "acheived" (should be "achieved").
+         | Cat 11 - text only.
+
+Slide 21 | (no title - body starts at top of slide)
+         | Cat 1  - NO title textbox at all. Content is sustainability / environmental
+         |          impact.
+         | Cat 11 - text only.
+
+Slide 22 | Commercial Manufacture and Scale of Production
+         | Cat 10 - typo: "seperate" (should be "separate").
+         | Cat 11 - text only.
+
+Slide 23 | Client Sign-Off and Final Review
+         | Cat 4  - DUPLICATE of slide 24 (identical title and body text, different
+         |          slide position). Renders byte-identical to slide 24.
+         | Cat 11 - text only.
+
+Slide 24 | Client Sign-Off and Final Review
+         | Cat 4  - DUPLICATE of slide 23.
+         | Cat 11 - text only.
+
+=====================================================================
+FONT / TITLE-SIZE MAP (Cat 5 reference)
+=====================================================================
+Calibri (default, 17 slides): 1, 2, 3, 5, 6, 9, 10, 11, 12, 13, 15, 16, 17, 20,
+                              21, 22, 23, 24
+Arial   (inconsistent):       8 (28pt title), 19 (36pt title)
+Times New Roman (inconsistent): 14 (28pt title), 18 (24pt title)
+
+Title font sizes across the deck: 24pt (slides 9, 18), 28pt (7, 8, 14, 16, 20),
+32pt (2, 3, 6, 10, 15, 17, 22, 23, 24), 36pt (1, 5, 11, 12, 19).
+Body font sizes: 11pt (18), 12pt (9), 14pt (19), 16pt (most), 18pt (1, 2, 16, 17).
+
+=====================================================================
+TEXT-ONLY SLIDES (Cat 11) - 21 slides
+=====================================================================
+1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
+Slides WITH images: 6, 7 (no caption), 14 (captioned).
+
+=====================================================================
+RENDER CROSS-CHECK (independent confirmation of Cat 4)
+=====================================================================
+Rendered at 96 dpi -> 24 page PNGs, 22 of which are pixel-distinct.
+The only byte-identical pairs are 11 = 12 and 23 = 24, i.e. exactly the two
+intended duplicate pairs. No other slides collide.

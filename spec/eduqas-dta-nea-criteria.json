@@ -1,0 +1,52 @@
+{
+  "_source": "WJEC Eduqas GCE A Level in Design and Technology, specification (Version 2, January 2019), Appendix A: Non-exam assessment marking criteria.",
+  "_note": "This is the official NEA marking criteria for the design and make project. Total 100 marks. Band descriptors quoted are the top band (Band 5) for each criterion: this is what the examiner is looking for at the highest level.",
+  "_total_marks": 100,
+  "criteria": [
+    {
+      "id": "a",
+      "name": "Identifying and investigating design possibilities",
+      "weight": 15,
+      "ao": "AO1",
+      "bandRange": "13-15 marks is Band 5, the top band",
+      "description": "Finding and investigating a real design opportunity. Research and investigation, analysis of user needs/wants/values, consideration of other designers or practitioners, and project management.",
+      "evidence": "considered in detail a range of design strategies, techniques and approaches and undertaken highly effective identification of opportunities for the development of designs | undertaken perceptive, relevant research and investigation, including detailed consideration of the work of other designers or practitioners, with evidence this has clearly influenced decisions | undertaken a comprehensive and highly effective analysis of information, clearly reflecting the needs, wants and values of potential users | identified a range of highly challenging problems/opportunities which clearly inform the development of possible design briefs | considered in detail relevant approaches to project management, within the constraints of the time and resources available"
+    },
+    {
+      "id": "b",
+      "name": "Developing a design brief and specification",
+      "weight": 15,
+      "ao": "AO1",
+      "bandRange": "13-15 marks is Band 5, the top band",
+      "description": "Turning the investigation into a clear design brief and a detailed, objective and measurable specification that the design work can be tested against later.",
+      "evidence": "demonstrated an excellent understanding of the task ahead and the precise requirements which have to be met, to fully satisfy the needs, wants and values of potential users | generated a clear and precise design brief, based upon a comprehensive and highly effective analysis of their research and investigation | produced a detailed, relevant specification, including a comprehensive range of objective and measurable criteria, and the application of relevant standards, to direct and inform the design and manufacture of a prototype"
+    },
+    {
+      "id": "c",
+      "name": "Generating and developing design ideas",
+      "weight": 25,
+      "ao": "AO2",
+      "bandRange": "21-25 marks is Band 5, the top band",
+      "description": "Iterative generation and development of design ideas: initial concepts, modelling and testing to evolve them, environmental/sustainability/cost/social/moral/ethical factors, material and production detail, and clear communication to a third party.",
+      "evidence": "applied an iterative design process to generate and communicate excellent initial ideas with sophisticated detailing | clearly identified and perceptively considered environmental, sustainability, costs, social, moral and ethical factors, which are clearly relevant to the design and potential user(s) | made excellent use of modelling and testing to evolve ideas and to support decision making | developed a highly detailed proposal, including comprehensive and relevant details of materials, dimensions, finishes and production techniques, which clearly addresses all requirements of the design brief and specification | considered in detail the manufacture of the prototype, including clearly defined planning for accuracy and efficiency and, where appropriate, making perceptive recommendations for different scales of production | demonstrated sophisticated and highly effective use of skills/techniques to clearly communicate ideas and proposals to a third party"
+    },
+    {
+      "id": "d",
+      "name": "Manufacturing a prototype",
+      "weight": 25,
+      "ao": "AO2",
+      "bandRange": "21-25 marks is Band 5, the top band",
+      "description": "Making the prototype: a logical sequence and achievable timeline, correct material selection, high-quality making skills, understanding of material properties, and safe, accurate use of tools and machinery.",
+      "evidence": "clearly and comprehensively communicated all relevant details of a logical sequence and achievable timeline for the stages of production and testing of the final prototype | selected and worked with appropriate materials and components to successfully complete all aspects of the manufacture of their prototype to a clearly defined schedule | consistently implemented appropriate, sophisticated making skills and processes to produce a very high quality fully-functioning prototype that meets requirements of the design specification and is fit for purpose | demonstrated an excellent, in-depth understanding of the working properties and performance characteristics of the specified materials and, where appropriate, detailed consideration of surface treatments/finishes for functional and aesthetic purposes | selected and safely used specialist tools, appropriate techniques, processes, equipment and machinery with excellent accuracy and precision to enable the prototype to perform as intended and meet the needs, wants and values of the user"
+    },
+    {
+      "id": "e",
+      "name": "Analysing and evaluating design decisions and prototypes",
+      "weight": 20,
+      "ao": "AO3",
+      "bandRange": "17-20 marks is Band 5, the top band",
+      "description": "Analysing and evaluating design decisions and the final prototype against qualitative and quantitative criteria, drawing conclusions, and comparing outcomes with the original brief and specification.",
+      "evidence": "undertaken a perceptive, critical, objective analysis, evaluation and testing of their ideas and decisions whilst applying iterative design processes | undertaken a perceptive, critical and objective evaluation and testing of the final prototype, drawing highly appropriate conclusions, comparing with the work of others and clearly taking into account the views of potential users | clearly identified, with detailed reference to highly relevant qualitative and quantitative criteria, how their design decisions and the final prototype could be further developed or improved to better meet the needs, wants and values of the intended users"
+    }
+  ]
+}

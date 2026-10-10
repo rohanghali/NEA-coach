@@ -1,0 +1,22 @@
+# Never commit the student's own data.
+#
+# state/ holds the report, a copy of the portfolio, the scan cache, the scan history
+# and THE API KEY in plain text. Publishing it would leak all of it, and a key in a
+# public repository is scraped within minutes.
+state/
+
+# Built packages are uploaded as release assets, not committed. Each is ~31 MB, and
+# git keeps every version forever, so committing them would bloat the repository in a
+# way that cannot be undone.
+dist/
+
+# Node runtimes: 104 MB (macOS) and 79 MB (Windows). They ship inside the release zip.
+# The Windows binary is fetched by tools/package.sh, so it is reproducible.
+runtime/
+
+# macOS noise.
+.DS_Store
+**/.DS_Store
+
+# Dropbox/Drive conflict copies of state files, which have previously contained a key.
+*conflicted copy*
