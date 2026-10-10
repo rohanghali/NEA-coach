@@ -494,6 +494,13 @@
   .history-table th, .history-table td { padding: 6px 8px; font-size: 13.5px; border-bottom: 1px solid var(--line); }
   .history-row { cursor: pointer; }
   .history-row:hover, .history-row:focus { background: var(--fill-soft); outline: none; }
+  /*
+   * The expanded row is marked, so it is clear which one is open and that clicking it
+   * again will close it. Without this the row looked identical open and shut.
+   */
+  .history-row.is-open { background: var(--accent-soft); }
+  .history-row.is-open td:first-child::before { content: '▾ '; color: var(--muted); }
+  .history-detail:empty { display: none; }
   .history-detail { margin-top: 12px; }
   /* A filename can be long; let it wrap rather than widen the table. */
   .history-file { font-size: 13px; overflow-wrap: anywhere; max-width: 220px; }
@@ -4303,9 +4310,34 @@
       host.appendChild(detail);
 
       // Click or keyboard, because a table row is not a button.
+      /*
+       * Which row is expanded, or null. Kept so clicking the same row closes it —
+       * it used to call open() unconditionally, so a row could be opened and never
+       * closed, and the only escape was reloading the page.
+       */
+      var openIndex = null;
+
+      var markRows = function () {
+        var all = body.querySelectorAll ? body.querySelectorAll('tr') : [];
+        for (var q = 0; q < all.length; q++) {
+          var isOpen = Number(all[q].getAttribute('data-index')) === openIndex;
+          all[q].className = 'history-row' + (isOpen ? ' is-open' : '');
+          all[q].setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+      };
+
       var open = function (index) {
+        // Clicking the row that is already open closes it.
+        if (openIndex === index) {
+          openIndex = null;
+          clearNode(detail);
+          markRows();
+          return;
+        }
+        openIndex = index;
+        markRows();
         clearNode(detail);
-        setText(detail, '');
+        setText(detail, 'Loading…');
         apiGet('/api/history?scan=' + encodeURIComponent(index)).then(function (r2) {
           var sc = r2 && r2.scan;
           if (!sc) { return; }

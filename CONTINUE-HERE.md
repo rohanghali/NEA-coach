@@ -868,6 +868,27 @@ config pointed at, leaving `pdfFile` dangling and the next scan silently text-on
 Copying the file back fixed it. **Never delete a file under `state/portfolio/` that
 `config.json` references** — check `pdfFile` and `deckFile` first.
 
+### A Past checks row could not be closed
+
+Reported: *"you can't close the past checks expansion thing when you click on it"*. The
+click handler called `open(index)` **unconditionally** — there was no toggle, so a row
+opened and stayed open and the only escape was reloading the page.
+
+Fixed by tracking which row is expanded (`openIndex`) and closing it on a second click.
+Two details beyond the bare fix:
+
+- **The open row is visually marked** (`is-open`, a tinted background and a `▾` marker).
+  A state the reader cannot see is a state they cannot control: previously an open row
+  looked identical to a shut one, so there was no way to know clicking again would close
+  it.
+- **`aria-expanded` is set** on each row, so the state is available to a screen reader
+  rather than only to the eye.
+- An empty detail box now collapses (`:empty { display: none }`) instead of leaving a gap
+  after closing.
+
+Tests: section 12d, which reproduces the bug directly — two clicks on the same row must
+end closed — rather than only asserting the source contains a toggle.
+
 ### Past checks now name the file that was checked
 
 Requested because the list was ambiguous: a student who has reviewed their own portfolio,

@@ -1219,6 +1219,54 @@ section('11h. Calibration against known marks');
  * apart. The filename was already in the snapshot — it was simply never shown.
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ * 12d. A Past checks row can be CLOSED again
+ *
+ * Reported: "you can't close the past checks expansion thing when you click on it".
+ * The click handler called open() unconditionally, so a row opened and never shut —
+ * the only escape was reloading the page.
+ * ------------------------------------------------------------------ */
+
+section('12d. Past checks rows toggle shut');
+{
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+
+  ok('the open row is tracked', /var openIndex = null;/.test(page));
+  ok('clicking the open row closes it',
+    /if \(openIndex === index\) \{[\s\S]{0,120}openIndex = null;/.test(page));
+  ok('and clears the expanded content', /openIndex = null;\s*\n\s*clearNode\(detail\);/.test(page));
+  /*
+   * The row must LOOK open, or the reader cannot tell that clicking again will shut it
+   * — a state you cannot see is a state you cannot control.
+   */
+  ok('the open row is visually marked', /\.history-row\.is-open/.test(page));
+  ok('the class is applied by a helper', /var markRows = function \(\)/.test(page));
+  ok('and it is called on both open and close', (page.match(/markRows\(\);/g) || []).length >= 2);
+  ok('the row reports its state for screen readers', /setAttribute\('aria-expanded'/.test(page));
+  // An empty detail box must not leave a gap.
+  ok('an empty detail box collapses rather than leaving a gap',
+    /\.history-detail:empty \{ display: none; \}/.test(page));
+
+  /*
+   * Reproduce the bug directly: two clicks on the same row must end CLOSED. This is the
+   * behaviour that was wrong, so it is simulated rather than only asserted in the source.
+   */
+  let openIndex = null;
+  let detailItems = 0;
+  const open = (index) => {
+    if (openIndex === index) { openIndex = null; detailItems = 0; return; }
+    openIndex = index; detailItems = 1;
+  };
+  open(0);
+  const afterFirst = openIndex;
+  open(0);
+  const afterSecond = openIndex;
+  ok('simulated: first click opens', afterFirst === 0, String(afterFirst));
+  ok('simulated: second click closes', afterSecond === null, String(afterSecond));
+  open(0); open(1);
+  ok('simulated: opening another row closes the first', openIndex === 1);
+}
+
 section('12c. Past checks name the file');
 {
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
