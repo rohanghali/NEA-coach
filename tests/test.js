@@ -1324,7 +1324,7 @@ section('12. Scoring calibration');
   // The raw figure must survive, so the adjustment is auditable.
   const r1 = cal.assessPrediction(83, 100, { board: 'aqa-gcse', model: 'gemini-3.5-flash' });
   ok('the raw AI figure is kept alongside the corrected one', r1.raw === 83 && r1.calibrated === 89);
-  ok('and the adjustment is explained in words', /Adjusted from the AI/.test(r1.note || ''));
+  ok('and the adjustment is explained in words', /shown higher here/.test(r1.note || ''));
 
   // It must actually reach the report and the UI.
   ok('the report carries the calibration', /predicted: Object\.assign\(\{\}, predicted, \{ calibration \}\)/.test(serverSrc));
@@ -1540,7 +1540,7 @@ section('11w. The costs section');
 
   // The three escape routes when the allowance runs out, quickest first.
   ok('it explains that swapping the key is the fastest fix',
-    /Paste a different key<\/strong> in Settings/.test(page));
+    /paste a different key in Settings/i.test(page));
   ok('it says each key has its own allowance', /Each key has its own daily/.test(page));
   ok('it names the reset time', /midnight Pacific time/.test(page));
   ok('and converts it to UK time, since that is who is reading',
@@ -1548,11 +1548,13 @@ section('11w. The costs section');
   ok('it mentions the cheaper-model route', /cheaper model/.test(page));
 
   // Real numbers rather than vague reassurance.
-  ok('it gives the requests a check takes, and how many fit in a day',
-    /about <strong>9 requests<\/strong>/.test(page) && /20 per model per day/.test(page));
+  // The wording was tightened for readability; the FACTS must survive.
+  ok('it gives the requests a check takes, and the daily allowance',
+    /about <strong>9 requests<\/strong>/.test(page) && /20 a day/.test(page));
 
   // The PDF limitation must be stated here too, where costs are explained.
-  ok('it is honest that a PDF skips some checks', /A PDF carries none of that/.test(page));
+  ok('it is honest that a PDF skips some checks',
+    /A PDF cannot be checked for fonts, spacing or stray boxes/.test(page));
 
   /*
    * No money should be shown anywhere for a free key: it reads £0.00 forever and

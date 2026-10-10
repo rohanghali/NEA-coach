@@ -868,6 +868,49 @@ config pointed at, leaving `pdfFile` dangling and the next scan silently text-on
 Copying the file back fixed it. **Never delete a file under `state/portfolio/` that
 `config.json` references** — check `pdfFile` and `deckFile` first.
 
+### Tidy-up pass: first impression, summary, and the prose
+
+Asked for after the student looked at it on their own machine: the ring was the first
+thing they saw and it was **red**, the summary beside it read like documentation, and the
+page explained the app's own machinery instead of the student's work.
+
+**1. The ring was alarming, and the cause was two different numbers sharing a label.**
+The ring fills in proportion to pages free of high-severity findings, but the label beside
+it read "29 points to check" — those are not the same measure, and the band keyed the
+COLOUR off the ring. On the real portfolio that produced `55% -> ring-high -> --high`, and
+`ring-critical` is `#b42318`, a red alert on a perfectly normal portfolio.
+
+Now the lowest two bands use `--medium` (amber), so red is reserved for the individual
+findings where it actually means something, and the label reads **"points worth a look"**
+rather than implying a status.
+
+**2. The summary was rewritten in plain language.** It used to open "These are points to
+check, not a mark" and talk about "mechanical checks" and "presentation and completeness
+points" — the app explaining itself. It now answers the three questions a student has, in
+order: how much, which one matters, where to start.
+
+> Found 29 things, and 24 of them cost you marks. Start with number 1 — it is the one costing you most.
+
+**3. Prose that explained the machinery was cut**, because a student should not have to
+read how the checks work to find out whether their coursework is in trouble:
+
+| Cut | Kept |
+|---|---|
+| "mechanical checks", "presentation and completeness points" | how many, and which matter |
+| 4 paragraphs on what deep thinking does internally | what it helps with, and that it does not change the mark |
+| the reasoning-token accounting | it is slower and uses more allowance |
+| "pages are fingerprinted… several pages travel in one request" | the line above the button already says the request count |
+| five lines of caveats under the predicted mark | two: how it was judged, and that it is an estimate |
+
+The Information panel, Statistics and Slides are all **collapsed by default**, so a
+first-time visitor sees only what they must: which portfolio is being marked, the summary,
+the Check button, and then the findings.
+
+**A self-inflicted bug worth noting:** my first rewrite produced *"24 of them worth
+markss"*, because `plural()` appends an "s" and I handed it a whole phrase. Caught by
+printing the assembled sentence rather than reading the diff — which is the only way that
+class of error shows up.
+
 ### Sharing it: packaged for Windows, and on GitHub
 
 Written up for the student in **`PUBLISHING.md`** — account, repository, push, build,

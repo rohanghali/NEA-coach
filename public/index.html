@@ -186,11 +186,18 @@
     transform-origin: 60px 60px;
     transition: stroke-dashoffset 0.5s ease;
   }
+  /*
+   * The ring shows how much of the portfolio is already clear of the biggest issues.
+   * It is a PROGRESS indicator, not a verdict on the work, so it stays in calm colours:
+   * the lowest band is amber rather than alarm red, because a student opening the app
+   * on a normal portfolio should see something to work on, not a red alert. Red is kept
+   * for the individual findings, where it actually means "this matters".
+   */
   .ring-good { stroke: var(--good); }
   .ring-low { stroke: var(--low); }
   .ring-medium { stroke: var(--medium); }
-  .ring-high { stroke: var(--high); }
-  .ring-critical { stroke: var(--critical); }
+  .ring-high { stroke: var(--medium); }
+  .ring-critical { stroke: var(--medium); }
   .ring-centre {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -1230,7 +1237,7 @@
       -->
       <a class="btn btn-quiet btn-lg" id="btnExport" href="/api/export" download>Export feedback</a>
     </div>
-    <p class="actions-hint">Check now only reads pages that changed since last time, so re-checking unchanged work costs nothing. Re-check everything ignores that and reads the whole deck again.</p>
+    <p class="actions-hint">Check now only reads what you have changed, so it costs nothing when nothing has changed. Use Re-check everything only if you have changed the exam board.</p>
     <p class="actions-hint" id="scanCostHint"></p>
     <!--
       Which checks could not run, and why. Only populated for a PDF, where the
@@ -1574,87 +1581,58 @@
     <div class="details-body">
     <h3 class="sub" id="thinkingHeading">What costs your allowance, and what does not</h3>
     <p class="muted small" style="margin-top:-4px">
-      Nothing here costs money. On a free Gemini key there is no bill at all — what you spend is a
-      <strong>daily allowance of requests</strong>, and the meter at the bottom of this page shows how much
-      is left. This section explains which parts of a check use it.
+      Nothing here costs money. Your free Google key comes with a <strong>daily allowance</strong>, shown by the
+      meter at the bottom of the page. This is what uses it.
     </p>
     <dl class="explain">
       <dt>Never uses the allowance — the checks on this page</dt>
       <dd>
-        Everything about word counts, page counts, missing titles, spelling, repetition and
-        near-empty pages is worked out on your own computer. It needs no internet and no API key,
-        so it does not touch the allowance and you can run it as often as you like.
-        <br><strong>On a PowerPoint</strong> it also covers fonts, spacing, stray boxes and
-        captions, because a <code>.pptx</code> records where things sit and how big they are.
-        <strong>A PDF carries none of that</strong> — no font sizes, no positions, no speaker notes — so
-        those few checks are skipped for a PDF and the app tells you which ones, rather than
-        quietly reporting nothing.
+        Word counts, missing headings, spelling, repetition and empty pages are checked on your own
+        computer, with no internet and no API key. Run them as often as you like.
+        <br>A PDF cannot be checked for fonts, spacing or stray boxes, because it does not record them.
+        The app tells you which checks it skipped rather than staying quiet.
       </dd>
 
       <dt>Uses the allowance — the AI review</dt>
       <dd>
-        Reading your pages and judging your writing, your reasoning and how you have presented
-        your evidence. This asks Google, so it spends part of the daily allowance. Nothing is sent
-        unless you press Check now.
-        <br>One full check of a 60-page portfolio is about <strong>9 requests</strong>, and the free
-        tier allows roughly <strong>20 per model per day</strong> — so about <strong>two full checks a
-        day</strong>, and far more on days when little has changed, because pages you have not
-        touched are never sent again.
+        Reading your pages and judging the work against the mark scheme. Nothing is sent unless you
+        press Check now.
+        <br>A full check is about <strong>9 requests</strong>, and the free allowance is roughly
+        <strong>20 a day</strong> — so about <strong>two full checks a day</strong>, and more when little
+        has changed, because untouched pages are never re-sent.
       </dd>
 
       <dt>When the allowance runs out</dt>
       <dd>
-        A check will stop part-way and say so. Nothing is lost: pages already read are kept, and
-        re-running after the reset only reads what is left. You have three options, quickest first:
-        <br><strong>1. Paste a different key</strong> in Settings. Each key has its own daily
-        allowance, so a second free key gets you going again straight away — this is the fastest
-        fix and needs no waiting.
-        <br><strong>2. Wait.</strong> The allowance resets at <strong>midnight Pacific time</strong>,
-        which is 8am in the UK (7am in summer). The meter says how long is left.
-        <br><strong>3. Use a cheaper model</strong> for marking, which has its own separate allowance,
-        or enable billing on the project behind your key to remove the cap entirely.
+        A check stops part-way and says so. Nothing is lost — pages already read are kept.
+        <br><strong>Quickest fix:</strong> paste a different key in Settings. Each key has its own
+        allowance, so a second free key works immediately.
+        <br><strong>Or wait:</strong> the allowance resets at <strong>midnight Pacific time</strong>, which
+        is 8am in the UK (7am in summer). The meter says how long is left.
       </dd>
 
       <dt>"Re-check everything"</dt>
       <dd>
-        Normally only pages that changed are sent, so a repeat check on unchanged work
-        <strong>spends nothing at all</strong>. This button ignores that and sends the whole deck again,
-        so it spends a full check's worth of allowance for no new information. It does <em>not</em>
-        make the AI cleverer — it only makes it re-read pages it already read. Use it after
-        changing your mark scheme, not as a routine.
+        Normally only changed pages are sent, so re-checking costs nothing. This button re-reads
+        everything and spends a full check for no new information. Use it only after changing your
+        exam board.
       </dd>
 
       <dt id="deepExplainTerm">"Deep thinking" — what it actually does</dt>
       <dd id="deepExplainBody">
-        <p style="margin:0 0 8px"><strong>Normally</strong> the AI reads your pages and answers straight away,
-        the way you would if asked to skim a portfolio and give an opinion. It is quick, and it is
-        usually right about the obvious things — a missing title, a paragraph that describes
-        rather than evaluates.</p>
-        <p style="margin:0 0 8px"><strong>With deep thinking on</strong>, the model is allowed to work
-        through the pages step by step <em>before</em> it commits to an answer: checking what each page
-        actually evidences against the criterion, weighing whether a piece of work counts as
-        development or description, and deciding how much a weakness really costs in marks. Only
-        its conclusion is shown to you; the working is internal.</p>
-        <p style="margin:0 0 8px"><strong>When it helps:</strong> the judgement calls that need weighing up
-        rather than spotting — whether your evaluation is genuinely critical, whether your development
-        is iterative or just a sequence of drawings, whether a criterion is only partly met.
-        <strong>When it does not:</strong> mechanical faults. A font below 12pt or a missing caption is
-        found either way, and switching this on will not improve those.</p>
-        <p style="margin:0"><strong>What it uses:</strong> the reasoning steps are counted as output,
-        which is the larger part of what Google charges for, so a check spends more of the daily
-        allowance and takes longer. It does <strong>not</strong> change the number of requests, so it will
-        not on its own use up a day — but each request is heavier. It is off by default. Try it once
-        on a full check and compare the findings against a normal run: if the advice does not read
-        more considered, leave it off.</p>
+        <p style="margin:0 0 8px">The AI takes longer over each page and weighs its judgement before answering.
+        It helps on the calls that need thinking about — whether your evaluation is genuinely critical,
+        whether your development is iterative or just a series of drawings.</p>
+        <p style="margin:0">It makes no difference to the obvious things: a missing title or a small font is
+        found either way. It does <strong>not</strong> change your predicted mark. It is off because it is slower
+        and uses more of the daily allowance. Try it once and compare; if the advice does not read more
+        considered, leave it off.</p>
       </dd>
 
       <dt>How the allowance is made to last</dt>
       <dd>
-        Pages are fingerprinted, so a page you have not touched is never sent twice — that is what
-        makes a second and third check cheap rather than a repeat of the first. Several pages travel
-        in one request, and the cheaper model reads the pages while a stronger one only decides the
-        mark. The estimate above the button says how many requests a check will take, and how many
-        are left, <em>before</em> you press it.
+        Untouched pages are never re-sent, which is what makes a second check cheap. The line above
+        the Check button says how many requests a check will take before you press it.
       </dd>
 
       <dt>What the app does, and what it cannot</dt>
@@ -2369,6 +2347,15 @@
     return out;
   }
 
+  /*
+   * One short paragraph saying what was found and what to do first.
+   *
+   * This is the first sentence a student reads, so it answers three questions in order:
+   * how much is there, which one matters most, and where to start. Earlier wording
+   * explained the app's own machinery ("these are presentation and completeness points,
+   * not a mark", "mechanical checks") which a 16-year-old should not have to parse to
+   * find out whether their coursework is in trouble.
+   */
   function verdictFor() {
     var c = tierCounts();
     var data = state.data;
@@ -2376,36 +2363,34 @@
 
     if (c.total === 0) {
       return hasAi
-        ? 'Nothing is flagged on these pages. That is a strong position — keep the same standard as you add more work.'
-        : 'These free checks found nothing to flag. That is a good sign — it covers presentation and completeness, not the quality of your design thinking. Add an API key for mark-scheme feedback.';
+        ? 'Nothing to flag. Keep the same standard as you add more pages.'
+        : 'Nothing to flag in the presentation and completeness checks. Add an API key to have the work itself reviewed too.';
     }
 
-    /*
-     * With no AI review the list is only mechanical checks, so say that plainly
-     * rather than implying these are the most important things about the work.
-     */
+    var count = plural(c.total, 'thing');
+    var lead = 'Found ' + count + ' to look at';
+
+    // With no AI review there is only the free structural pass, and saying so keeps the
+    // student from reading it as a judgement of their design thinking.
     if (!hasAi) {
-      return 'These are presentation and completeness points, not a mark. ' +
-        countPhrase(c.total, 'mechanical check', 'mechanical checks') +
-        ' found on your pages, listed most useful first. Add an API key to have your writing, ' +
-        'your reasoning and your use of the mark scheme reviewed as well.';
+      return lead + ' — all of them about presentation and completeness, none about the '
+        + 'quality of your design work. Add an API key to have that reviewed as well. '
+        + 'Start with number 1.';
     }
 
-    var parts = [];
     if (c.substance > 0) {
-      parts.push(countPhrase(c.substance, 'point', 'points') + ' worth your thinking');
+      /*
+       * `plural()` appends an "s", so it cannot be handed a phrase — doing that
+       * produced "24 of them worth markss". The noun is spelled out instead.
+       */
+      var worthMarks = c.substance === 1
+        ? '1 of them costs you marks'
+        : c.substance + ' of them cost you marks';
+      return lead + ', and ' + worthMarks + '. '
+        + 'Start with number 1 — it is the one costing you most.';
     }
-    var minor = c.presentation + c.obvious;
-    if (minor > 0) {
-      parts.push(countPhrase(minor, 'smaller thing', 'smaller things') + ' to tidy up');
-    }
-
-    var second = capitalise(parts.join(', and ')) + '.';
-    var advice = c.substance > 0
-      ? 'Start at number 1 — it is the most worthwhile fix.'
-      : 'Start at number 1; the quick ones add up.';
-
-    return 'These are points to check, not a mark. ' + second + ' ' + advice;
+    return lead + ', and none of them cost you marks — they are tidying. '
+      + 'Start with number 1; small things add up.';
   }
 
   function ringBand(score) {
@@ -2481,7 +2466,14 @@
     }
     setText(ui.scoreNumber, totalIssues ? String(totalIssues) : (data ? '0' : '–'));
     if (ui.ringOutOf) {
-      setText(ui.ringOutOf, totalIssues === 1 ? 'point to check' : 'points to check');
+      /*
+       * Worded so the number and the ring agree in the reader's head. The ring fills in
+       * proportion to the pages that are clear, so a FULL ring with "12 points to check"
+       * looks contradictory unless the label says which is which.
+       */
+      setText(ui.ringOutOf, totalIssues === 1
+        ? 'point worth a look'
+        : 'points worth a look');
     }
 
     var scan = data && data.scan ? data.scan : null;
@@ -4464,9 +4456,9 @@
 
       supporting.push(el('p', { cls: 'predicted-note', text:
         (ai.visionRan
-          ? 'The AI looked at every page of your portfolio, including your sketches, photographs and drawings, and estimated these marks against the mark scheme. '
-          : 'The AI read your words only — no page images were reviewed, so sketched, drawn and photographed work is missing from this judgement and the marks below will read low. Add a PDF in Settings. ')
-        + 'This is an estimate of the work as it stands, not a grade and not a promise: your teacher marks the real thing, and the moderator can move it. Use it to find the weakest criterion, not to predict a result.' }));
+          ? 'Judged from every page, including your sketches and photographs. '
+          : 'Judged from your words only — no page images were read, so drawn and photographed work is missing and this will read low. Add a PDF in Settings. ')
+        + 'An estimate, not a grade: your teacher marks the real thing.' }));
 
       var big = el('div', { cls: 'predicted-top' }, [
         el('div', { cls: 'predicted-figure' }, [
