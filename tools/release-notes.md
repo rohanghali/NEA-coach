@@ -18,10 +18,15 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **No scroller bar on a phone.** A finger swiping the tabs is the gesture everyone already makes, and
-  the bar was taking 16px of a narrow screen to offer a worse version of something the phone does
-  natively. On a phone the strip is simply a row of tabs you pull sideways. **On a computer the bar
-  stays**, because a mouse has no swipe and a trackpad's sideways scroll is not obvious.
+- **No floating "Check now" on a phone.** It is already in the header, and a bar across the bottom of
+  a small screen sits on top of the work being read — for a button that is one tap away at the top.
+  The back-to-top pill is unaffected.
+- **A small indicator instead of a scroller on a phone.** Three pixels of progress under the tabs,
+  with nothing to grab: the gesture there is a swipe, so a handle would be a target nobody would use.
+  It still shows how much of the row is on screen, which is the part that matters when the tabs run
+  off the edge. On a computer the draggable bar is unchanged.
+- **The "Deep thinking is on/off" phrase is smaller**, so it sits in the sentence rather than shouting
+  over it. Still bold and coloured, so it is still the thing your eye lands on.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

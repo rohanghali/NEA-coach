@@ -1215,7 +1215,8 @@
   .check-plan .check-plan-sub { font-size: 12.5px; }
   .check-plan .check-plan-off { color: var(--medium); }
   /* Deep thinking is neither good nor bad — it is a setting with a cost, so it is not amber. */
-  .check-plan .check-plan-on { color: var(--accent-dark); }
+  /* Bold and coloured enough to stand out, without being set larger than the sentence it sits in. */
+  .check-plan .check-plan-on { color: var(--accent-dark); font-size: 12.5px; }
 
   .toptabs-row { display: flex; align-items: center; gap: 4px; }
 
@@ -1344,7 +1345,23 @@
    * The native scrollbar stays hidden too, so the strip is simply a row of tabs you pull sideways.
    */
   @media (max-width: 700px) {
-    .toptabs-rail { display: none; }
+    /*
+     * A phone gets a small INDICATOR rather than a scroller: three pixels of progress under the tabs,
+     * with nothing to grab.
+     *
+     * The gesture there is a swipe, so a handle would be a target to aim at that nobody would use —
+     * but a row of tabs running off the edge with no sign that it does is worse. It still shows how
+     * much of the row is on screen, which is the part that matters.
+     */
+    .toptabs-rail {
+      height: 3px;
+      margin: 0 2px;
+      border: none;
+      border-radius: 2px;
+      /* The swipe is the control. A 3px target is not something to hit. */
+      pointer-events: none;
+    }
+    .toptabs-thumb { min-width: 20px; border-radius: 2px; }
     .toptabs-scroll { scrollbar-width: none; }
     .toptabs-scroll::-webkit-scrollbar { display: none; }
   }
@@ -2829,6 +2846,9 @@
       border-top-color: var(--glass-edge);
     }
     .dock.has-quick #btnQuickCheck { display: inline-flex; flex: 1 1 auto; justify-content: center; }
+    /* Belt and braces with renderDock: no floating Check now in the phone layout at all. */
+    .dock.has-quick #btnQuickCheck { display: none; }
+    .dock.has-quick { background: none; border-top-color: transparent; }
     /* Room for the bar, so the last card is never hidden behind it. */
     .page { padding-bottom: 86px; }
   }
@@ -4211,7 +4231,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.61';
+  var PAGE_BUILD = '1.0.62';
 
   var state = {
     data: null,
@@ -5916,7 +5936,8 @@
     if (!isFinite(railWidth) || railWidth <= 0) { return; }
     var travel = Math.max(0, railWidth - 0);
     var frac = Math.min(1, range.view / range.wide);
-    var width = Math.max(52, Math.round(travel * frac));
+    /* The minimum matches the rail: a big handle on a computer, a sliver on a phone. */
+    var width = Math.max(isPhoneLayout() ? 20 : 52, Math.round(travel * frac));
     var room = Math.max(1, travel - width);
     var left = Math.round((range.max ? (Number(ui.topTabsScroll.scrollLeft) || 0) / range.max : 0) * room);
     thumb.style.width = width + 'px';
@@ -9996,6 +10017,23 @@
    * save a scroll, not to be a second primary action. It mirrors the real button's label
    * and disabled state rather than deciding anything itself.
    */
+  /**
+   * Whether the page is in its phone layout.
+   *
+   * matchMedia is tried first and innerWidth is the fallback, so this still answers sensibly in an
+   * environment that stubs one of them out.
+   */
+  function isPhoneLayout() {
+    try {
+      if (typeof window.matchMedia === 'function') {
+        var mq = window.matchMedia('(max-width: 700px)');
+        if (mq && mq.matches) { return true; }
+      }
+    } catch (err) { /* fall through to the width */ }
+    var w = Number(window.innerWidth);
+    return isFinite(w) && w > 0 && w <= 700;
+  }
+
   function renderDock() {
     if (!ui.btnQuickCheck || !ui.btnCheck) { return; }
     var box = typeof ui.btnCheck.getBoundingClientRect === 'function' ? ui.btnCheck.getBoundingClientRect() : null;
@@ -10008,6 +10046,11 @@
     var overview = document.getElementById('panelOverview');
     var overviewOpen = !!(overview && String(overview.className).indexOf('is-active') >= 0);
     var gone = !overviewOpen || (!!box && box.bottom < 0);
+    /*
+     * Not on a phone. Check now is already in the header, and a bar across the bottom of a small
+     * screen sits on top of the work being read — for a button that is one tap away at the top.
+     */
+    if (isPhoneLayout()) { gone = false; }
     if (gone === quickShown) { return; }
     quickShown = gone;
     ui.btnQuickCheck.className = gone ? 'btn btn-primary is-shown' : 'btn btn-primary';

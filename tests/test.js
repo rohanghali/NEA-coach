@@ -6156,10 +6156,24 @@ section('12aj. Every section is a tab');
    * And on a phone there is no bar at all — a finger swiping the tabs is the gesture everyone already
    * makes, and the rail was taking 16px of a narrow screen to offer a worse version of it.
    */
-  ok('a phone gets no scroller bar, just a row of tabs to pull sideways',
-    (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')
-      .indexOf('.toptabs-rail { display: none; }') >= 0,
+  /*
+   * A phone gets a small INDICATOR, not a scroller: three pixels of progress with nothing to grab.
+   * The gesture there is a swipe, so a handle is a target nobody would use — but tabs running off the
+   * edge with no sign that they do is worse.
+   */
+  ok('a phone gets a small indicator rather than a scroller to drag',
+    (() => {
+      const phone = (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n');
+      return phone.indexOf('.toptabs-rail {') >= 0
+        && phone.indexOf('height: 3px') >= 0
+        && phone.indexOf('pointer-events: none') >= 0;
+    })(),
     'gathered here rather than reusing the later variable: this runs before it is declared');
+  ok('and the indicator is not a drag target, because the swipe is the control',
+    /\.toptabs-rail \{[\s\S]{0,300}pointer-events: none/.test(
+      (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')));
+  ok('the handle minimum shrinks with it, or a 20px design would get a 52px thumb',
+    /isPhoneLayout\(\) \? 20 : 52/.test(html));
   ok('and the native scrollbar stays hidden there too',
     (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')
       .indexOf('.toptabs-scroll { scrollbar-width: none; }') >= 0);
@@ -6259,7 +6273,9 @@ section('12aj. Every section is a tab');
   ok('it also says whether DEEP THINKING is on, both ways',
     /Deep thinking is on/.test(html) && /Deep thinking is off/.test(html) && /cfg\.thinking/.test(html));
   ok('and that is not coloured like a warning, because it is a setting with a cost',
-    /\.check-plan \.check-plan-on \{ color: var\(--accent-dark\); \}/.test(html));
+    /\.check-plan \.check-plan-on \{ color: var\(--accent-dark\);/.test(html));
+  ok('and it is set no larger than the sentence it sits in',
+    /\.check-plan \.check-plan-on \{[^}]*font-size: 12\.5px/.test(html));
   ok('and it names what the file cannot supply, rather than an internal rule name',
     /skippedReasons\(plan\.skippedRules\)/.test(html) && /speaker notes/.test(html)
     && !/text-overflow/.test((/var what =[\s\S]{0,400}/.exec(html) || [''])[0]));
@@ -6575,6 +6591,22 @@ section('12an. Settings that are shown must be settings that are saved');
   ok('and it returns nothing rather than guessing when the file has changed',
     /scannedPdf !== chosenPdf\) \{ return null; \}/.test(html)
     && /scannedPptx !== chosenPptx\) \{ return null; \}/.test(html));
+  /* ---- no floating Check now on a phone ---- */
+  /*
+   * "you can get rid of the check now at the bottom of iphone."
+   *
+   * It is already in the header, and a bar across the bottom of a small screen sits on top of the
+   * work being read — for a button that is one tap away at the top. renderDock decides it, and a CSS
+   * rule says the same thing in case the class is ever set.
+   */
+  ok('the floating Check now is not shown in the phone layout',
+    /function isPhoneLayout\(\)/.test(html) && /if \(isPhoneLayout\(\)\) \{ gone = false; \}/.test(html));
+  ok('and it answers from either matchMedia or the width, so a stub cannot defeat it',
+    /window\.matchMedia\('\(max-width: 700px\)'\)/.test(html) && /window\.innerWidth/.test(html));
+  ok('with a stylesheet rule saying the same, in case the class is ever set',
+    (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')
+      .indexOf('.dock.has-quick #btnQuickCheck { display: none; }') >= 0);
+
   /* ---- the empty grid must not send a student down a dead end ---- */
   /*
    * The copy said "drop the specification PDF", and the loader pushes every .pdf to its skipped list
