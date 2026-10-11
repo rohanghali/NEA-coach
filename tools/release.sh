@@ -157,5 +157,19 @@ for ZIP in "${ASSETS[@]}"; do
 done
 
 echo
-say "Done. The download link to share is:"
-say "  https://github.com/$REPO/releases/latest"
+# Whether the repository is public decides whether that link can work at all, so it is
+# checked rather than assumed. On a private repository github.com/.../releases/download
+# returns 404 EVEN WITH A TOKEN — private release files are only served through the API —
+# so printing "the link to share" would be confidently wrong.
+VIS=$(curl -s --config "$AUTH_FILE" "https://api.github.com/repos/$REPO" 2>/dev/null \
+  | tr ',' '\n' | sed -n 's/.*"private": *\(true\|false\).*/\1/p' | head -1)
+if [ "$VIS" = "true" ]; then
+  say "NOTE: $REPO is PRIVATE."
+  say "  The usual download link does NOT work on a private repository - it returns 404, and"
+  say "  a token does not help, because private release files are only served through the API."
+  say "  Use ./tools/get-release.sh, which falls back to the API and uses the keychain token."
+  say "  Nobody you share the app with can download it until the repository is public."
+else
+  say "Done. The download link to share is:"
+  say "  https://github.com/$REPO/releases/latest"
+fi

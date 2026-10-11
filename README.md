@@ -33,6 +33,11 @@ modified date, run a scan, and check that both are unchanged.
 
 **Download it from the [Releases](../../releases/latest) page** and unzip it.
 
+If this repository is ever made **private**, that page and every release link stop working for
+anyone without access — a private repository returns 404 for release files even when a token is
+supplied, because they are only served through the API. `tools/get-release.sh` handles both
+cases and is the reliable way to fetch a build.
+
 1. **Start it.**
 
    **On Windows:** double-click `Start NEA Coach.bat`. **Nothing needs installing** —
