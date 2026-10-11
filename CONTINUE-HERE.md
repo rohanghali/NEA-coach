@@ -1330,21 +1330,45 @@ real gap.
 within **0.02%** (Jacob, 71,341 vs 71,329) and **0.6%** (Rohan, 142,629 vs
 141,749). Not a single empty page on either file.
 
-**The honest limitation.** A PDF carries no font sizes, no shape geometry and no
-speaker notes. Rather than feed the rules invented numbers, each rule is now TAGGED
-with what it needs (`rule(name, fn, requires)` — `text`, `images`, `geometry`,
-`fonts`, `notes`) and the ones a PDF cannot support are **skipped and named**:
+**The honest limitation.** A PDF carries no speaker notes, and it has no text
+boxes. Rather than feed the rules invented numbers, each rule is TAGGED with what it
+needs (`rule(name, fn, requires)` — `text`, `images`, `geometry`, `fonts`, `notes`)
+and the ones a PDF cannot support are **skipped and named**:
 
 | Source | Rules run | Skipped |
 |---|---|---|
 | `.pptx` | 18 of 18 | none |
-| `.pdf` | 10 of 18 | page-too-busy, wall-of-text, text-too-small, uncaptioned-image, missing-notes, text-overflow, off-canvas, font-inconsistency |
+| `.pdf` | 13 of 18 | page-too-busy, uncaptioned-image, missing-notes, text-overflow, off-canvas |
+
+**The PDF extractor now reads real geometry** (`lib/pdftext.js`). Every shown string
+is emitted as a positioned run carrying the text matrix, the font size and the
+BaseFont name — values that were being parsed and then thrown away. `lib/pdfdeck.js`
+turns those runs into per-line text blocks, so `text-too-small` and
+`font-inconsistency` now run on a PDF with **exact** inputs. Measured on Jacob's
+44-page PDF: 13 of 18 rules, `text-too-small` firing on 34 pages, and
+`font-inconsistency` reporting "12 different heading sizes".
+
+**Why the other geometry rules still do not run.** Line WIDTH is an estimate, and
+these are the documents where that bites: a Google Slides export uses Type0 CID
+fonts and carries **no `/Widths` array at all**, so per-glyph advances are not
+available without parsing the embedded font program. Measured against the real
+portfolio the estimate over-read a line by about **13%**, which turned **106
+correctly placed lines into "runs off the page" findings**. So the width-dependent
+rules (`text-overflow`, `off-canvas`) stay skipped rather than crying wolf about a
+page the student can see is fine. `page-too-busy` needs geometry only for its
+evidence string and is skipped for the same reason. A rotation guard also exists:
+`deck.geometryOk` is false if any page carries a non-zero `/Rotate`, because a
+rotated page's coordinates are in a different frame from the rendered page.
 
 A rule that never runs finds nothing, and "nothing" reads as a **pass** — which is
-why they are listed in the report and explained in the UI ("8 were skipped because a
-PDF does not carry font sizes or where things sit on the page"). Real findings do
-come out: 8 on Jacob's PDF, including a near-empty page and a spelling
+why they are listed in the report and explained in the UI (which names the categories
+dynamically, so the message updated itself when font sizes started running). Real
+findings do come out: 8 on Jacob's PDF, including a near-empty page and a spelling
 inconsistency, matching what the same file shows as a `.pptx`.
+
+**Cross-checked against PowerPoint, deliberately.** The same portfolio as `.pptx`
+gives 12 `text-too-small` findings; as a PDF it gives 13. That is agreement, not a
+regression — and it is the test to repeat if these rules are ever retuned.
 
 **Three bugs found and fixed on the way:**
 

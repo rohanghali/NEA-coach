@@ -1850,12 +1850,20 @@ section('11t. Structural checks on a PDF');
       String(pdfRun.findings.length));
     ok('no rule threw', (pdfRun.errors || []).length === 0, JSON.stringify(pdfRun.errors));
 
-    // The skipped rules must be exactly the PowerPoint-only ones, and named.
+    // The skipped rules must be exactly the ones a PDF genuinely cannot support,
+    // and named. Font size and word count are exact even in a PDF, so the rules
+    // that read only those now run; the ones that need measured widths still do not.
     const skipped = pdfRun.skippedRules.map((x) => x.rule);
-    ok('the PowerPoint-only rules are reported as skipped', skipped.length === 8, String(skipped.length));
-    for (const r of ['text-too-small', 'missing-notes', 'off-canvas', 'uncaptioned-image', 'font-inconsistency']) {
+    ok('the rule set skipped for a PDF is exactly the unsupported one',
+      skipped.slice().sort().join(',') === 'missing-notes,off-canvas,page-too-busy,text-overflow,uncaptioned-image',
+      skipped.slice().sort().join(','));
+    for (const r of ['missing-notes', 'off-canvas', 'text-overflow']) {
       ok('  and ' + r + ' is one of them', skipped.includes(r));
     }
+    ok('rules reading exact font sizes DO run on a PDF',
+      !skipped.includes('text-too-small') && !skipped.includes('font-inconsistency'));
+    ok('rules needing measured line widths do NOT run on a PDF',
+      skipped.includes('text-overflow') && skipped.includes('off-canvas'));
     ok('a PDF runs FEWER rules than the same deck as a PowerPoint',
       pdfRun.ruleCount < pptxRun.ruleCount);
     ok('the totals are reported so the UI can explain the gap',
