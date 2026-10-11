@@ -1,12 +1,24 @@
 # CONTINUE HERE — read this first
 
-**For any AI assistant picking this project up, and for Rohan.**
+**For any AI assistant picking this project up.**
 
 This file is the complete handover. Read it before changing anything. It records
 what the app does, the rules that must not be broken, and what is still to do.
 
 Last updated by: the session that built the app (DeepSeek Harness on a MacBook).
 The app was built across one long session and is working and tested.
+
+---
+
+## 0. The portfolios, and why they have letters instead of names
+
+Every portfolio this project has been measured against belongs to a real student. Their
+**marks** are the calibration data and are quoted throughout; their **names are not**, and
+have been removed. The four are referred to as P1 to P4, in descending order of real mark:
+**P1 99/100**, **P2 96/100**, **P3 90/100**, **P4 89/100**.
+
+The files on disk are still named after their authors. Where this file gives a path or a
+command, substitute whatever the file is actually called on this Mac — see section 1.
 
 ---
 
@@ -17,11 +29,20 @@ reads a `.pptx` or a PDF export, finds problems worth fixing, ranks them by prio
 and reports how well the pages evidence each mark-scheme criterion.
 
 **Every portfolio this project has actually been tested against is AQA GCSE.** Three
-are in the folder above: Rohan Ghali (99/100), Mithil Patel (96/100) and Arjun Patel
-(90/100), plus Jacob Cluer (89/100) whose file lives in `state/portfolio/`. All four are
-GCSE, and all four score anchors in `lib/calibration.js` are tagged `board: 'aqa-gcse'`.
+are in the folder above. They are labelled P1 to P4 here and in
+`lib/calibration.js`, in descending order of the mark they were really given:
 
-An earlier version of this section described Rohan as doing **WJEC Eduqas A-level**.
+| Label | Real mark | Notes |
+| --- | --- | --- |
+| **P1** | 99/100 | the author's own portfolio |
+| **P2** | 96/100 | |
+| **P3** | 90/100 | 24 pages, and the one used for most PDF work |
+| **P4** | 89/100 | 44 pages; its file lives in `state/portfolio/` |
+
+All four are GCSE, and all four score anchors in `lib/calibration.js` are tagged
+`board: 'aqa-gcse'`.
+
+An earlier version of this section described P1 as doing **WJEC Eduqas A-level**.
 That was wrong, and it propagated a false claim that the score anchors were A-level —
 see the correction in section 6d. The app **can** mark against Eduqas A-level (the
 criteria ship in `spec/`, and it is still the server default in `defaultConfig()`), but
@@ -29,7 +50,7 @@ criteria ship in `spec/`, and it is still the server default in `defaultConfig()
 A-level accuracy figure. Sizes quoted elsewhere as "200 pages" are a design target, not
 a file in this project.
 
-Runs entirely on his own Mac. No server, no subscription, no accounts.
+Runs entirely on the student’s own Mac. No server, no subscription, no accounts.
 
 ---
 
@@ -92,7 +113,7 @@ These were deliberate decisions. Changing them will break the app or break trust
 6. **Tables and images are CONTENT, not decoration.** A `.pptx` table
    (`<a:tbl>`) holds real text that must be extracted like any other text. It was
    once detected but not read, so four complete manufacture-plan pages reached
-   the AI as two words each and it told the student to write pages he had already
+   the AI as two words each and it told the student to write pages they had already
    written. If you add a shape type, make sure its text is extracted.
 
 7. **Never call a page blank.** A page with images and little text is a
@@ -276,7 +297,7 @@ cd NEA-Coach
 node -e "
 const {parsePresentation}=require('./lib/pptx');
 const {runLocalChecks}=require('./lib/checks');
-const d=parsePresentation('../Rohan Ghali.pptx');
+const d=parsePresentation('../P1.pptx');
 const r=runLocalChecks(d);
 console.log('findings', r.findings.length, 'byTier', JSON.stringify(r.byTier));
 console.log('errors', JSON.stringify(r.errors));
@@ -522,7 +543,7 @@ the page's own handlers with the overlay in its true post-completion state.
 
 ### Two false positives found on a real 90/100 AQA GCSE portfolio
 
-Arjun Patel's portfolio (24 pages, 13,113 words, AQA GCSE, **really scored 90/100**)
+P3's portfolio (24 pages, 13,113 words, AQA GCSE, **really scored 90/100**)
 was added as a test document. The structural score came out at 97 with four findings,
 and **two of the four were wrong**:
 
@@ -544,7 +565,7 @@ drops to 10.6pt on pages 6 and 19). The sample deck and all 558 tests are unaffe
 **Board note — CORRECTED. All anchors are AQA GCSE, and this file said otherwise.**
 
 An earlier version of this section claimed the 99/96/89 anchors were "Eduqas A-level"
-while Arjun was AQA GCSE, and concluded he could not be pooled with them. **That was
+while P3 was AQA GCSE, and concluded it could not be pooled with them. **That was
 wrong.** Every anchor in `lib/calibration.js` is labelled `board: 'aqa-gcse'`, every run
 in `state/calibration.json` records `board: 'aqa-gcse'`, and `state/config.json` has
 `specId: 'aqa-gcse'`. The user confirmed it: **all their portfolios are AQA GCSE**, and
@@ -555,17 +576,17 @@ The mistake came from seeing an A-level specification PDF in the parent folder a
 that instead of reading what was recorded. **Check `ANCHORS` and `calibration.json`, not
 prose.**
 
-What actually stops Arjun being folded into the fit is **format, not board**: the six
+What actually stops P3 being folded into the fit is **format, not board**: the six
 anchors are three portfolios scored by two marking models, and the fit is per MODEL.
-Arjun has a known real mark (90) but **no recorded app prediction**, so there is nothing
-to fit him against yet. Once a marking run records one, he becomes a **fourth AQA GCSE
+P3 has a known real mark (90) but **no recorded app prediction**, so there is nothing
+to fit it against yet. Once a marking run records one, it becomes a **fourth AQA GCSE
 anchor** and is directly comparable — same board, same qualification, same mark scheme.
 
 **The per-board filter is still correct and still worth keeping.** `assessPrediction`
 filters anchors by board AND model; it just currently has only one board to filter on.
 
 **One inconsistency worth not over-reading:** the local structural score was 99 for
-Arjun (real 90) but 63 for Jacob (real 89). Those two real marks are within a point of
+P3 (real 90) but 63 for P4 (real 89). Those two real marks are within a point of
 each other while their structural scores differ by 36 — a reminder that
 `presentationTidiness` measures presentation only and does not track the mark.
 
@@ -726,7 +747,7 @@ their own last report:
 
 ```
 deck.fileName : AQA DT 7552 Unit 2 T1 Performance-Polymers.pptx
-deck.filePath : /Users/rohanghali/Downloads/AQA DT 7552 Unit 2 T1 Performance-Polymers.pptx
+deck.filePath : ~/Downloads/AQA DT 7552 Unit 2 T1 Performance-Polymers.pptx
 pages         : 29        findings: 48
 ```
 
@@ -901,7 +922,7 @@ is not. Results append to `state/calibration.json`. One run costs a few pence.
 **Blocker: no anchor exists yet.** What has been established, so there is no need
 to redo it:
 
-- The 99/100 AQA GCSE portfolio (`Rohan Ghali.pdf`, 60 pages) is present and IS
+- The 99/100 AQA GCSE portfolio (`P1.pdf`, 60 pages) is present and IS
   the portfolio that genuinely scored 99. It is the file every vision measurement
   has used.
 - **Its text contains no marks.** The whole PDF was extracted with CoreGraphics
@@ -950,7 +971,7 @@ would wreck the app's accuracy on any portfolio that was not this one.
 
 ### THREE anchors: the cheap model COMPRESSES its scores
 
-A third portfolio arrived (Jacob, AQA GCSE, 44 pages, real mark **89**). Measuring
+A third portfolio arrived (P4, AQA GCSE, 44 pages, real mark **89**). Measuring
 it settled the shape of the error, because the three anchors now span a real range
 of 89-99 rather than being bunched:
 
@@ -986,7 +1007,7 @@ evidence for WHY the default changed, not as something to apply.
 This is the most important finding in the project. Holding the PDF and the prompt
 constant and changing only the model used for the marking runs:
 
-| Model | Rohan (real 99) | Mithil (real 96) | Spread | Cost/check |
+| Model | P1 (real 99) | P2 (real 96) | Spread | Cost/check |
 |---|---|---|---|---|
 | `gemini-3.1-flash-lite` | median **81** (runs 59-93) | 70-80 | **~20 marks** | ~9p |
 | **`gemini-3.5-flash`** | median **97** (96, 97, 98) | **92** | **2 marks** | ~16p |
@@ -1019,7 +1040,7 @@ Both are AQA GCSE portfolios with real total marks, recorded in
 | Portfolio | App's median | Real | Shortfall |
 |---|---|---|---|
 | 99/100 | 81 | 99 | **18** |
-| 96/100 (Mithil) | 80 | 96 | **16** |
+| 96/100 (P2) | 80 | 96 | **16** |
 
 Two anchors at different marks is the minimum that can tell a constant offset from
 a proportional error, and these two say **near-constant**: 18 marks low on the
@@ -1048,7 +1069,7 @@ slope meaningful.
 
 ### Reliability: occasional low outlier runs are REAL, not parse failures
 
-Mithil's PDF gave runs of 81, 80, then **62 and 71** on re-runs. Investigated:
+P2's PDF gave runs of 81, 80, then **62 and 71** on re-runs. Investigated:
 `finishReason: STOP`, valid JSON, ~1,600 output tokens, no error — the model
 genuinely marked it lower, with criterion (a) falling from 9/10 to 6/10 and the
 status moving from "strong" to "partial". It is model variation, not a bug.
@@ -1057,13 +1078,13 @@ Comparing spreads on the same code:
 
 | Portfolio | Runs | Spread |
 |---|---|---|
-| Rohan (60 pp, 445 images) | 82, 81, 81, 82, 81, 80 | ~2 marks |
-| Mithil (60 pp, **566 images**) | 81, 80, 62, 71 | **19 marks** |
+| P1 (60 pp, 445 images) | 82, 81, 81, 82, 81, 80 | ~2 marks |
+| P2 (60 pp, **566 images**) | 81, 80, 62, 71 | **19 marks** |
 
 So the "spread under 1 mark" measured earlier was specific to one portfolio, not a
-property of the app. The 3-run MEDIAN is what absorbs this — it gave 80 for Mithil
+property of the app. The 3-run MEDIAN is what absorbs this — it gave 80 for P2
 against a mean of 74.3 — which is the strongest justification yet for `VISION_RUNS`
-existing. Do not reduce it to 1 on the basis of Rohan's numbers alone.
+existing. Do not reduce it to 1 on the basis of P1's numbers alone.
 
 ### There is NO mobile app, and that keeps causing confusion
 
@@ -1222,7 +1243,7 @@ by this daily cap. Retry on a fresh day.
 
 ### "Drag and drop does not work" — the real cause was TWO sources of truth
 
-Reported: *"I tried to drag and drop Jacob's and it kept Rohan's portfolio on the
+Reported: *"I tried to drag and drop P4's and it kept P1's portfolio on the
 screen."* The drop itself **worked** — `DT - Google Slides.pdf` was saved correctly
 and the endpoint behaved. The fault was in what the page DISPLAYED:
 
@@ -1239,7 +1260,7 @@ different portfolio than the one configured.
 The card also now says **"Not read yet — press Check now. Everything below still
 describes the previous portfolio."** A freshly chosen portfolio has not been
 scanned, so without that line the old findings look like the new portfolio's
-results — which is exactly how "it kept Rohan's" was experienced.
+results — which is exactly how "it kept P1's" was experienced.
 
 **There was no way to remove the PowerPoint.** A `.pptx` could be chosen but never
 removed, so starting clean was impossible and the old one stayed silently in use.
@@ -1247,7 +1268,7 @@ removed, so starting clean was impossible and the old one stayed silently in use
 alone — the two are separate files and a PDF on its own is a valid thing to mark.
 
 **Diagnostics added:** `saveConfig` now logs which portfolio fields moved, e.g.
-`Config changed - deckFile: Rohan Ghali.pptx -> (none); visionModel: ... -> ...`.
+`Config changed - deckFile: P1.pptx -> (none); visionModel: ... -> ...`.
 Chasing this without that meant guessing from a file modification time. Tests:
 section 11r.
 
@@ -1519,7 +1540,7 @@ Tests updated to pin the structure, so it cannot quietly revert to a cramped row
 
 ### SCORING: corrected by what the app has been MEASURED to get wrong
 
-The student asked for this to be acted on, and gave the missing data point: Jacob's
+The student asked for this to be acted on, and gave the missing data point: P4's
 portfolio (real **89**) scored **80-84%** on the default marking model, not the 66 the
 cheap model gave it. That made a **third anchor for `gemini-3.5-flash`**, and the first
 below 96 — the only thing that could test whether a fitted line was an artefact of two
@@ -1553,7 +1574,7 @@ model figure, which reads **2-6 marks LOW**.
   the note.
 
 **Measured after the change:** the default model lands within **1 mark on all three
-anchors** (0, 0, 0); the cheap model within **1** ( -1, +1, 0). Jacob's report now
+anchors** (0, 0, 0); the cheap model within **1** ( -1, +1, 0). P4's report now
 reads **83 raw -> 89 corrected**, against a real 89.
 
 **One test lesson:** I first asserted the two slopes differed by >0.15. The real
@@ -1730,7 +1751,7 @@ and **`publicConfig` returned `pdfFile` but never `pdfName`.** `buildStateRespon
 does `Object.assign({}, report.config, publicCfg)` — the live config wins for keys
 it HAS, but a key it does not have **survives from the report**. So the report's
 `pdfName`, written whenever that report was generated, was shown forever, while
-`pdfFile` beside it was live. The card could display `Rohan Ghali.pdf` while the app
+`pdfFile` beside it was live. The card could display `P1.pdf` while the app
 was marking `DT - Google Slides.pdf`.
 
 **Fixed at both ends, deliberately:**
@@ -1766,7 +1787,7 @@ real gap.
   page (absent otherwise, which would make every page look new on every scan).
 
 **Accuracy check:** extracted character counts match macOS's own Quartz extractor to
-within **0.02%** (Jacob, 71,341 vs 71,329) and **0.6%** (Rohan, 142,629 vs
+within **0.02%** (P4, 71,341 vs 71,329) and **0.6%** (P1, 142,629 vs
 141,749). Not a single empty page on either file.
 
 **The honest limitation.** A PDF carries no speaker notes, and it has no text
@@ -1783,7 +1804,7 @@ and the ones a PDF cannot support are **skipped and named**:
 is emitted as a positioned run carrying the text matrix, the font size and the
 BaseFont name — values that were being parsed and then thrown away. `lib/pdfdeck.js`
 turns those runs into per-line text blocks, so `text-too-small` and
-`font-inconsistency` now run on a PDF with **exact** inputs. Measured on Jacob's
+`font-inconsistency` now run on a PDF with **exact** inputs. Measured on P4's
 44-page PDF: 13 of 18 rules, `text-too-small` firing on 34 pages, and
 `font-inconsistency` reporting "12 different heading sizes".
 
@@ -1802,7 +1823,7 @@ rotated page's coordinates are in a different frame from the rendered page.
 A rule that never runs finds nothing, and "nothing" reads as a **pass** — which is
 why they are listed in the report and explained in the UI (which names the categories
 dynamically, so the message updated itself when font sizes started running). Real
-findings do come out: 8 on Jacob's PDF, including a near-empty page and a spelling
+findings do come out: 8 on P4's PDF, including a near-empty page and a spelling
 inconsistency, matching what the same file shows as a `.pptx`.
 
 **Cross-checked against PowerPoint, deliberately.** The same portfolio as `.pptx`
@@ -1890,7 +1911,7 @@ Not yet verified, and should not be claimed:
 
 - **Live AI calls untested.** Parsing, model selection, batching, caching and cost
   maths are unit-tested; the network leg is not.
-- **The launcher has never run on Rohan's iMac.** It detects architecture
+- **The launcher has never run on P1's iMac.** It detects architecture
   (`arm64`/`x86_64`) and downloads the matching Node. It is unverified on that
   machine.
 - **The Windows launcher has never run on a real Windows machine.** `Start NEA

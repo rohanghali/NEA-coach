@@ -73,7 +73,7 @@ is the one that pays if anything is ever charged.
 
 ```json
 {
-  "deckDir": "/Users/rohan/Dropbox/NEA-Coach/sample",
+  "deckDir": "~/Documents/NEA-Coach/sample",
   "deckFile": null,
   "model": "gemini-3.1-flash-lite",
   "apiKey": "AIzaSy...your key here...",

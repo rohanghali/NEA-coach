@@ -35,7 +35,7 @@ Leave that page open. It shows the commands for step 3.
 In a terminal, from the app folder:
 
 ```bash
-cd "/Users/rohanghali/Documents/APPS/DTA Coach/rohan2/NEA-Coach"
+cd ~/Documents/NEA-Coach
 
 git init
 git add .
