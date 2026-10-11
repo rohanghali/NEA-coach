@@ -1801,8 +1801,14 @@ section('11w. The costs section');
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const serverSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
 
-  ok('the heading is about the allowance, not money',
-    /What costs your allowance/.test(page) && !/>What costs money, and what does not</.test(page));
+  /*
+   * The long heading became a one-line lede when the panel was rewritten to be scannable. The
+   * point stands: it must name the ALLOWANCE rather than a bill, because "it costs money" is the
+   * one thing that is not true of a free key.
+   */
+  ok('the panel opens by naming the allowance, not a bill',
+    /comes with a <strong>daily allowance<\/strong>/.test(page)
+    && !/What costs money, and what does not/.test(page));
   ok('it says plainly that there is no bill on a free key',
     /Nothing here costs money/.test(page));
   ok('the old "billed by Google to your account" claim is gone',
@@ -1810,7 +1816,7 @@ section('11w. The costs section');
 
   // The three escape routes when the allowance runs out, quickest first.
   ok('it explains that swapping the key is the fastest fix',
-    /paste a different key in Settings/i.test(page));
+    /paste another key[\s\S]{0,40}in Settings/i.test(page));
   ok('it says each key has its own allowance', /Each key has its own daily/.test(page));
   ok('it names the reset time', /midnight Pacific time/.test(page));
   ok('and converts it to UK time, since that is who is reading',
@@ -1823,8 +1829,13 @@ section('11w. The costs section');
     /about <strong>9 requests<\/strong>/.test(page) && /20 a day/.test(page));
 
   // The PDF limitation must be stated here too, where costs are explained.
+  /*
+   * Shortened, but both facts have to survive: a PDF genuinely cannot supply layout, font size or
+   * speaker notes, and the app must SAY which checks it skipped rather than reporting nothing.
+   */
   ok('it is honest that a PDF skips some checks',
-    /A PDF cannot be checked for fonts, spacing or stray boxes/.test(page));
+    /A PDF records the words on each page, but not the layout/i.test(page)
+    && /names the checks it skipped/i.test(page));
 
   /*
    * No money should be shown anywhere for a free key: it reads £0.00 forever and
@@ -1854,8 +1865,13 @@ section('11w. The costs section');
     /requestsTotal: \(report\.cost && report\.cost\.requestsTotal\)/.test(serverSrc));
 
   // Cross-reference from the deep-thinking switch must still point here.
-  ok('the deep-thinking link names the new heading',
-    /What costs your allowance/.test(page));
+  /*
+   * The switch in Settings points at this panel. It used to be checked through a heading that read
+   * "What costs your allowance, and what does not"; that heading is now a lede and the explanation
+   * is a titled row, so what matters is that the panel still explains it and is still the target.
+   */
+  ok('the deep-thinking explanation is still in the information panel',
+    /id="infoDetails"/.test(page) && /Deep thinking/.test(page));
 }
 
 section('11v. Changing the API key');
@@ -5700,6 +5716,58 @@ section('12af. The launchers no longer guess the port');
     /version: j\.version, running: !!\(j\.scan && j\.scan\.running\)/.test(srv));
   ok('and a different version is called out rather than opened silently',
     /but it is a DIFFERENT version/.test(srv));
+}
+
+section('12ag. The information panel is scannable, not prose');
+{
+  /*
+   * It was a <dl> with NO CSS AT ALL — nine dense definitions, several sentences each, with nothing
+   * to show where one ended and the next began. Rewritten as short colour-coded rows: a tag, a
+   * title, and one or two lines. No fact was dropped; the wording was cut back.
+   *
+   * These guard the SHAPE, because the easy way to undo this is to keep adding to a paragraph until
+   * it is a wall again.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
+  const panel = (() => {
+    const i = html.indexOf('id="infoDetails"');
+    const j = html.indexOf('</details>', i);
+    return i < 0 || j < 0 ? '' : html.slice(i, j);
+  })();
+
+  ok('the panel was found', panel.length > 500);
+
+  const rows = [...panel.matchAll(/<div class="info-row[^"]*">([\s\S]*?)<\/div>/g)].map((m) => m[1]);
+  ok('it is built from rows rather than one long list', rows.length >= 6, rows.length + ' rows');
+  ok('every row has a tag, a title and a line of text',
+    rows.every((r) => /info-tag/.test(r) && /info-title/.test(r) && /info-text/.test(r)),
+    'a row without all three is a paragraph again');
+
+  /* ---- concise, enforced ------------------------------------------------------- */
+  /*
+   * The longest line is about 230 characters; 320 leaves room for a wording change but not for a
+   * return to paragraphs. This is the whole point of the rewrite, so it is worth a number.
+   */
+  const texts = [...panel.matchAll(/<p class="info-text">([\s\S]*?)<\/p>/g)]
+    .map((m) => m[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim());
+  const longest = texts.reduce((a, b) => (b.length > a.length ? b : a), '');
+  ok('and no single line runs long enough to be a paragraph again',
+    longest.length <= 320, longest.length + ' characters: ' + longest.slice(0, 80) + '...');
+
+  /* ---- colourful, and safely so -------------------------------------------------- */
+  ok('rows are colour-coded by kind', /\.info-row\.tone-good/.test(css) && /\.info-row\.tone-spend/.test(css)
+    && /\.info-row\.tone-warn/.test(css) && /\.info-row\.tone-info/.test(css));
+  ok('and every colour is a theme token, so dark mode needs no second version',
+    (() => {
+      const rules = [...css.matchAll(/\.info-(?:row|tag|title|text)[^{]*\{([^}]*)\}/g)].map((m) => m[1]).join('\n');
+      return !/#[0-9a-f]{3,8}\b/i.test(rules) && !/rgba?\(/i.test(rules);
+    })(), 'a hardcoded light colour here is how the last two dark-mode bugs happened');
+  ok('the two facts the tests above care about are still stated',
+    /A PDF records the words on each page, but not the layout/i.test(html)
+    && /paste another key[\s\S]{0,40}in Settings/i.test(html));
+  ok('and the unstyled definition list is gone',
+    !/<dl class="explain">/.test(html), 'the default-styled list is what read as a wall of prose');
 }
 
 })().then(summary, (err) => {

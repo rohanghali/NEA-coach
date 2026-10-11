@@ -1039,6 +1039,61 @@
   .empty p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
   .empty .btn { margin-top: 4px; }
 
+  /* ---------- the information panel ---------- */
+
+  /*
+   * Plain definition list, plainly unstyled.
+   *
+   * It had NO CSS at all — just a <dl> with default browser styling, which is why it read as a
+   * wall of prose: nine dense paragraphs, several sentences each, with nothing to tell you where
+   * one ended and the next began. Every row is now one idea, one short line, and a colour that
+   * says what KIND of thing it is before you read it.
+   *
+   * Every colour here is a token, and each one flips with the theme, so there is no separate dark
+   * version to forget. That is the mistake that left the severity counts and the strengths panel
+   * illegible in dark mode.
+   */
+  .info-lede { margin: 0 0 14px; font-size: 14px; color: var(--ink-2); }
+
+  .info-list { display: grid; gap: 9px; }
+
+  .info-row {
+    border-left: 3px solid var(--line-strong);
+    background: var(--fill-soft);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 10px 13px;
+  }
+
+  .info-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-bottom: 6px;
+    background: var(--info-soft);
+    color: var(--info);
+  }
+
+  .info-title { margin: 0 0 3px; font-size: 14px; color: var(--ink); font-weight: 650; }
+  .info-text { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+  .info-text code { font-size: 12.5px; }
+
+  /* Free: nothing is spent. */
+  .info-row.tone-good { border-left-color: var(--good); }
+  .info-row.tone-good .info-tag { background: var(--good-soft); color: var(--good); }
+  /* Spends the daily allowance. */
+  .info-row.tone-spend { border-left-color: var(--medium); }
+  .info-row.tone-spend .info-tag { background: var(--medium-soft); color: var(--medium); }
+  /* Costs you something if you get it wrong. */
+  .info-row.tone-warn { border-left-color: var(--critical); }
+  .info-row.tone-warn .info-tag { background: var(--critical-soft); color: var(--critical); }
+  /* How the app works, or what it does with your files. */
+  .info-row.tone-info { border-left-color: var(--accent); }
+  .info-row.tone-info .info-tag { background: var(--accent-soft); color: var(--accent-dark); }
+
   /* ---------- strengths ---------- */
 
   .strengths { border: 1px solid var(--good-line); background: var(--good-soft); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
@@ -2961,96 +3016,75 @@
       <span class="summary-note muted">allowance, checking, your files, privacy</span>
     </summary>
     <div class="details-body">
-    <h3 class="sub" id="thinkingHeading">What costs your allowance, and what does not</h3>
-    <p class="muted small" style="margin-top:-4px">
-      Nothing here costs money. Your free Google key comes with a <strong>daily allowance</strong>, shown by the
-      meter at the bottom of the page. This is what uses it.
+    <p class="info-lede">
+      Nothing here costs money. Your free Google key comes with a <strong>daily allowance</strong>,
+      and the meter at the bottom of the page shows how much of it is left.
     </p>
-    <dl class="explain">
-      <dt>Never uses the allowance — the checks on this page</dt>
-      <dd>
-        Word counts, missing headings, spelling, repetition and empty pages are checked on your own
-        computer, with no internet and no API key. Run them as often as you like.
-        <br>A PDF cannot be checked for fonts, spacing or stray boxes, because it does not record them.
-        The app tells you which checks it skipped rather than staying quiet.
-      </dd>
 
-      <dt>Uses the allowance — the AI review</dt>
-      <dd>
-        Reading your pages and judging the work against the mark scheme. Nothing is sent unless you
-        press Check now.
-        <br>A full check is about <strong>9 requests</strong>, and the free allowance is roughly
-        <strong>20 a day</strong> — so about <strong>two full checks a day</strong>, and more when little
-        has changed, because untouched pages are never re-sent.
-      </dd>
+    <div class="info-list">
 
-      <dt>When the allowance runs out</dt>
-      <dd>
-        A check stops part-way and says so. Nothing is lost — pages already read are kept.
-        <br><strong>Quickest fix:</strong> paste a different key in Settings. Each key has its own
-        allowance, so a second free key works immediately.
-        <br><strong>Or wait:</strong> the allowance resets at <strong>midnight Pacific time</strong>, which
-        is 8am in the UK (7am in summer). The meter says how long is left.
-      </dd>
+      <div class="info-row tone-good">
+        <span class="info-tag">Free</span>
+        <h4 class="info-title">The checks on this page</h4>
+        <p class="info-text">Word counts, missing headings, spelling, repetition and empty pages are
+          checked on your own computer. No internet, no key — run them as often as you like.</p>
+      </div>
 
-      <dt>"Re-check everything"</dt>
-      <dd>
-        Normally only changed pages are sent, so re-checking costs nothing. This button re-reads
-        everything and spends a full check for no new information. Use it only after changing your
-        exam board.
-      </dd>
+      <div class="info-row tone-spend">
+        <span class="info-tag">Uses the allowance</span>
+        <h4 class="info-title">The AI review</h4>
+        <p class="info-text">Reading your pages and judging them against the mark scheme. Nothing is sent
+          until you press <strong>Check now</strong>. A full check is about <strong>9 requests</strong>,
+          against roughly <strong>20 a day</strong>.</p>
+      </div>
 
-      <dt id="deepExplainTerm">"Deep thinking" — what it actually does</dt>
-      <dd id="deepExplainBody">
-        <p style="margin:0 0 8px">The AI takes longer over each page and weighs its judgement before answering.
-        It helps on the calls that need thinking about — whether your evaluation is genuinely critical,
-        whether your development is iterative or just a series of drawings.</p>
-        <p style="margin:0">It makes no difference to the obvious things: a missing title or a small font is
-        found either way. It does <strong>not</strong> change your predicted mark. It is off because it is slower
-        and uses more of the daily allowance. Try it once and compare; if the advice does not read more
-        considered, leave it off.</p>
-      </dd>
+      <div class="info-row tone-warn">
+        <span class="info-tag">If it runs out</span>
+        <h4 class="info-title">It stops safely, and there are two ways on</h4>
+        <p class="info-text">The check stops part-way and says so — pages already read are kept.
+          <strong>Paste another key</strong> in Settings for an instant fresh allowance, or wait: it
+          resets at <strong>midnight Pacific</strong>, which is 8am in the UK.</p>
+      </div>
 
-      <dt>How the allowance is made to last</dt>
-      <dd>
-        Untouched pages are never re-sent, which is what makes a second check cheap. The line above
-        the Check button says how many requests a check will take before you press it.
-      </dd>
+      <div class="info-row tone-info">
+        <span class="info-tag">Setting</span>
+        <h4 class="info-title">&ldquo;Deep thinking&rdquo;</h4>
+        <p class="info-text">Spends longer on the judgement calls, such as whether an evaluation is
+          genuinely critical. No effect on the obvious faults, and it does <strong>not</strong> change
+          your predicted mark. Off by default because it is slower and costs more.</p>
+      </div>
 
-      <dt>What the app does, and what it cannot</dt>
-      <dd>
-        It runs two kinds of check. The <strong>structural checks</strong> measure the document itself — word
-        counts, missing headings, spelling, repetition, empty pages — and cost nothing. The
-        <strong>AI review</strong> reads the work and judges it against your mark scheme, and spends your daily
-        allowance.
-        <br>It does <strong>not</strong> know your final mark, and it is not the examiner. Treat the predicted mark as
-        a second opinion that is usually within a few marks, and the fix list as the useful part.
-        <br>It never writes to your PowerPoint. Your original file is never opened for writing, moved or renamed.
-      </dd>
+      <div class="info-row">
+        <span class="info-tag">Worth knowing</span>
+        <h4 class="info-title">It is not the examiner</h4>
+        <p class="info-text">The predicted mark is a second opinion, usually within a few marks. The
+          fix list is the useful part. Your PowerPoint is <strong>never</strong> written to.</p>
+      </div>
 
-      <dt>Where your work and your key are kept</dt>
-      <dd>
-        Everything stays on this computer, in the app's own <code>state</code> folder: your API key in
-        <code>config.json</code>, a copy of your portfolio, the last report, and the history. Nothing is uploaded
-        anywhere except to Google, and only the pages a check actually needs.
-        <br><strong>If you give the app to someone else, delete the <code>state</code> folder first.</strong> It
-        contains your report and your key. The folder rebuilds itself on first run.
-      </dd>
+      <div class="info-row tone-info">
+        <span class="info-tag">Privacy</span>
+        <h4 class="info-title">Where your work is kept</h4>
+        <p class="info-text">On this computer, in the app&rsquo;s own <code>state</code> folder — your
+          key, a copy of your portfolio and the last report. Nothing is uploaded except the pages
+          Google is asked to read. <strong>Passing the app on? Delete that folder first.</strong></p>
+      </div>
 
-      <dt>Changing your API key</dt>
-      <dd>
-        Settings has a <strong>Paste a key</strong> box. Each key has its own daily allowance, so when one runs
-        out the quickest fix is to paste another — no waiting. <strong>Test key</strong> checks a key without
-        spending any allowance, because it only asks Google which models the key can use.
-      </dd>
+      <div class="info-row">
+        <span class="info-tag">Format</span>
+        <h4 class="info-title">Why a PDF skips some checks</h4>
+        <p class="info-text">A PDF records the words on each page, but not the layout, the font sizes
+          or the speaker notes. The app names the checks it skipped rather than reporting nothing.
+          Add the <code>.pptx</code> for all of them.</p>
+      </div>
 
-      <dt>Why a PDF skips some checks</dt>
-      <dd>
-        A PDF records the words on each page but not where anything sits, how large the text is, or any speaker
-        notes. So the checks that measure those cannot run on a PDF, and the app says which it skipped rather
-        than quietly reporting nothing. Supply the <code>.pptx</code> as well to get all of them.
-      </dd>
-    </dl>
+      <div class="info-row">
+        <span class="info-tag">Button</span>
+        <h4 class="info-title">&ldquo;Re-check everything&rdquo;</h4>
+        <p class="info-text">Normally only changed pages are sent, so a re-check is free. This one
+          re-reads everything for no new information — use it only after changing your exam board.</p>
+      </div>
+
+    </div>
     </div>
   </details>
 
@@ -3448,7 +3482,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.44';
+  var PAGE_BUILD = '1.0.45';
 
   var state = {
     data: null,

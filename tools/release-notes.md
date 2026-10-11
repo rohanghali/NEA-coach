@@ -18,21 +18,16 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-Nothing you see in the report has changed. This is about **starting** the app.
-
-- **The app opens your browser itself, at the port it actually got.** Both launchers used to do
-  it, by waiting for a port they had assumed was 4173. When that port was busy the app moved to
-  the next free one and remembered it — so the launcher waited on the wrong port, printed *"did
-  not start within 30 seconds"* while the app was running perfectly well next door, and never
-  opened anything. The app knows its own port; it opens the browser the moment it is listening.
-- **An older copy is now called out clearly.** If a different version is already running, the app
-  says which one it found, which one this folder is, and how to switch — instead of silently
-  opening the old one. On Windows this check never worked at all: it was written in a way that
-  cmd silently breaks on any path containing a space, which `C:\Program Files\nodejs\` always
-  does.
-- **The launchers are much smaller.** They start the app and stop. The port waiting, the browser
-  opening and the version comparison all live in the app now — one implementation instead of two,
-  and it cannot disagree with itself.
+- **The Information panel has been rewritten.** It was nine dense paragraphs in a plain list with
+  no styling at all, which is why it read as a wall of text. It is now eight short rows, each with
+  a coloured tag, a title and one or two lines — and **no fact was dropped**, the wording was just
+  cut back:
+  - **Free** in green, for the checks that run on your own computer
+  - **Uses the allowance** in amber, for the AI review
+  - **If it runs out** in red, because that is the one that costs you something
+  - **Setting** and **Privacy** in blue, for how the app works and what it does with your files
+- Every colour is a theme colour, so it reads correctly in dark mode without a second version of
+  anything.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 
