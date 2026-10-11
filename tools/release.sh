@@ -99,6 +99,9 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
+- Choosing your exam board during the setup walkthrough now updates the board
+  dropdown in Settings. It used to save correctly but leave the dropdown showing
+  the old value.
 - Settings save themselves. Change the model, the marking model or Predict a mark and it is applied immediately, with a "Saved" confirmation - no Save button to forget. The folder path keeps its own button, because that is the one that can be wrong.
 - Marking now uses the wording the exam board itself uses for each criterion,
   including what AQA says is typically missing at each level, taken from its
