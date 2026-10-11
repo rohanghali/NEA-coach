@@ -2277,6 +2277,98 @@ section('11i. Phone layout keeps up with the desktop');
     /\.predicted-top\s*\{[^}]*display:\s*block/.test(mobile));
 }
 
+section('11v. The page draws a real report without falling over');
+{
+  /*
+   * Every other test in this file reads the page as TEXT. None of them ran the
+   * render functions, so an undefined property inside renderFixList would have
+   * produced a blank page for every user with nothing here to catch it.
+   *
+   * This loads the page's real script into a DOM stand-in (tests/dom.js), hands it
+   * a report, and checks the output actually appears.
+   */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+
+  ok('the page script parses and initialises cleanly',
+    page.errors.length === 0, JSON.stringify(page.errors));
+  ok('the DOM stand-in found the overlay and the wizard button',
+    !!page.ui.introOverlay && !!page.ui.btnShowSetup);
+
+  // Prefer the real saved report; fall back to a small faithful one so the test
+  // still means something on a machine that has never run a scan.
+  let report = null;
+  try {
+    report = JSON.parse(fs.readFileSync(path.join(ROOT, 'state', 'last-report.json'), 'utf8'));
+  } catch (err) { report = null; }
+
+  const usingReal = !!(report && report.local && report.local.findings);
+  if (!usingReal) {
+    report = {
+      ok: true, generatedAt: new Date().toISOString(),
+      deck: { fileName: 'x.pptx', filePath: '/tmp/x.pptx', slideCount: 3, stats: {} },
+      scan: { finishedAt: new Date().toISOString(), durationMs: 1200, slidesScanned: 3 },
+      local: {
+        score: 55, bySeverity: { critical: 0, high: 1, medium: 1, low: 0, info: 0 },
+        findings: [
+          { id: 'l1', rule: 'missing-title', severity: 'high', tier: 'substance', title: 'No title on page 2', slides: [2], evidence: 'e', why: 'w', fix: 'f', effort: 'minutes' },
+          { id: 'l2', rule: 'text-too-small', severity: 'medium', tier: 'mechanical', title: 'Small text on page 3', slides: [3], evidence: 'e', why: 'w', fix: 'f', effort: 'minutes' },
+        ],
+      },
+      ai: null,
+      combined: { findings: [] },
+      cost: { scans: 1 },
+      config: { specId: 'aqa-gcse', specName: 'AQA GCSE', apiKeySet: false, pdfName: null },
+      quota: null,
+    };
+  }
+  ok('a report is available to render' + (usingReal ? ' (the real saved one)' : ' (synthetic)'), !!report);
+
+  page.state.data = report;
+  const r = page.call('renderAll');
+  ok('renderAll completes on a full report', r.ok, r.ok ? '' : String(r.error));
+
+  // If it ever throws, name the function that did, rather than only knowing that
+  // "rendering failed" — that is the difference between a useful report and a hunt.
+  const renderers = ['renderHeader', 'renderStatus', 'renderActions', 'renderCost',
+    'renderTiles', 'renderControls', 'renderTabs', 'renderFixList', 'renderSuggestions',
+    'renderCoverage', 'renderSlides', 'renderSettings', 'renderStats', 'renderReviewed',
+    'renderKeySection', 'renderCheckCoverage', 'renderScanCostHint', 'renderSampleNotice'];
+  const threw = [];
+  for (const fn of renderers) {
+    const out = page.call(fn);
+    if (!out.ok) { threw.push(out.error); }
+  }
+  ok('no individual render function throws', threw.length === 0, JSON.stringify(threw));
+
+  // Something must actually reach the DOM, or "no error" is meaningless.
+  const fixList = page.els.get('fixList');
+  ok('the fix list is populated', !!(fixList && fixList.children.length > 0),
+    fixList ? 'children: ' + fixList.children.length : 'no #fixList element');
+  const scoreEl = page.els.get('scoreNumber');
+  ok('a score is written to the ring', !!(scoreEl && String(scoreEl.textContent).length),
+    scoreEl ? JSON.stringify(scoreEl.textContent) : 'no element');
+  const nameEl = page.els.get('deckName');
+  ok('the portfolio name is written to the header', !!(nameEl && String(nameEl.textContent).length),
+    nameEl ? JSON.stringify(nameEl.textContent) : 'no element');
+
+  // The empty state is what a brand-new user sees first, so it must not throw.
+  page.state.data = { ok: true, deck: null, local: null, ai: null, combined: null, config: {} };
+  const empty = page.call('renderAll');
+  ok('renderAll survives having no report at all', empty.ok, empty.ok ? '' : String(empty.error));
+
+  // A failed scan must not be drawn as a mark of zero. The card hides itself.
+  page.state.data = {
+    ok: true, config: {}, local: null, combined: { findings: [] },
+    ai: { predicted: { predicted: 0, maximum: 0, weightsKnown: false, rows: [{ name: 'x', mark: 0, max: 10, percent: 0 }] } },
+  };
+  const zero = page.call('renderPredicted');
+  ok('a scan that produced no mark draws no predicted card', zero.ok, zero.ok ? '' : String(zero.error));
+  ok('and the card is hidden rather than showing 0 out of 0',
+    page.els.get('predictedCard') && page.els.get('predictedCard').hidden === true,
+    page.els.get('predictedCard') ? 'hidden=' + page.els.get('predictedCard').hidden : 'no element');
+}
+
 section('11b. AI pass applies the cross-check');
 (async () => {
   const https = require('https');
