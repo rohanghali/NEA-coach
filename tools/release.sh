@@ -99,6 +99,11 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
+- The predicted mark is no longer inflated by a correction that made it less
+  accurate. On one portfolio it showed 98 against a real mark of 90, when the
+  AI's own reading of 81 had been closer. The adjustment is now applied only when
+  the app's measured error is tight enough for it to be worth applying, and the
+  long explanation of it has been removed.
 - Choosing your exam board during the setup walkthrough now updates the board
   dropdown in Settings. It used to save correctly but leave the dropdown showing
   the old value.
