@@ -19,7 +19,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const { parsePresentation } = require('./lib/pptx');
-const { runLocalChecks } = require('./lib/checks');
+const { runLocalChecks, ruleCoverageFor } = require('./lib/checks');
 const pdfdeck = require('./lib/pdfdeck');
 const pdftext = require('./lib/pdftext');
 const { compareSameWork } = require('./lib/samework');
@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.56';
+const VERSION = '1.0.57';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -778,6 +778,31 @@ function publicConfig(cfg, readingSample) {
      * keys is now routine, and two keys look identical until one runs out.
      */
     keyTail: cfg.apiKey ? String(cfg.apiKey).trim().slice(-4) : null,
+    /*
+     * What a check WOULD do right now, from the live settings rather than from the last report.
+     *
+     * The app already says what ran, after the fact. That is a different question from what is
+     * about to happen, and the second one is what a student wants on the front page: whether the
+     * AI review will run at all, whether their pages will be looked at, and which structural checks
+     * their file cannot support.
+     *
+     * Which rules a file supports depends only on whether it is a PDF or a .pptx, so this needs no
+     * scan and cannot go stale when a setting changes — unlike anything read from the report.
+     */
+    wouldRun: (function () {
+      const deck = cfg.deckFile ? 'pptx' : (cfg.pdfFile ? 'pdf' : null);
+      if (!deck) { return null; }
+      const coverage = ruleCoverageFor(deck);
+      return {
+        source: deck,
+        ruleCount: coverage.ruleCount,
+        totalRules: coverage.totalRules,
+        skippedRules: coverage.skippedRules.map((x) => x.rule),
+        aiReview: !!cfg.apiKey,
+        // The AI can only LOOK at the work when there is a PDF for it to read.
+        seesPages: !!cfg.pdfFile,
+      };
+    })(),
     /*
      * Which mark scheme is selected, and the full list of boards the app ships.
      * The Settings dropdown is built from this list, so the UI and the server can

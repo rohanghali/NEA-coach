@@ -18,18 +18,20 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The tab strip has a proper scroller you can drag.** The two little arrows are gone: they moved
-  the strip by a fixed amount per press, which was never quite the amount you wanted, and each was a
-  small target to hit. There is now a long bar underneath — **16px tall**, with a grab handle at
-  least 52px wide — and you drag it to move the tabs. It shows how much of the strip is on screen,
-  so you can see at a glance that there is more, and it disappears entirely when everything already
-  fits.
-- Dragging keeps working if your finger or cursor strays off the bar, which it will, since the bar
-  is only 16px tall.
-- **"Start setup" now sits above "Check now"**, and is **teal** rather than a second blue. Two blues
-  of different weights side by side read as a mistake; teal says "a different kind of thing" while
-  staying in the same cool family as the rest of the app. It flips for dark mode like everything
-  else.
+- **Overview now says what a check would do before you run it**, from your settings as they are:
+
+  > **IF YOU CHECK NOW** — The app would run 13 of the 18 free checks on your 60 pages. **The AI
+  > review would be skipped** — no key is set, so there would be no mark and no page-by-page
+  > reading.
+  >
+  > A PDF records the words on each page, but not where things sit on the page or speaker notes, so
+  > 5 checks would be skipped. Adding the .pptx as well gets all of them.
+
+  It answers the three things worth knowing before spending an allowance: which free checks your
+  file can support, whether your pages will be looked at, and whether the AI review is even on. It
+  is built from your **current settings**, not from the last report, so it is right the moment you
+  change something — and it cannot go stale, because which checks a file supports depends only on
+  whether it is a PDF or a .pptx.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

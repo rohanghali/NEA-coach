@@ -6144,6 +6144,48 @@ section('12aj. Every section is a tab');
     (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')
       .indexOf('.toptabs-scroll { scrollbar-width: none; }') >= 0);
 
+  /* ---- the note that says what a check WOULD do ---------------------------------- */
+  /*
+   * Asked for: "in the overview section there should be a short note saying what specific checks
+   * would be done if it was checked now based on the settings applied."
+   *
+   * The app already said what RAN, after the fact. This is the other question, and it is answered
+   * from the LIVE settings rather than from the last report — because the whole point is that it
+   * is right before you press the button, including when you have just changed a setting.
+   *
+   * Which rules a file supports depends only on whether it is a PDF or a .pptx, so it needs no
+   * scan and cannot go stale. ruleCoverageFor lives beside runLocalChecks, written to mirror it: if
+   * the two ever disagree, the front page is describing a check that is not the one that runs.
+   */
+  const checks = require(path.join(ROOT, 'lib', 'checks.js'));
+  ok('the server can say what would run without running anything',
+    typeof checks.ruleCoverageFor === 'function');
+  const pdf = checks.ruleCoverageFor('pdf');
+  const pptx = checks.ruleCoverageFor('pptx');
+  ok('a PDF supports fewer checks than a .pptx, and the numbers add up',
+    pdf.ruleCount < pptx.ruleCount && pdf.ruleCount === pdf.totalRules - pdf.skippedRules.length,
+    'pdf ' + pdf.ruleCount + '/' + pdf.totalRules + ', pptx ' + pptx.ruleCount + '/' + pptx.totalRules);
+  ok('and the same five a PDF always misses are the ones named in the report',
+    pdf.skippedRules.map((x) => x.rule).sort().join(',')
+      === ['missing-notes', 'off-canvas', 'page-too-busy', 'text-overflow', 'uncaptioned-image'].join(','),
+    pdf.skippedRules.map((x) => x.rule).join(', '));
+
+  ok('the note is drawn in Overview, above the buttons',
+    /<div class="check-plan" id="checkPlan"><\/div>[\s\S]{0,200}<div class="actions-row">/.test(html));
+  ok('and it is rebuilt from the live settings, not from the last report',
+    /function renderCheckPlan\(\)/.test(html) && /cfg\.wouldRun/.test(html)
+    && !/state\.data\.local[\s\S]{0,80}wouldRun/.test(html),
+    'reading it from the report is how it would go stale the moment a setting changed');
+  ok('it says plainly when the AI review is off, since that is the difference between a mark and none',
+    /The AI review would be skipped/.test(html) && /check-plan-off/.test(html));
+  ok('and it names what the file cannot supply, rather than an internal rule name',
+    /skippedReasons\(plan\.skippedRules\)/.test(html) && /speaker notes/.test(html)
+    && !/text-overflow/.test((/var what =[\s\S]{0,400}/.exec(html) || [''])[0]));
+  ok('the shared reason list is not duplicated between the two notes',
+    (html.match(/function skippedReasons\(/g) || []).length === 1
+    && (html.match(/var why = skippedReasons\(skipped\)/g) || []).length === 1,
+    'two copies of that list would eventually disagree');
+
   /* ---- "Start setup" ------------------------------------------------------------ */
   /*
    * Asked for above Check now in the header, in "a nice shade of green/turquoise". It sits directly

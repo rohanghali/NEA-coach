@@ -1186,6 +1186,35 @@
   }
   .btn-setup:hover { background: var(--setup-dark); border-color: var(--setup-dark); }
 
+  /*
+   * The note above the buttons: what a check would do, before you spend anything.
+   *
+   * Deliberately the same shape as the rows in the Information panel — a tinted panel with an
+   * accent edge — so a student reads it as the same kind of thing: an explanation, not a warning.
+   * The one exception is the line saying the AI review is off, which is amber, because that is the
+   * difference between a mark and no mark.
+   */
+  .check-plan {
+    margin: 0 0 12px;
+    padding: 10px 13px;
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .check-plan-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    margin-bottom: 5px;
+  }
+  .check-plan p { margin: 0 0 5px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+  .check-plan p:last-child { margin-bottom: 0; }
+  .check-plan .check-plan-sub { font-size: 12.5px; }
+  .check-plan .check-plan-off { color: var(--medium); }
+
   .toptabs-row { display: flex; align-items: center; gap: 4px; }
 
   /*
@@ -3145,6 +3174,8 @@
     <!-- Filled by renderPortfolioNotice() when there is nothing of the student's own
          to describe: no portfolio chosen at all, or the bundled sample being read. -->
     <div id="sampleNotice"></div>
+    <!-- What a check would do, from the current settings rather than from the last report. -->
+    <div class="check-plan" id="checkPlan"></div>
     <div class="actions-row">
       <button class="btn btn-primary btn-lg" id="btnCheck" type="button">
         <span class="spinner" id="checkSpinner" style="display:none"></span><span id="btnCheckLabel">Check now</span>
@@ -4121,7 +4152,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.56';
+  var PAGE_BUILD = '1.0.57';
 
   var state = {
     data: null,
@@ -4796,6 +4827,7 @@
       setText(ui.btnCheckTop, busy ? 'Checking…' : (ready ? 'Check now' : 'Add a portfolio first'));
     }
     renderPortfolioNotice();
+    renderCheckPlan();
   }
 
   /**
@@ -5341,6 +5373,88 @@
    * rule that never runs finds nothing, and a student reading "no problems found"
    * would take that as a pass.
    */
+  /**
+   * Name the reasons a check could not run, in words a student would use.
+   *
+   * Shared by the note that says what ran and the note that says what WOULD run: they are the same
+   * facts about the same file, and two copies of this list would eventually disagree.
+   */
+  function skippedReasons(skipped) {
+    var list = skipped || [];
+    var why = [];
+    if (list.indexOf('text-too-small') > -1 || list.indexOf('font-inconsistency') > -1) {
+      why.push('font sizes');
+    }
+    if (list.indexOf('off-canvas') > -1 || list.indexOf('text-overflow') > -1
+        || list.indexOf('wall-of-text') > -1 || list.indexOf('page-too-busy') > -1
+        || list.indexOf('image-too-small') > -1 || list.indexOf('uncaptioned-image') > -1) {
+      why.push('where things sit on the page');
+    }
+    if (list.indexOf('missing-notes') > -1) { why.push('speaker notes'); }
+    return why;
+  }
+
+  /**
+   * What Check now would actually do, from the settings as they are.
+   *
+   * Short on purpose. It answers the three questions a student has before spending an allowance:
+   * which free checks their file can support, whether their pages will be looked at, and whether
+   * the AI review is switched on at all — and it says plainly when something is off rather than
+   * leaving them to find out from the report afterwards.
+   */
+  function renderCheckPlan() {
+    var host = ui.checkPlan;
+    if (!host) { return; }
+    clearNode(host);
+
+    var cfg = (state.data && state.data.config) || {};
+    var plan = cfg.wouldRun || null;
+    var pages = (state.data && state.data.deck && typeof state.data.deck.slideCount === 'number')
+      ? state.data.deck.slideCount : 0;
+
+    var label = el('span', { cls: 'check-plan-label', text: 'If you check now' });
+    host.appendChild(label);
+
+    if (!plan) {
+      host.appendChild(el('p', { text: 'No portfolio is chosen yet, so there is nothing to check. Add one in Settings, or drop the file onto this page.' }));
+      return;
+    }
+
+    var spec = cfg.specName ? String(cfg.specName) : 'your mark scheme';
+    var freeChecks = plan.skippedRules.length
+      ? plan.ruleCount + ' of the ' + plan.totalRules + ' free checks'
+      : 'all ' + plan.totalRules + ' free checks';
+    var on = pages ? ' on your ' + plural(pages, 'page') : '';
+
+    if (plan.aiReview) {
+      host.appendChild(el('p', { text:
+        'The app would run ' + freeChecks + on + ', '
+        + (plan.seesPages ? 'read every page, ' : 'read the text alone, ')
+        + 'and judge the work against ' + spec + '.' }));
+    } else {
+      host.appendChild(el('p', null, [
+        el('span', { text: 'The app would run ' + freeChecks + on + '. ' }),
+        el('strong', { cls: 'check-plan-off', text: 'The AI review would be skipped' }),
+        el('span', { text: ' — no key is set, so there would be no mark and no page-by-page reading.' })
+      ]));
+    }
+
+    if (plan.skippedRules.length) {
+      var why = skippedReasons(plan.skippedRules);
+      /*
+       * Joined with "or" before the last item, not just commas. "not where things sit on the page,
+       * speaker notes, so five checks" reads as a list that has lost its conjunction.
+       */
+      var what = why.length > 1
+        ? (why.slice(0, -1).join(', ') + ' or ' + why[why.length - 1])
+        : (why[0] || 'those checks');
+      host.appendChild(el('p', { cls: 'check-plan-sub', text:
+        (plan.source === 'pdf' ? 'A PDF records the words on each page, but not ' : 'This file does not carry ')
+        + what + ', so ' + plural(plan.skippedRules.length, 'check') + ' would be skipped. '
+        + 'Adding the .pptx as well gets all of them.' }));
+    }
+  }
+
   function renderCheckCoverage() {
     if (!ui.checkCoverage) { return; }
     var local = (state.data && state.data.local) || null;
@@ -5360,16 +5474,7 @@
      * Name the reasons rather than listing eight internal rule names, which mean
      * nothing to a student.
      */
-    var why = [];
-    if (skipped.indexOf('text-too-small') > -1 || skipped.indexOf('font-inconsistency') > -1) {
-      why.push('font sizes');
-    }
-    if (skipped.indexOf('off-canvas') > -1 || skipped.indexOf('text-overflow') > -1
-        || skipped.indexOf('wall-of-text') > -1 || skipped.indexOf('page-too-busy') > -1
-        || skipped.indexOf('image-too-small') > -1 || skipped.indexOf('uncaptioned-image') > -1) {
-      why.push('where things sit on the page');
-    }
-    if (skipped.indexOf('missing-notes') > -1) { why.push('speaker notes'); }
+    var why = skippedReasons(skipped);
     setText(ui.checkCoverage,
       ran + ' of ' + total + ' checks ran on this PDF. '
       + skipped.length + ' were skipped because a PDF does not carry '
@@ -8779,7 +8884,7 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
+      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'checkPlan', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
