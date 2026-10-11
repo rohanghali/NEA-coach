@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.57';
+const VERSION = '1.0.58';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -811,6 +811,19 @@ function publicConfig(cfg, readingSample) {
      */
     specId: cfg.specId || 'eduqas-alevel',
     specPresets: ai.SPEC_PRESETS.map((s) => ({ id: s.id, label: s.label })),
+    /*
+     * The board's name as a person reads it.
+     *
+     * specName is the criteria FILE's name — "aqa-gcse-dt-criteria.json" — and four places in the
+     * UI display it, so students were being shown a file name on the predicted mark, in the
+     * Settings summary and in the coverage grid's empty state. The client was already written to
+     * prefer specLabel; this is the field it was looking for and nobody was sending.
+     */
+    specLabel: (function () {
+      const wanted = cfg.specId || 'eduqas-alevel';
+      const found = (ai.SPEC_PRESETS || []).filter((p) => p.id === wanted)[0];
+      return found && found.label ? found.label : null;
+    })(),
     /*
      * Whether the app is currently reading the BUNDLED SAMPLE rather than the
      * student's own file. Computed live, from the live config, for the same reason

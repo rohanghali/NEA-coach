@@ -18,20 +18,23 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Overview now says what a check would do before you run it**, from your settings as they are:
+- **The tab scroller is a much lighter, transparent blue.** Solid, it read as a filled progress bar
+  — something telling you a number — when it is a handle you are meant to grab. See-through, it sits
+  *on* the rail rather than replacing it, and the track stays visible behind it. It firms up a little
+  under the pointer so it is obvious you have hold of it.
+- **The Overview note now says whether it will MARK your work, and whether DEEP THINKING is on:**
 
-  > **IF YOU CHECK NOW** — The app would run 13 of the 18 free checks on your 60 pages. **The AI
-  > review would be skipped** — no key is set, so there would be no mark and no page-by-page
-  > reading.
-  >
-  > A PDF records the words on each page, but not where things sit on the page or speaker notes, so
-  > 5 checks would be skipped. Adding the .pptx as well gets all of them.
+  > The app would run 13 of the 18 free checks on your 60 pages, read every page, and **mark** the
+  > work against **AQA GCSE Design and Technology (8552)**. **Deep thinking is on** — it looks harder
+  > at the work, takes longer, and uses more of the allowance.
 
-  It answers the three things worth knowing before spending an allowance: which free checks your
-  file can support, whether your pages will be looked at, and whether the AI review is even on. It
-  is built from your **current settings**, not from the last report, so it is right the moment you
-  change something — and it cannot go stale, because which checks a file supports depends only on
-  whether it is a PDF or a .pptx.
+  With no key it says **"It would NOT mark the work"** in amber instead, because that is the
+  difference between a mark and no mark.
+
+- **Fixed: the board was showing as a file name.** The note said *"mark the work against
+  aqa-gcse-dt-criteria.json"* — and so did the predicted mark, the Settings summary and the coverage
+  grid's empty state, in four places. The app was always written to prefer a proper label; the server
+  simply never sent one. It does now, so all four read **"AQA GCSE Design and Technology (8552)"**.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

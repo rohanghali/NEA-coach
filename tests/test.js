@@ -6176,8 +6176,37 @@ section('12aj. Every section is a tab');
     /function renderCheckPlan\(\)/.test(html) && /cfg\.wouldRun/.test(html)
     && !/state\.data\.local[\s\S]{0,80}wouldRun/.test(html),
     'reading it from the report is how it would go stale the moment a setting changed');
-  ok('it says plainly when the AI review is off, since that is the difference between a mark and none',
-    /The AI review would be skipped/.test(html) && /check-plan-off/.test(html));
+  /*
+   * "also in the description should say whether it will mark it or not and whether it has deep
+   * thinking."
+   *
+   * Two questions a student actually has before spending an allowance. A note that lists free
+   * checks without saying whether a mark comes out of it is describing half of what will happen.
+   */
+  ok('the note says whether the work will be MARKED, in those terms',
+    /It would NOT mark the work/.test(html) && /mark the work against/.test(html),
+    'listing checks without saying whether a mark comes out of it answers half the question');
+  ok('and when there is no key it says so plainly, in amber',
+    /check-plan-off/.test(html) && /no key is set/.test(html));
+  /*
+   * The board is named by its LABEL. specName is the criteria file's name, and the note read "mark
+   * the work against aqa-gcse-dt-criteria.json".
+   *
+   * It turned out four places displayed it, so the field the client had always looked for is now
+   * actually sent, and everything shows "AQA GCSE Design and Technology (8552)".
+   */
+  ok('the mark scheme is named in words a person reads, not a file name',
+    /specLabel: \(function \(\)/.test(fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8'))
+    && /cfg\.specLabel \? String\(cfg\.specLabel\)/.test(html),
+    'including the predicted mark and the Settings summary, which showed the file name too');
+  ok('and every display site prefers the label',
+    (html.match(/config\.specLabel \|\| config\.specName|config\.specLabel \? String/g) || []).length >= 2,
+    'one leftover fallback in the wrong order puts the file name back on screen');
+
+  ok('it also says whether DEEP THINKING is on, both ways',
+    /Deep thinking is on/.test(html) && /Deep thinking is off/.test(html) && /cfg\.thinking/.test(html));
+  ok('and that is not coloured like a warning, because it is a setting with a cost',
+    /\.check-plan \.check-plan-on \{ color: var\(--accent-dark\); \}/.test(html));
   ok('and it names what the file cannot supply, rather than an internal rule name',
     /skippedReasons\(plan\.skippedRules\)/.test(html) && /speaker notes/.test(html)
     && !/text-overflow/.test((/var what =[\s\S]{0,400}/.exec(html) || [''])[0]));

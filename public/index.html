@@ -1214,6 +1214,8 @@
   .check-plan p:last-child { margin-bottom: 0; }
   .check-plan .check-plan-sub { font-size: 12.5px; }
   .check-plan .check-plan-off { color: var(--medium); }
+  /* Deep thinking is neither good nor bad — it is a setting with a cost, so it is not amber. */
+  .check-plan .check-plan-on { color: var(--accent-dark); }
 
   .toptabs-row { display: flex; align-items: center; gap: 4px; }
 
@@ -1247,11 +1249,17 @@
     left: 0;
     min-width: 52px;
     border-radius: 8px;
-    background: var(--accent);
+    /*
+     * Transparent blue rather than a solid bar. Opaque, it read as a filled progress bar — a thing
+     * that is telling you something — when it is a handle you are meant to grab. See-through, it
+     * sits ON the rail rather than replacing it, and the track stays visible behind it.
+     */
+    background: var(--rail-thumb);
     transition: background 140ms var(--ease-out);
   }
+  /* It firms up under the pointer, so it is obvious you have hold of it. */
   .toptabs-rail:hover .toptabs-thumb,
-  .toptabs-rail.is-dragging .toptabs-thumb { background: var(--accent-dark); }
+  .toptabs-rail.is-dragging .toptabs-thumb { background: var(--rail-thumb-on); }
 
   /* Overview at the start and Settings at the end, both outside the scroller, each marked apart
      from the nine that scroll between them. */
@@ -2322,6 +2330,9 @@
        colours, which the static wash no longer needs. */
     --mote: rgba(120, 148, 200, 0.55);
     --streak: rgba(160, 190, 240, 0.9);
+    /* The tab scroller's handle: blue, but see-through, so the strip reads as one surface. */
+    --rail-thumb: rgba(37, 99, 235, 0.24);
+    --rail-thumb-on: rgba(37, 99, 235, 0.42);
     /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
     --setup: #0b7d72;
     --setup-dark: #086158;
@@ -2350,6 +2361,9 @@
          colours, which the static wash no longer needs. */
       --mote: rgba(150, 178, 224, 0.42);
       --streak: rgba(126, 158, 214, 0.55);
+      /* The tab scroller's handle: blue, but see-through, so the strip reads as one surface. */
+      --rail-thumb: rgba(126, 158, 214, 0.26);
+      --rail-thumb-on: rgba(126, 158, 214, 0.46);
       /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
       --setup: #12a193;
       --setup-dark: #0e8579;
@@ -2378,6 +2392,9 @@
        colours, which the static wash no longer needs. */
     --mote: rgba(150, 178, 224, 0.42);
     --streak: rgba(126, 158, 214, 0.55);
+    /* The tab scroller's handle: blue, but see-through, so the strip reads as one surface. */
+    --rail-thumb: rgba(126, 158, 214, 0.26);
+    --rail-thumb-on: rgba(126, 158, 214, 0.46);
     /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
     --setup: #12a193;
     --setup-dark: #0e8579;
@@ -4152,7 +4169,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.57';
+  var PAGE_BUILD = '1.0.58';
 
   var state = {
     data: null,
@@ -5420,22 +5437,48 @@
       return;
     }
 
-    var spec = cfg.specName ? String(cfg.specName) : 'your mark scheme';
+    /*
+     * The mark scheme's LABEL, not cfg.specName.
+     *
+     * specName is a file name — the note read "mark the work against aqa-gcse-dt-criteria.json",
+     * which is not a sentence anyone should have to read. The server already sends the list of
+     * boards with human labels for the Settings dropdown, so the label comes from there and the two
+     * can never disagree about what a board is called.
+     */
+    var spec = cfg.specLabel ? String(cfg.specLabel) : 'your mark scheme';
+    if (!cfg.specLabel && cfg.specPresets && cfg.specPresets.length) {
+      for (var i = 0; i < cfg.specPresets.length; i++) {
+        if (cfg.specPresets[i] && cfg.specPresets[i].id === cfg.specId && cfg.specPresets[i].label) {
+          spec = String(cfg.specPresets[i].label);
+        }
+      }
+    }
     var freeChecks = plan.skippedRules.length
       ? plan.ruleCount + ' of the ' + plan.totalRules + ' free checks'
       : 'all ' + plan.totalRules + ' free checks';
     var on = pages ? ' on your ' + plural(pages, 'page') : '';
 
+    /*
+     * Two questions a student actually has, answered in the same breath: will this MARK the work,
+     * and is DEEP THINKING on? A note that lists free checks without saying whether a mark comes
+     * out of it is describing half of what is about to happen.
+     */
     if (plan.aiReview) {
-      host.appendChild(el('p', { text:
-        'The app would run ' + freeChecks + on + ', '
-        + (plan.seesPages ? 'read every page, ' : 'read the text alone, ')
-        + 'and judge the work against ' + spec + '.' }));
+      host.appendChild(el('p', null, [
+        el('span', { text: 'The app would run ' + freeChecks + on + ', '
+          + (plan.seesPages ? 'read every page, and ' : 'read the words on each page, and ')
+          + 'mark the work against ' + spec + '. ' }),
+        el('strong', { cls: 'check-plan-on', text: cfg.thinking ? 'Deep thinking is on' : 'Deep thinking is off' }),
+        el('span', { text: cfg.thinking
+          ? ' — it looks harder at the work, takes longer, and uses more of the allowance.'
+          : ' — it is quicker and uses less of the allowance, but reads the work more briefly.' })
+      ]));
     } else {
       host.appendChild(el('p', null, [
         el('span', { text: 'The app would run ' + freeChecks + on + '. ' }),
-        el('strong', { cls: 'check-plan-off', text: 'The AI review would be skipped' }),
-        el('span', { text: ' — no key is set, so there would be no mark and no page-by-page reading.' })
+        el('strong', { cls: 'check-plan-off', text: 'It would NOT mark the work' }),
+        el('span', { text: ' — no key is set, so there would be no page reading, no mark against '
+          + spec + ', and no deep thinking.' })
       ]));
     }
 
@@ -6575,7 +6618,9 @@
     var config = data.config || {};
 
     if (!rows.length) {
-      var specName = config.specName ? String(config.specName) : '';
+      // The LABEL — "AQA GCSE Design and Technology (8552)" — and only then the file name.
+      var specName = config.specLabel ? String(config.specLabel)
+        : (config.specName ? String(config.specName) : '');
       var lines = [
         el('p', { cls: 'empty-title', text: 'No mark scheme loaded yet' }),
         el('p', { text: 'The coverage grid needs the list of criteria your work is marked against. Drop the specification PDF — or a plain text file of the criteria — into a folder called spec, next to the app.' }),
@@ -7643,7 +7688,7 @@
     var keyText = keySet === true ? 'Set' : (keySet === false ? 'Not set yet' : 'Not reported');
     var deckDir = config && config.deckDir ? String(config.deckDir) : 'Not set yet';
     var specText = config && config.specLoaded
-      ? (config.specName ? String(config.specName) : 'Loaded') + (typeof config.specCriteriaCount === 'number' ? ' (' + plural(config.specCriteriaCount, 'criterion').replace('criterions', 'criteria') + ')' : '')
+      ? ((config.specLabel || config.specName) ? String(config.specLabel || config.specName) : 'Loaded') + (typeof config.specCriteriaCount === 'number' ? ' (' + plural(config.specCriteriaCount, 'criterion').replace('criterions', 'criteria') + ')' : '')
       : 'No specification loaded yet';
 
     /*
