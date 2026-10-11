@@ -408,7 +408,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.32';
+const VERSION = '1.0.33';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -697,6 +697,25 @@ function publicConfig(cfg, readingSample) {
      * state instead of a report, which is the visible half of the findDeck guard.
      */
     portfolioChosen: !!cfg.deckDirChosen,
+    /*
+     * A PowerPoint copy in that folder, whether or not it is the one being marked.
+     *
+     * Reported separately from deckFile because the two differ precisely when it matters:
+     * uploading a PDF clears deckFile, which left the app holding a PowerPoint copy that no
+     * longer appeared anywhere in the interface. On this machine that was 528 MB.
+     */
+    deckCopy: (function () {
+      const dir = path.join(STATE_DIR, 'portfolio');
+      try {
+        const name = fs.readdirSync(dir).filter((n) => /\.pptx$/i.test(n) && !n.startsWith('~$'))[0];
+        if (!name) return null;
+        const full = path.join(dir, name);
+        const st = fs.statSync(full);
+        return { name, sizeBytes: st.size, sizeLabel: `${(st.size / 1048576).toFixed(0)} MB` };
+      } catch (err) {
+        return null;
+      }
+    })(),
     readingSample: readingSample !== undefined
       ? !!readingSample
       : (function () { const f = findDeck(cfg); return !!(f && !f.error && f.usedSample); }()),
@@ -2863,7 +2882,32 @@ async function handle(req, res) {
      */
     if (body.clearDeck === true) {
       cfg.deckFile = null;
-      log('PowerPoint removed — nothing is being marked until a portfolio or PDF is chosen.');
+      /*
+       * Delete the app's OWN copy, and only its own.
+       *
+       * This used to clear the reference and nothing else, so "Remove PowerPoint" left the
+       * file behind — which is why an app copy could sit there for weeks taking up 528 MB
+       * with nothing in the interface mentioning it. The student's original is never touched:
+       * the path has to be INSIDE the app's upload folder for anything to be deleted.
+       */
+      const uploadDir = path.join(STATE_DIR, 'portfolio');
+      try {
+        const copies = fs.readdirSync(uploadDir).filter((n) => /\.pptx$/i.test(n) && !n.startsWith('~$'));
+        let freed = 0;
+        for (const name of copies) {
+          const full = path.join(uploadDir, name);
+          if (path.dirname(path.resolve(full)) !== path.resolve(uploadDir)) continue;
+          const st = fs.statSync(full);
+          fs.unlinkSync(full);
+          freed += st.size;
+          log(`Deleted the app's own copy of ${name} (${(st.size / 1048576).toFixed(0)} MB)`);
+        }
+        log(freed
+          ? `PowerPoint removed and ${(freed / 1048576).toFixed(0)} MB freed. Nothing is being marked until a portfolio or PDF is chosen.`
+          : 'PowerPoint removed — nothing is being marked until a portfolio or PDF is chosen.');
+      } catch (err) {
+        log(`PowerPoint cleared, but its stored copy could not be deleted: ${err.message}`);
+      }
     }
     if (typeof body.deep === 'boolean') cfg.recheckAll = body.deep;
     if (typeof body.recheckAll === 'boolean') cfg.recheckAll = body.recheckAll;

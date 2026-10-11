@@ -633,6 +633,9 @@
   }
   .loaded-row + .loaded-row { border-top: 1px solid var(--line); }
   .loaded-row.is-in { background: var(--good-soft); border-left-color: var(--good); }
+  /* Stored but not being marked: not an error, but not nothing either. */
+  .loaded-row.is-stored { background: var(--medium-soft); border-left-color: var(--medium-line); }
+  .loaded-row.is-stored .loaded-mark { color: var(--medium); }
   .loaded-mark { flex: 0 0 auto; font-weight: 700; color: var(--muted); }
   .loaded-row.is-in .loaded-mark { color: var(--good); }
   .loaded-label { flex: 0 0 auto; font-weight: 650; }
@@ -6474,7 +6477,21 @@
     var base = function (p) { return String(p || '').split(/[\\/]/).pop(); };
     return {
       pdf: config.pdfName ? String(config.pdfName) : base(config.pdfFile),
-      pptx: config.deckFile ? base(config.deckFile) : (deck && deck.fileName ? String(deck.fileName) : ''),
+      /*
+       * ONLY ever a PowerPoint.
+       *
+       * This fell back to the report's own file name, and for a PDF-only setup that name IS
+       * the PDF — so the list cheerfully reported a PowerPoint called "Rohan Ghali.pdf", and
+       * because a name was present the page also believed a PowerPoint was loaded. That is
+       * what hid its Remove button.
+       *
+       * The test goes through fileKind() rather than its own regex, so there is still exactly
+       * one place that decides which of the two formats a file is.
+       */
+      pptx: config.deckFile ? base(config.deckFile)
+        : (fileKind({ name: deck && deck.fileName }) === 'pptx' ? String(deck.fileName) : ''),
+      // A copy the app is holding that may not be the one being marked. See renderUploadSection.
+      copy: config.deckCopy || null,
       pages: deck && typeof deck.slideCount === 'number' ? deck.slideCount : null,
       size: deck && deck.fileSizeBytes ? formatBytes(deck.fileSizeBytes) : '',
     };
@@ -6503,16 +6520,28 @@
         label: 'PowerPoint',
         file: files.pptx,
         detail: files.pages ? ', ' + plural(files.pages, 'page') + (files.size ? ' (' + files.size + ')' : '') : '',
+        /*
+         * A copy that is stored but NOT the one being marked is a different state from "not
+         * added", and it is the state that used to be invisible. It says what it is, that it
+         * is costing disk space, and that the button below removes it.
+         */
+        stored: files.copy ? files.copy.name + ' (' + files.copy.sizeLabel + ') stored, but you are being marked on the PDF — the button below removes it' : '',
         missing: 'not added — the caption, layout and speaker-notes checks cannot run without it',
       },
     ];
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       var has = !!row.file;
-      host.appendChild(el('li', { cls: 'loaded-row' + (has ? ' is-in' : '') }, [
-        el('span', { cls: 'loaded-mark', text: has ? '\u2713' : '\u2013', attrs: { 'aria-hidden': 'true' } }),
+      /*
+       * Three states, not two. A stored copy that is not being marked is neither "in use" nor
+       * "not added", and squashing it into either is what left it invisible.
+       */
+      var shown = has ? row.file + row.detail : (row.stored || row.missing);
+      var warn = !has && !!row.stored;
+      host.appendChild(el('li', { cls: 'loaded-row' + (has ? ' is-in' : '') + (warn ? ' is-stored' : '') }, [
+        el('span', { cls: 'loaded-mark', text: has ? '\u2713' : (warn ? '!' : '\u2013'), attrs: { 'aria-hidden': 'true' } }),
         el('span', { cls: 'loaded-label', text: row.label }),
-        el('span', { cls: 'loaded-state', text: has ? row.file + row.detail : row.missing })
+        el('span', { cls: 'loaded-state', text: shown })
       ]));
     }
   }
@@ -6527,28 +6556,35 @@
    */
   function renderUploadSection(data, config) {
     renderGroupNotes();
-    var deck = (data && data.deck) || null;
-    var name = deck && deck.fileName ? String(deck.fileName) : '';
     /*
-     * A deck counts as chosen when a file is pinned, OR when the folder in use is
-     * the app's own upload folder. The second case matters because a folder-based
-     * setup leaves deckFile null while still having a real portfolio.
+     * "A portfolio is in place" and "a PowerPoint is in place" are DIFFERENT questions.
+     *
+     * Conflating them is what produced a page that claimed a PowerPoint was loaded when the
+     * file being marked was a PDF — and, in doing so, hid the button that would have removed
+     * the app's leftover 528 MB copy of one. The heading asks the first question; the Remove
+     * button asks the second.
+     *
+     * The old test also matched the folder against a pattern containing `state/portfolio`,
+     * which stopped matching the moment the data folder moved out of the app folder in
+     * v1.0.23. Nothing here depends on knowing that path any more: a PowerPoint is one the
+     * report actually marked, or a copy the server says it is holding.
      */
-    var configuredDir = config && config.deckDir ? String(config.deckDir) : '';
-    var inUploadFolder = /(^|[\\/])state[\\/]portfolio[\\/]?$/.test(configuredDir);
-    var set = !!(name && (config && config.deckFile || inUploadFolder));
+    var files = loadedFiles();
+    var hasPortfolio = !!(files.pptx || files.pdf);
+    var hasPptx = !!files.pptx;
+    var deckCopy = files.copy;
 
     if (ui.uploadHeading) {
-      setText(ui.uploadHeading, set ? 'Choose a different portfolio' : 'Get started — add your portfolio');
+      setText(ui.uploadHeading, hasPortfolio ? 'Choose a different portfolio' : 'Get started — add your portfolio');
     }
     if (ui.uploadHelp) {
-      setText(ui.uploadHelp, set
+      setText(ui.uploadHelp, hasPortfolio
         ? 'Choosing a file here REPLACES the portfolio being marked — it becomes the one at the top of this page. Your file is copied into the app\u2019s own folder and read there, so the original is never changed or moved.'
         : 'Add a PDF, a PowerPoint file, or both — the box below takes either. Whatever you add becomes the portfolio being marked, shown at the top of this page, and the app copies it into its own folder and reads that copy, so the file you pick is never changed or moved.');
     }
     renderLoadedFiles();
     if (ui.uploadInput) {
-      ui.uploadInput.setAttribute('aria-label', set ? 'Choose a different portfolio file' : 'Choose your portfolio file');
+      ui.uploadInput.setAttribute('aria-label', hasPortfolio ? 'Choose a different portfolio file' : 'Choose your portfolio file');
     }
 
     /*
@@ -6561,7 +6597,16 @@
     var ai = (data && data.ai) || {};
     var willSee = !!pdfName;
     show(ui.btnClearPdf, willSee);
-    if (ui.btnClearDeck) { show(ui.btnClearDeck, !!set); }
+    if (ui.btnClearDeck) {
+      show(ui.btnClearDeck, !!(hasPptx || deckCopy));
+      /*
+       * Named for what it will actually delete. "Remove PowerPoint" next to a PDF-only setup
+       * is a riddle; saying it is the stored copy, and how big, is not.
+       */
+      setText(ui.btnClearDeck, deckCopy && !hasPptx
+        ? 'Delete the stored PowerPoint copy (' + deckCopy.sizeLabel + ')'
+        : 'Remove PowerPoint');
+    }
     if (willSee && ai.visionRan === false && ai.ran) {
       setText(ui.pdfStatus, 'A PDF is stored, but the last check did not use it — press Check now to have the pages looked at.');
     }

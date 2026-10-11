@@ -4659,6 +4659,126 @@ section('12u. Using it on a phone is its own section, not an advanced setting');
   ok('and it is still told where to look', /shown on the Mac/.test(html));
 }
 
+section('12v. A stored PowerPoint copy can be seen and removed');
+{
+  /*
+   * Reported: "there is no remove pptx button".
+   *
+   * There wasn't, and it was a regression from moving the data folder out of the app folder in
+   * v1.0.23. The page decided whether a PowerPoint was loaded with
+   *
+   *   /(^|[\/])state[\/]portfolio[\/]?$/.test(configuredDir)
+   *
+   * which stopped matching the moment uploads moved to ~/Library/Application Support/NEA Coach.
+   * Uploading a PDF also clears deckFile, so the flag went false, the button disappeared, and
+   * the app's own copy of a .pptx sat in its folder with nothing anywhere mentioning it. On the
+   * machine it was reported from, that copy was 528 MB and had been there for weeks.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  ok('the page no longer decides by pattern-matching a path that moved',
+    !/inUploadFolder/.test(html),
+    'the state/portfolio pattern is back; it stopped matching in v1.0.23');
+  ok('and it uses the copy the server reports instead', /deckCopy/.test(html));
+
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  const UP = '/Users/x/Library/Application Support/NEA Coach/portfolio';
+  const textOf = (n) => {
+    if (!n) { return ''; }
+    let out = n.textContent ? String(n.textContent) : '';
+    for (const k of (n.children || [])) { out += ' ' + textOf(k); }
+    return out;
+  };
+  const draw = (config, deck) => {
+    page.state.data = { ok: true, config: config, deck: deck || null };
+    const a = page.call('renderLoadedFiles');
+    const b = page.call('renderUploadSection', page.state.data, config);
+    return {
+      ok: a.ok && b.ok,
+      error: a.error || b.error,
+      heading: page.els.get('uploadHeading').textContent,
+      button: page.ui.btnClearDeck.hidden === false ? page.ui.btnClearDeck.textContent : null,
+      rows: page.els.get('uploadedWhat').children.map((c, i) => textOf(page.els.get('uploadedWhat').children[i])),
+      raw: page.els.get('uploadedWhat').children.map((c) => c.textContent),
+    };
+  };
+
+  const stored = { name: 'Old Portfolio.pptx', sizeBytes: 553648128, sizeLabel: '528 MB' };
+  const pdfOnly = { deckDir: UP, deckFile: null, pdfFile: UP + '/work.pdf', pdfName: 'work.pdf', deckCopy: stored };
+
+  let r = draw(pdfOnly, { fileName: 'work.pdf', slideCount: 60 });
+  ok('the state that had no button renders at all', r.ok, r.error);
+  ok('a stored copy gets a remove button', !!r.button, 'no remove button');
+  ok('and the button says what it will delete, and how much space that is',
+    /Delete the stored PowerPoint copy \(528 MB\)/.test(r.button || ''), r.button);
+  ok('the row explains why it is stored rather than being marked',
+    /stored, but you are being marked on the PDF/.test(textOf(page.els.get('uploadedWhat').children[1])),
+    textOf(page.els.get('uploadedWhat').children[1]));
+  ok('and it is flagged, not ticked as though it were in use',
+    /^!/.test(textOf(page.els.get('uploadedWhat').children[1]).trim()),
+    textOf(page.els.get('uploadedWhat').children[1]));
+
+  /*
+   * The row must never call a PDF a PowerPoint. It did: it fell back to the report's own file
+   * name, and for a PDF-only setup that name IS the PDF — which also made the page believe a
+   * PowerPoint was loaded.
+   */
+  ok('the PowerPoint row never names the PDF',
+    !/work\.pdf/.test(textOf(page.els.get('uploadedWhat').children[1])),
+    textOf(page.els.get('uploadedWhat').children[1]));
+
+  r = draw({ deckDir: UP, deckFile: null, pdfFile: UP + '/work.pdf', pdfName: 'work.pdf' },
+    { fileName: 'work.pdf', slideCount: 60 });
+  ok('with no PowerPoint at all the row says so',
+    /not added/.test(textOf(page.els.get('uploadedWhat').children[1])),
+    textOf(page.els.get('uploadedWhat').children[1]));
+  ok('and there is no button, because there is nothing to remove', !r.button, r.button);
+  ok('while the heading still knows a portfolio is in place',
+    /Choose a different portfolio/.test(r.heading), r.heading);
+
+  // The ordinary cases must not regress.
+  r = draw({ deckDir: UP, deckFile: UP + '/X.pptx', pdfFile: UP + '/X.pdf', pdfName: 'X.pdf' },
+    { fileName: 'X.pptx', slideCount: 29 });
+  eq('with a PowerPoint loaded the button says so', r.button, 'Remove PowerPoint');
+  ok('and the row names it', /X\.pptx/.test(textOf(page.els.get('uploadedWhat').children[1])),
+    textOf(page.els.get('uploadedWhat').children[1]));
+
+  r = draw({ deckDir: UP, deckFile: null }, { fileName: 'Folder Work.pptx', slideCount: 12 });
+  eq('a folder-based setup still counts as having a PowerPoint', r.button, 'Remove PowerPoint');
+
+  r = draw({ deckDir: UP }, null);
+  ok('and nothing at all still shows no button', !r.button, r.button);
+  eq('with the getting-started heading', r.heading, 'Get started — add your portfolio');
+
+  /*
+   * Removing is DESTRUCTIVE now — it used to clear the reference and leave the file behind,
+   * which is how the copy survived in the first place. The guard that matters is that it can
+   * only ever touch the app's own folder, never the student's original.
+   */
+  const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const block = /if \(body\.clearDeck === true\) \{([\s\S]*?)\n    \}/.exec(src);
+  ok('the removal code is still findable', !!block);
+  const body = block ? block[1] : '';
+  ok('removing a PowerPoint now actually deletes the stored copy',
+    /unlinkSync/.test(body), 'it still only clears the reference and leaves the file behind');
+  ok('and only inside the app\u2019s own upload folder',
+    /path\.dirname\(path\.resolve\(full\)\) !== path\.resolve\(uploadDir\)/.test(body),
+    'nothing stops it deleting a path outside the upload folder');
+  /*
+   * The precise guarantee: exactly ONE unlink, of a path built from a name that was listed in
+   * the app's own folder. Anything else — deleting the configured path, say, which can point
+   * anywhere on the disk — is how a student's original gets destroyed.
+   */
+  ok('the only file it deletes is one it listed inside its own upload folder',
+    /readdirSync\(uploadDir\)/.test(body)
+    && /const full = path\.join\(uploadDir, name\);/.test(body)
+    && /fs\.unlinkSync\(full\)/.test(body)
+    && (body.match(/unlinkSync\(/g) || []).length === 1,
+    'it deletes something other than a file it listed in its own folder');
+  ok('and it reports how much space was freed',
+    /MB freed/.test(body), 'the log does not say what was reclaimed');
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();
