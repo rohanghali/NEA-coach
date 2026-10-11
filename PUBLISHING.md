@@ -75,41 +75,26 @@ Windows copy of Node.js so users install nothing.
 
 ## 5. Publish it as a release
 
-The zip is too big to upload on GitHub's website (their file picker caps at 25 MB), so
-use the command line:
-
-1. Go to <https://github.com/settings/tokens> and make a token with **Contents:
-   Read and write** permission on the `nea-coach` repository.
-2. Run this, replacing the two placeholders:
+There is a script for this. **You do not need to paste a token anywhere — it reads the
+one your first `git push` already stored in the macOS keychain.**
 
 ```bash
-TOKEN=ghp_your_token_here
-USER=your-github-username
-
-# Create the release
-curl -s -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Accept: application/vnd.github+json" \
-  https://api.github.com/repos/$USER/nea-coach/releases \
-  -d '{"tag_name":"v1.0.0","name":"NEA Coach 1.0.0","body":"First release. Unzip, then double-click Start NEA Coach.bat. Get a free Google API key — see SETUP-AI.md."}'
-
-# Upload the zip to it
-curl -s -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/zip" \
-  --data-binary @dist/NEA-Coach-windows.zip \
-  "https://uploads.github.com/repos/$USER/nea-coach/releases/$(curl -s -H "Authorization: Bearer $TOKEN" https://api.github.com/repos/$USER/nea-coach/releases/latest | grep -m1 '"id"' | tr -dc '0-9')/assets?name=NEA-Coach-windows.zip"
+./tools/release.sh 1.0.0
 ```
 
-If that is too fiddly, the alternative is to install the GitHub CLI once
-(`brew install gh`, then `gh auth login`) and run:
+That builds the package if needed, creates the release, and uploads the zip. It prints the
+link at the end. For an update, run it again with the next version:
 
 ```bash
-gh release create v1.0.0 dist/NEA-Coach-windows.zip --title "NEA Coach 1.0.0" --notes "Unzip, then double-click Start NEA Coach.bat."
+./tools/release.sh 1.0.1
 ```
 
----
+**Why a script rather than the website:** GitHub's upload box caps files at 25 MB and the
+Windows package is about 31 MB, so the zip has to go up through the API. Doing that by hand
+means three curl commands and a token on the command line, which is both fiddly and leaks
+the token into the process list. `tools/release.sh` avoids both.
 
+```
 ## 6. The link to send people
 
 Once the release exists, your download link is:
