@@ -5932,20 +5932,18 @@
       clearNode(select);
       for (var i = 0; i < models.length; i++) {
         var m = models[i];
-        var label = m.name;
         /*
-         * How many requests a full check costs on this model, and how many such
-         * checks fit in the day. On a free key that is the real budget: money is
-         * always zero, and each model has its own allowance.
+         * Short labels, on purpose.
+         *
+         * Every option used to carry "— about 47 requests per check (about 1 a day)",
+         * so all thirteen rows in the list were identical apart from the model name
+         * and the whole thing read as noise. That figure is deck-dependent and does
+         * not change between models, and the line under the dropdown already states
+         * it and updates when the choice changes. Notes that actually DISTINGUISH a
+         * model stay.
          */
-        var dropPages = (state.data && state.data.deck && typeof state.data.deck.slideCount === 'number')
-          ? state.data.deck.slideCount : 60;
-        var dropReqs = estimateScanRequests(dropPages, hasPdf() ? visionRunCount() : 0).total;
-        label += '  —  about ' + plural(dropReqs, 'request') + ' per check';
-        if (dropReqs > 0) {
-          label += ' (about ' + Math.max(1, Math.floor(dailyLimitFor(m.name) / dropReqs)) + ' checks a day)';
-        }
-        if (m.supportsThinking === false) { label += '  (no deep thinking)'; }
+        var label = m.name;
+        if (m.supportsThinking === false) { label += '  \u2014  no deep thinking'; }
         select.appendChild(el('option', { text: label, attrs: { value: m.name } }));
       }
 
@@ -5991,25 +5989,14 @@
     select.appendChild(el('option', { text: 'Same as the model above (recommended)', attrs: { value: '' } }));
     for (var i = 0; i < models.length; i++) {
       var m = models[i];
-      var label = m.name;
       /*
-       * What this model would add for the marking runs alone.
-       *
-       * NOT a third of the whole-scan estimate: that estimate describes the model
-       * reading the PAGES, so dividing it quoted the wrong model's rate entirely.
-       * This computes the marking tokens at THIS model's rate directly — passing
-       * zero pages to the full estimator would not work, because it clamps to at
-       * least one page.
+       * Short label, for the same reason as the model list above: every option used
+       * to repeat "— 3 requests per check, on its own daily allowance", which
+       * distinguished nothing and made the list unreadable. The chosen marking model
+       * is described by the help text under the dropdown, which applies to whatever
+       * is selected.
        */
-      var markRow = modelPriceRow(m.name);
-      if (markRow) {
-        var markPages = (state.data && state.data.deck && typeof state.data.deck.slideCount === 'number')
-          ? state.data.deck.slideCount : 60;
-        var mkIn = markPages * TOKENS_IN_PER_PAGE_VISION * VISION_RUNS_MIRROR;
-        // Each marking run is one request, so this adds VISION_RUNS requests.
-        label += '  —  ' + plural(VISION_RUNS_MIRROR, 'request') + ' per check, on its own daily allowance';
-      }
-      select.appendChild(el('option', { text: label, attrs: { value: m.name } }));
+      select.appendChild(el('option', { text: m.name, attrs: { value: m.name } }));
     }
     select.value = wanted;
   }

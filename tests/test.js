@@ -1698,12 +1698,21 @@ section('11w. The costs section');
 
   /*
    * No money should be shown anywhere for a free key: it reads £0.00 forever and
-   * says nothing about what runs out. The formatter may remain for paid keys, but it
-   * must not be used for the per-check figures.
+   * says nothing about what runs out.
+   *
+   * The per-model requests figure used to be appended to every option in the
+   * dropdown, which made all thirteen rows identical apart from the model name.
+   * It is deck-dependent and does not vary between models, so it now lives on the
+   * line under the dropdown, which already updates when the choice changes. What
+   * this assertion cares about is that the figure is REQUESTS and never a price.
    */
-  ok('the model dropdown quotes requests, not a price',
-    /plural\(dropReqs, 'request'\) \+ ' per check'/.test(page)
-      && !/estimatedScanGbp\) \+ ' per full scan'/.test(page));
+  ok('no price is shown where a model is chosen',
+    !/estimatedScanGbp\) \+ ' per full scan'/.test(page));
+  ok('the model list keeps only notes that distinguish a model',
+    /var label = m\.name;\s*\n\s*if \(m\.supportsThinking === false\)/.test(page)
+      && !/plural\(dropReqs, 'request'\) \+ ' per check'/.test(page));
+  ok('the requests-per-check figure lives on the line under the dropdown',
+    /A full check of ' \+ plural\(pages, 'page'\) \+ ' takes about '/.test(page));
   ok('the pre-scan preview quotes requests, not a price',
     /takes about '\s*\n?\s*\+ plural\(reqs\.total, 'request'\)/.test(page));
   ok('the history shows requests used, not money spent',
