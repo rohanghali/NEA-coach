@@ -92,6 +92,15 @@ Nothing needs installing by hand, and no bank card is needed.
 
 Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the folder.
 
+**New in this version**
+
+- A short setup walkthrough on first run: exam board, portfolio, free AI key, one step at a time. Every screen can be skipped, and it can be replayed from Settings.
+- Settings rebuilt into four groups — Your portfolio, Exam board, Free AI key, and Advanced (collapsed) — instead of one long list.
+- An **Advanced → "Set up for the best possible marks"** button, which turns on the predicted mark and uses the strongest model available.
+- Fewer false alarms: a genuinely good portfolio no longer gets told its cover page is too empty, and near-identical font sizes are no longer counted as different headings.
+
+**If you have an older copy already:** quit it first (close the black "NEA Coach server" window) before starting this one, or the old version will keep answering your browser.
+
 It never modifies your original PowerPoint, and nothing leaves your computer except the pages a check sends to Google.'
 
 say "Creating release $TAG..."
