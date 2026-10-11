@@ -1886,6 +1886,75 @@ section('11w. The exam board is offered even before the first check');
     'the fallback is not guarded on specPresets being present');
 }
 
+section('11x. Working through the wizard does not throw you back to the start');
+{
+  /*
+   * Reported by the user: "whenever i do anything in the setup like send a
+   * portfolio it sends me back to the beginning."
+   *
+   * maybeShowIntro() opened at step 0 unconditionally, and it is called from
+   * loadState() — which runs after EVERY wizard action, because each one ends in
+   * a state refresh. So uploading, saving a board or saving a key all restarted
+   * the wizard. That is the mechanism, and it is easy to reintroduce, so it is
+   * driven here rather than merely inspected.
+   */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  page.state.data = {
+    ok: true, firstRun: true,
+    config: {
+      specId: 'aqa-gcse',
+      specPresets: [
+        { id: 'eduqas-alevel', label: 'WJEC Eduqas A-level Design and Technology (NEA)' },
+        { id: 'aqa-gcse', label: 'AQA GCSE Design and Technology (8552)' },
+      ],
+      apiKeySet: false, pdfName: null, deckName: null,
+    },
+  };
+  const stepNow = () => {
+    for (let k = 0; k < 5; k++) { if (!page.els.get('introStep' + k).hidden) { return k; } }
+    return -1;
+  };
+  const reload = () => page.call('maybeShowIntro');   // what loadState() does
+
+  page.call('maybeShowIntro');
+  ok('the wizard opens at the first step', stepNow() === 0, 'step ' + stepNow());
+
+  // Walk to the portfolio step, then refresh the way an upload does.
+  page.call('introShow', 2);
+  reload();
+  ok('a state refresh on the portfolio step does not restart the wizard',
+    stepNow() === 2, 'ended on step ' + stepNow());
+
+  // And on the key step, which is the other one that ends in a refresh.
+  page.call('introShow', 3);
+  reload();
+  ok('a state refresh on the key step does not restart the wizard',
+    stepNow() === 3, 'ended on step ' + stepNow());
+
+  // The last step must survive a refresh too, or "Open NEA Coach" becomes "Next".
+  page.call('introShow', 4);
+  reload();
+  ok('a state refresh on the final step does not restart the wizard',
+    stepNow() === 4, 'ended on step ' + stepNow());
+
+  // Closing must clear the "on screen" flag, or it could never reopen.
+  page.call('introClose');
+  ok('closing marks the wizard finished', page.store['neaCoach.intro.v1'] === 'done',
+    JSON.stringify(page.store['neaCoach.intro.v1']));
+  ok('and hides it', page.els.get('introOverlay').hidden === true);
+
+  // "Show setup again" forgets the flag first, so it legitimately starts over.
+  delete page.store['neaCoach.intro.v1'];
+  reload();
+  ok('re-opening after the flag is cleared starts from the beginning',
+    stepNow() === 0, 'step ' + stepNow());
+  ok('and the overlay is visible again', page.els.get('introOverlay').hidden !== true);
+
+  // The whole flow must still complete, or the fix has broken the happy path.
+  ok('no render or wizard error was raised', page.errors.length === 0, JSON.stringify(page.errors));
+}
+
 section('11u. The marking card follows live config');{
   const { publicConfig } = require(path.join(ROOT, 'server.js'));
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');

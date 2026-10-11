@@ -1356,8 +1356,17 @@
   /* ---------- drag and drop ---------- */
 
   /* Only present while a file is being dragged over the page. */
+  /*
+   * The page-wide drop affordance, shown while a file is dragged over the window.
+   *
+   * It used to read "Drop your portfolio (.pptx) or a PDF export of it", which was
+   * read as a prompt AFTER a successful drop: the class could survive the drop in
+   * some drag sequences, and the wording then looked like the app was asking for
+   * the same file again. It now says only what it is — a target — and names no
+   * file type, since the wizard has its own drop zone with its own explanation.
+   */
   body.is-dropping::after {
-    content: 'Drop your portfolio (.pptx) or a PDF export of it';
+    content: 'Drop your file anywhere on this page';
     position: fixed;
     inset: 10px;
     z-index: 999;
@@ -6596,6 +6605,9 @@
   var introChosenSpec = null;
   var introHavePortfolio = false;
   var introKeyOk = false;
+  // True while the wizard is on screen. loadState() re-runs maybeShowIntro() after
+  // every action, and without this a student is thrown back to step 1 each time.
+  var introOpen = false;
 
   /** localStorage can throw in private mode; the wizard must never break the app. */
   function introIsDone() {
@@ -6946,6 +6958,7 @@
     if (btn) { btn.disabled = true; }
     apiPost('/api/scan', { recheckAll: false, thinking: false }).then(function () {
       introMarkDone();
+      introOpen = false;
       introVisible(false);
       // Show the run in the app itself rather than hiding it behind the wizard.
       loadState();
@@ -6953,13 +6966,22 @@
     }).catch(function (err) {
       if (btn) { btn.disabled = false; }
       setBanner('intro', 'error', friendlyError(err, 'The check could not be started. Is NEA Coach still running?'), true);
+      introOpen = false;
       introVisible(false);
     });
   }
 
   function introClose() {
     introMarkDone();
+    introOpen = false;
     introVisible(false);
+  }
+
+  /** Open the wizard on a given step, and record that it is on screen. */
+  function introOpenAt(step) {
+    introOpen = true;
+    introVisible(true);
+    introShow(step);
   }
 
   function introNext() {
@@ -6993,6 +7015,10 @@
       ui.introDrop.addEventListener('drop', function (e) {
         e.preventDefault();
         e.stopPropagation();
+        // Clear the page-wide "drop here" affordance explicitly. It is driven by
+        // dragenter/dragleave on the window, and those do not always pair up, so a
+        // stale overlay could sit on top of the wizard looking like a fresh prompt.
+        document.body.classList.remove('is-dropping');
         ui.introDrop.className = 'intro-drop';
         var dt = e.dataTransfer;
         if (dt && dt.files && dt.files.length) { introUpload(dt.files[0]); }
@@ -7006,10 +7032,8 @@
     if (ui.btnShowSetup) {
       ui.btnShowSetup.addEventListener('click', function () {
         introForget();
-        introStep = 0;
         if (ui.settingsDetails) { ui.settingsDetails.open = false; }
-        introVisible(true);
-        introShow(0);
+        introOpenAt(0);
       }, false);
     }
 
@@ -7026,9 +7050,6 @@
   function maybeShowIntro() {
     if (!ui.introOverlay) { return; }
     if (introIsDone()) { return; }
-    // Always start at the beginning. The state load that calls this can run more
-    // than once, and resuming at the last screen would look like a broken wizard.
-    introStep = 0;
     var cfg = (state.data && state.data.config) || {};
     var welcome = document.getElementById('introWelcomeBack');
     if (welcome && (cfg.pdfName || cfg.deckName || cfg.apiKeySet)) {
@@ -7041,8 +7062,18 @@
       }
     }
     if (cfg.specId) { introChosenSpec = cfg.specId; }
-    introVisible(true);
-    introShow(0);
+    /*
+     * Open at step 0 ONLY when this is the first time we have opened it.
+     *
+     * This function is called from loadState(), and loadState() runs after EVERY
+     * action in the wizard — uploading a portfolio, saving a board, saving a key.
+     * Opening at step 0 unconditionally therefore threw the student back to the
+     * start each time they did anything, which is what they reported.
+     *
+     * The wizard stays open until it is closed, so `introOpen` is the honest
+     * signal for "already on screen". Manual re-opening from Settings resets it.
+     */
+    if (!introOpen) { introOpenAt(0); }
   }
 
   function init() {
