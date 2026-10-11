@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.45';
+const VERSION = '1.0.46';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -1355,7 +1355,12 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
           model: cfg.model,
           spec,
           cache,
-          onRequest: () => countRequest(cfg.model),
+          /*
+           * The model the request was actually made with, so the per-model rows match Google's
+           * per-model limits. This was `() => countRequest(cfg.model)` — a thunk that threw its
+           * argument away — so every vision request was counted against the text model.
+           */
+          onRequest: (which) => countRequest(which || cfg.model),
           pdf,
           pdfName: cfg.pdfFile ? path.basename(cfg.pdfFile) : null,
           // 3 runs when a mark is wanted, 1 when it is not.

@@ -5770,6 +5770,64 @@ section('12ag. The information panel is scannable, not prose');
     !/<dl class="explain">/.test(html), 'the default-styled list is what read as a wall of prose');
 }
 
+section('12ah. The allowance counts the right model, and the tab has colour');
+{
+  /*
+   * "The allowance is still inaccurate." It was: every request the app made was credited to the
+   * TEXT model, whatever actually served it.
+   *
+   *   onRequest: () => countRequest(cfg.model)
+   *
+   * A thunk that throws its argument away, and a counter invoked with no argument at all. Google's
+   * free allowance is per MODEL, so the vision model's requests were all charged to the text model
+   * and the vision model's row read zero. The student's real remaining allowance for each model was
+   * misrepresented with no way to tell.
+   *
+   * The count of requests was right; the attribution was not.
+   */
+  const aiSrc = fs.readFileSync(path.join(ROOT, 'lib', 'ai.js'), 'utf8');
+  const srvSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
+
+  ok('the request counter is given the model that served the request',
+    /requestCounter\(args\.model\)/.test(aiSrc),
+    'the counter is called with no argument, so every request lands on one model');
+  ok('and the server forwards it rather than hard-coding its own',
+    /onRequest: \(which\) => countRequest\(which \|\| cfg\.model\)/.test(srvSrc),
+    'a thunk that discards the model attributes vision requests to the text model');
+
+  /* ---- the plumbing underneath is already right, and is easy to break --------- */
+  ok('only SERVED requests count, so a refusal does not spend the allowance',
+    /const served = res\.status === 200;/.test(aiSrc) && /if \(served && !counted && requestCounter\)/.test(aiSrc),
+    'counting 429s made the meter claim an allowance was gone while Google was still serving');
+  ok('a retry is not double-counted', /counted = true;/.test(aiSrc));
+  ok('and merely listing the models is free and is not counted',
+    /void onRequest;/.test(aiSrc));
+
+  /* ---- the "worth adding" tab -------------------------------------------------- */
+  ok('unselected tabs are no longer washed-out grey',
+    !/\.tab \{[\s\S]{0,260}color: var\(--muted\)/.test(css),
+    'light grey on a white card reads as disabled, not as "there is something in here"');
+  ok('the open tab is washed with the accent so the row looks like choices',
+    /\.tab\[aria-selected="true"\] \{[\s\S]{0,160}background: var\(--accent-soft\)/.test(css));
+  ok('the suggestions panel has its own colour rather than the fix list severity colours',
+    /\.suggestion-card \{ border-left: 3px solid var\(--accent\)/.test(css)
+    && /\.suggest-heading \{[^}]*color: var\(--accent-dark\)/.test(css));
+  ok('and its grey intro paragraph became a tinted note',
+    /\.suggest-intro \{/.test(css) && !/Things you could add[\s\S]{0,40}cls: 'muted small'/.test(html));
+  ok('every colour added here is a theme token',
+    (() => {
+      /*
+       * .tab(?![-a-z]) so this cannot wander into .tab-panel or .tabs and start judging their
+       * colours, and [^{}]* so it cannot run past the end of a rule into the next one.
+       */
+      const rules = [...css.matchAll(/\.(tab(?![-a-z])|suggest-intro|suggestion-card|suggest-heading)[^{}]*\{([^}]*)\}/g)]
+        .map((m) => m[2]).join('\n');
+      return !/#[0-9a-f]{3,8}\b/i.test(rules) && !/rgba?\(/i.test(rules);
+    })(), 'a literal colour here is how the dark-mode bugs happened');
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();

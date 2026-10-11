@@ -18,16 +18,17 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The Information panel has been rewritten.** It was nine dense paragraphs in a plain list with
-  no styling at all, which is why it read as a wall of text. It is now eight short rows, each with
-  a coloured tag, a title and one or two lines — and **no fact was dropped**, the wording was just
-  cut back:
-  - **Free** in green, for the checks that run on your own computer
-  - **Uses the allowance** in amber, for the AI review
-  - **If it runs out** in red, because that is the one that costs you something
-  - **Setting** and **Privacy** in blue, for how the app works and what it does with your files
-- Every colour is a theme colour, so it reads correctly in dark mode without a second version of
-  anything.
+- **The allowance now counts each model separately, which is what was wrong with it.** Your free
+  allowance is per model, but every request the app made was recorded against the *text* model —
+  including the page-reading requests, which use the marking model. So the text model looked
+  busier than it was, the other model's row read zero, and neither matched what Google actually
+  shows you. The number of requests was right; which model they belonged to was not.
+- **"Worth adding" is no longer the grey one.** Unselected tabs were pale grey on a white card,
+  which read as disabled rather than as *"there is something in here"*. They are normal ink now,
+  the open one is washed with the accent, and the suggestions panel has the accent as its own
+  colour — suggestions are not mistakes, so they should not wear the Fix list's severity colours.
+- The focus ring around whatever you are tabbing to was a pale blue in four places, which is weak
+  on a white card. It is the accent colour now.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

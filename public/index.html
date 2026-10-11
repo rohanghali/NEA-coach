@@ -449,7 +449,7 @@
   }
   .switch input:checked + .switch-track { background: var(--accent); }
   .switch input:checked + .switch-track .switch-knob { transform: translateX(19px); }
-  .switch input:focus-visible + .switch-track { outline: 3px solid #b2ccff; outline-offset: 2px; }
+  .switch input:focus-visible + .switch-track { outline: 3px solid var(--accent); outline-offset: 2px; }
   .switch input[disabled] + .switch-track { opacity: 0.5; }
   .switch-text { font-size: 15px; }
   .actions-hint { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
@@ -786,21 +786,33 @@
   /* ---------- tabs ---------- */
 
   .tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin: -4px -4px 14px; }
+  /*
+   * Unselected tabs were var(--muted) — a light grey — on a white card, which read as disabled
+   * rather than as "there is something in here". They are normal-weight ink now, with the accent
+   * on hover and a soft accent wash on the one that is open, so the row looks like a set of
+   * choices rather than one live tab and two dead labels.
+   */
   .tab {
     min-height: 48px;
     padding: 12px 16px;
     margin: 0 4px;
     background: none;
     border: none;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     border-bottom: 3px solid transparent;
-    color: var(--muted);
+    color: var(--ink-2);
     font-family: inherit;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
   }
-  .tab[aria-selected="true"] { color: var(--accent-dark); border-bottom-color: var(--accent); }
-  .tab:focus-visible { outline: 3px solid #b2ccff; outline-offset: -3px; }
+  .tab:hover { color: var(--accent-dark); background: var(--accent-soft); }
+  .tab[aria-selected="true"] {
+    color: var(--accent-dark);
+    border-bottom-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .tab:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 
   /* ---------- pills, tags, chips ---------- */
 
@@ -831,7 +843,22 @@
   .impact-high { background: var(--good-soft); border-color: var(--good-line); color: var(--good); font-weight: 700; }
   .impact-medium { background: var(--info-soft); border-color: var(--info-line); color: var(--info); }
   .impact-low { background: var(--fill-soft); border-color: var(--line-strong); color: var(--muted); }
-  .suggest-heading { font-size: 15px; font-weight: 700; margin: 18px 0 10px; color: var(--ink-2); }
+  /*
+   * The suggestions panel is its own kind of thing: nothing in it is a mistake, so it should not
+   * wear the fix list's severity colours. It takes the accent, which also gives the "Worth adding"
+   * tab an identity beyond being the one you have not clicked.
+   */
+  .suggest-heading { font-size: 15px; font-weight: 700; margin: 18px 0 10px; color: var(--accent-dark); }
+  .suggest-intro {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 13.5px;
+    color: var(--ink-2);
+  }
+  .suggestion-card { border-left: 3px solid var(--accent); }
   .finding-pages { display: inline-block; margin: 2px 0 6px; }
 
   .tag {
@@ -846,7 +873,7 @@
     background: var(--fill-soft);
     white-space: nowrap;
   }
-  .tag-ai { background: var(--accent-soft); border-color: #b2ccff; color: var(--accent-dark); }
+  .tag-ai { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); }
   .tag-free { background: var(--info-soft); border-color: var(--info-line); color: var(--info); }
   .tag-effort { background: var(--card); border-color: var(--line-strong); color: var(--ink-2); }
 
@@ -864,7 +891,7 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .pagechip:focus-visible { outline: 3px solid #b2ccff; outline-offset: 1px; }
+  .pagechip:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
   .pagechip-static { cursor: default; color: var(--muted); background: var(--info-soft); }
 
   .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
@@ -3482,7 +3509,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.45';
+  var PAGE_BUILD = '1.0.46';
 
   var state = {
     data: null,
@@ -5520,7 +5547,7 @@
     var ai = (data && data.ai) || {};
     var items = suggestionsList();
 
-    host.appendChild(el('p', { cls: 'muted small', text:
+    host.appendChild(el('p', { cls: 'suggest-intro', text:
       'Things you could add that are not in the portfolio yet, ordered by how much they would help for the time they take. Nothing here is a mistake — your existing pages are reviewed in the Fix list.'
     }));
 
