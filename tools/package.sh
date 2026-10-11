@@ -68,8 +68,9 @@ NEA Coach
 
 2. Double-click "Start NEA Coach.bat"
 
-   A black window opens and your web browser opens the app.
-   LEAVE THE BLACK WINDOW OPEN while you use it — closing it stops the app.
+   Two black windows open. One is titled "NEA Coach server" — that IS the app,
+   LEAVE IT OPEN while you use it; closing it stops the app. The other window
+   just waits for the server and then tells you the address; it can be closed.
 
    Nothing to install. Node.js is already inside this folder.
 
@@ -79,6 +80,39 @@ NEA Coach
 
 Your portfolio is never uploaded anywhere except to Google, and only the pages
 a check needs. The app never changes your original PowerPoint file.
+EOF
+}
+
+# Mac users meet Gatekeeper because the app is not signed with a paid Apple
+# certificate. Warn them BEFORE the dialog appears, or they click "Move to Bin"
+# and conclude the app is broken.
+write_readme_first_mac() {
+  local target="$1"
+  cat >> "$target/START HERE.txt" <<'EOF'
+
+--------------------------------------------------------------
+
+If macOS says it cannot verify "Start NEA Coach.command":
+
+That is Gatekeeper. It means the file came from the internet and is not signed
+with a paid Apple certificate - NOT that anything harmful was found.
+
+Fix it once, either way:
+
+  a) Right-click (or Control-click) "Start NEA Coach.command", choose Open,
+     then click Open again in the box that appears.
+
+  b) If that does not work, open Terminal (Command-Space, type Terminal) and
+     run this line, then double-click the file again:
+
+       xattr -dr com.apple.quarantine ~/Downloads/NEA-Coach-mac
+
+     Change the path if you unzipped it somewhere other than Downloads.
+
+You may need to do this again after downloading a new version.
+
+The first launch also downloads Node.js automatically (about 40 MB) and shows
+a progress bar. Every launch after that is instant.
 EOF
 }
 
@@ -132,6 +166,7 @@ build_mac() {
   rm -rf "$target"
   copy_common "$target"
   write_readme_first "$target"
+  write_readme_first_mac "$target"
   rm -f "$target/Start NEA Coach.bat"
   say "NOTE: this build does NOT bundle Node — the Mac launcher downloads the matching"
   say "      runtime on first run, which is why there is no runtime folder here."

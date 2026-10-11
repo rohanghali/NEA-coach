@@ -120,30 +120,48 @@ echo   KEEP THIS WINDOW OPEN while you use NEA Coach. The server runs inside
 echo   it, so closing the window stops the app. Press Control-C to stop it.
 echo.
 
-REM Open the browser first. "start" hands the browser off and returns straight
-REM away, and a browser takes longer to appear and load than the server takes
-REM to start listening, so the first page load finds it running. If the page
-REM ever says it cannot connect, wait a second and refresh it.
-start "" "http://127.0.0.1:%PORT%"
+REM Start the server in a window of its own, then WAIT until it actually answers
+REM before opening the browser. Opening the browser first and hoping it is slower
+REM than the server is a race, and on a slow PC or after a reboot the browser wins
+REM and shows "refused to connect". Polling the health endpoint removes the race.
+start "NEA Coach server" "%NODE_BIN%" "%~dp0server.js"
 
-NEA_COACH_PORT=%PORT% "%NODE_BIN%" "%~dp0server.js"
-set "STATUS=%ERRORLEVEL%"
+REM Poll /api/health until it answers 200. 60 half-second tries is 30 seconds,
+REM which is far longer than the server needs, so reaching the end means the
+REM server genuinely failed rather than merely being slow.
+set "TRIES=0"
+:wait_for_server
+if %TRIES% GEQ 60 goto :never_started
+"%NODE_BIN%" -e "const h=require('http');const r=h.get({host:'127.0.0.1',port:process.argv[1],path:'/api/health',timeout:1200},s=>process.exit(s.statusCode===200?0:1));r.on('error',()=>process.exit(1));r.on('timeout',()=>{r.destroy();process.exit(1);});" "%PORT%" >nul 2>nul
+if not errorlevel 1 goto :open_browser
+set /a TRIES+=1
+>nul ping -n 2 127.0.0.1
+goto :wait_for_server
 
-REM ------------------------------------------------------------ 5. exit
+:open_browser
+echo   Ready. Opening http://127.0.0.1:%PORT%
 echo.
-if not "%STATUS%"=="0" goto :stopped_badly
-echo   NEA Coach has stopped.
+REM The empty "" is the window title. Without it, "start" treats the quoted URL
+REM as the title and opens nothing, which looks exactly like a broken app.
+start "" "http://127.0.0.1:%PORT%"
+goto :finish
+
+:never_started
+echo.
+echo   NEA Coach did not start within 30 seconds.
+echo.
+echo   A second window titled "NEA Coach server" was opened for it. The reason
+echo   is printed in THAT window - read the last few lines there. Common causes:
+echo     - something else is already using port %PORT%
+echo     - Node.js is damaged or was removed
 echo.
 goto :finish
 
 :stopped_badly
-echo   NEA Coach stopped with an error (code %STATUS%).
-echo   The lines above this message explain what happened.
 echo.
-echo   If they mention the port being busy, something is already using port
-echo   %PORT%. Open http://127.0.0.1:%PORT% first, or run the app on a
-echo   different port by double-clicking this file after typing:
-echo     set NEA_COACH_PORT=4174
+echo   If the message mentions the port being busy, something is already using
+echo   port %PORT%. Run the app on a different port by opening this file after
+echo   typing:   set NEA_COACH_PORT=4174
 echo.
 goto :finish
 
