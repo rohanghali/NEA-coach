@@ -1825,6 +1825,67 @@ section('11t. The bundled sample is never mistaken for the student\'s work');
     !/renderSampleNotice[\s\S]{0,900}banner-dismiss/.test(page));
 }
 
+section('11w. The exam board is offered even before the first check');
+{
+  /*
+   * Reported by the user: "there is no option to change the exam board in the
+   * setup and only one option in the drop down in settings".
+   *
+   * The no-report branch of buildStateResponse hand-rolled its own config object
+   * and left out `specId` and `specPresets`. Three things followed:
+   *
+   *   1. the board dropdown fell back to a single hard-coded Eduqas option;
+   *   2. the wizard's board list came back empty for the same reason;
+   *   3. the wizard then skipped the save, because its fallback id happened to
+   *      equal the server default, so the board was never recorded at all.
+   *
+   * The fix is that the branch now goes through publicConfig() like every other
+   * path. These assertions pin the response shape and the save behaviour.
+   */
+  const serverSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+
+  // The response itself. buildStateResponse reads the live config, so this can be
+  // called directly and must carry the board list either way.
+  const { buildStateResponse } = require(path.join(ROOT, 'server.js'));
+  const state = buildStateResponse();
+  ok('the state response carries specId', !!state.config.specId, String(state.config.specId));
+  ok('the state response carries every board as a preset',
+    Array.isArray(state.config.specPresets) && state.config.specPresets.length >= 2,
+    JSON.stringify(state.config.specPresets));
+  ok('and both of this app\'s boards are in it',
+    state.config.specPresets.some((p) => p.id === 'aqa-gcse')
+    && state.config.specPresets.some((p) => p.id === 'eduqas-alevel'),
+    JSON.stringify(state.config.specPresets.map((p) => p.id)));
+  ok('the no-report branch does not hand-roll its config any more',
+    /config: Object\.assign\(publicConfig\(cfg, readingSample\)/.test(serverSrc),
+    'the firstRun branch builds its own config object again');
+  ok('and the API key still cannot reach the page',
+    !/"apiKey"/.test(JSON.stringify(state.config)), 'apiKey appeared in the public config');
+
+  // The wizard must write the choice rather than assume the default is the choice.
+  // Comments are stripped first: the explanation of the bug legitimately contains
+  // the phrase "chosen === already", which made a naive regex match its own note.
+  const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const saveBoard = stripComments(
+    page.slice(page.indexOf('function introSaveBoard'), page.indexOf('function introUpload')));
+  ok('the wizard no longer skips saving when the choice matches the server default',
+    !/chosen\s*===\s*already/.test(saveBoard),
+    'the wizard still skips the save when the choice equals the server default');
+  ok('and it always posts the chosen board',
+    /apiPost\('\/api\/config', \{ specId: chosen \}\)/.test(saveBoard));
+
+  // The dropdown must not be able to collapse to one option if presets go missing.
+  const fill = stripComments(
+    page.slice(page.indexOf('function fillSpecSelect'), page.indexOf('function fillSpecSelect') + 900));
+  ok('the board dropdown falls back to exactly one labelled option, not an empty list',
+    /\[\{ id: 'eduqas-alevel'/.test(fill),
+    'no fallback option is defined');
+  ok('and that fallback is reached only when specPresets is absent or empty',
+    /config\.specPresets\.length[\s\S]{0,20}\?/.test(fill),
+    'the fallback is not guarded on specPresets being present');
+}
+
 section('11u. The marking card follows live config');{
   const { publicConfig } = require(path.join(ROOT, 'server.js'));
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');

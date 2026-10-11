@@ -6842,8 +6842,20 @@
   function introSaveBoard(next) {
     var status = document.getElementById('introBoardStatus');
     var chosen = introChosenSpec;
-    var already = state.data && state.data.config && state.data.config.specId;
-    if (!chosen || chosen === already) { next(); return; }
+    if (!chosen) { next(); return; }
+    /*
+     * ALWAYS write the choice, even when it matches the saved one.
+     *
+     * This used to skip the save when `chosen === already`, on the reasoning that
+     * nothing had changed. That is wrong on a FIRST RUN: the server is sitting on
+     * its default, the UI's fallback happens to be the same id, so "nothing
+     * changed" was true while the student had never actually chosen anything —
+     * and their board was never recorded. If they had wanted a different board
+     * they could not have picked it, because the list only had one entry.
+     *
+     * Writing it is idempotent, so the only cost of always saving is one tiny
+     * request that cannot go wrong in a way that matters.
+     */
     if (status) { setText(status, 'Saving…'); }
     apiPost('/api/config', { specId: chosen }).then(function (res) {
       if (res && res.config && state.data) { state.data.config = res.config; }

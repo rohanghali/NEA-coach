@@ -2142,6 +2142,23 @@ function buildStateResponse() {
   const readingSample = !!(current && !current.error && current.usedSample);
 
   if (!report) {
+    /*
+     * No report yet — a brand-new install, or one that has never run a check.
+     *
+     * This branch used to hand-roll its own config object, and that object was
+     * missing `specId` and `specPresets`. The consequences were not cosmetic:
+     *
+     *   - the exam-board dropdown fell back to a SINGLE hard-coded Eduqas option,
+     *     so there was no way to choose AQA at all;
+     *   - the first-run wizard's board list came back EMPTY for the same reason;
+     *   - and because the client's fallback id matched the server's default, the
+     *     wizard's "nothing changed, skip the save" shortcut fired, so the board
+     *     was never written. A student could not pick their board, and their
+     *     config silently stayed on the default.
+     *
+     * It now goes through publicConfig() exactly like the normal path, so the two
+     * can never drift again. That was the whole point of publicConfig.
+     */
     return {
       ok: true,
       version: VERSION,
@@ -2160,19 +2177,11 @@ function buildStateResponse() {
         error: null,
       },
       cost: readJsonSafe(COST_PATH, { totalGbp: 0, totalTokensIn: 0, totalTokensOut: 0, lastScanGbp: 0, scans: 0, pricingKnown: true, currency: 'GBP' }),
-      config: {
-        deckDir: cfg.deckDir,
-        deckFile: cfg.deckFile,
-        pdfFile: cfg.pdfFile || null,
-        pdfName: cfg.pdfFile ? path.basename(cfg.pdfFile) : null,
-        model: cfg.model,
-        apiKeySet: !!cfg.apiKey,
-        watch: !!cfg.watch,
+      config: Object.assign(publicConfig(cfg, readingSample), {
         specLoaded: false,
         specName: null,
         specCriteriaCount: 0,
-        readingSample: readingSample,
-      },
+      }),
       firstRun: true,
     };
   }
