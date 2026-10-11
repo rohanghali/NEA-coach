@@ -5825,6 +5825,28 @@ section('12ah. The allowance counts the right model, and the tab has colour');
     /\.suggestion-card \{[\s\S]{0,120}border-left: 3px solid var\(--accent\)/.test(css)
     && /\.suggestion-card \{[\s\S]{0,200}background: var\(--accent-soft\)/.test(css)
     && /\.suggest-heading \{[^}]*color: var\(--accent-dark\)/.test(css));
+  /*
+   * "the things to add should not have severities."
+   *
+   * There was a fourth badge on every suggestion reading "Would help a lot" or "Small gain", drawn
+   * in the same greens and greys the FIX LIST uses for severity. The data was not severity — the
+   * prompt is explicit that impact is how much fixing something would GAIN, as against severity,
+   * which is what it is costing now — but a colour-coded rating at the end of every row reads as
+   * one regardless of what the field is called. Suggestions are not faults.
+   *
+   * Nothing is lost: the list is ranked by gain per unit of effort, and the panel says so.
+   */
+  ok('a suggestion carries no gain or severity rating',
+    // Matched as CODE, not as the word: the comments explaining the removal mention all three.
+    !/function impactChipText/.test(html) && !/\.impact-(high|medium|low) \{/.test(css)
+    && !/'pill impact-'/.test(html),
+    'a graded, colour-coded badge on every suggestion makes it a second, milder fix list');
+  ok('and the ranking that carried the same meaning is still there',
+    /worthScore/.test(html) && /ordered by how much they would help/.test(html),
+    'removing the badge must not remove the ORDER, which is what actually conveys gain');
+  ok('the time estimate stays, because that is effort and not a grade',
+    /effortClass\(s\.effort\)/.test(html));
+
   ok('and its grey intro paragraph became a tinted note',
     /\.suggest-intro \{/.test(css) && !/Things you could add[\s\S]{0,40}cls: 'muted small'/.test(html));
   /*
@@ -6034,8 +6056,18 @@ section('12aj. Every section is a tab');
     'its panels are still the thing setTab() shows');
   ok('and the three sections that share it drive it by name',
     /inner: 'fix'/.test(html) && /inner: 'suggest'/.test(html) && /inner: 'coverage'/.test(html));
+  /*
+   * The filter CARD, by an id of its own. This looked up "filterHeading" — which is the id of the
+   * <h2> INSIDE the card, because the card itself had none — so the heading was hidden and the
+   * severity chips, the page box and the search box stayed on screen under every other section.
+   * The severity chips appearing at the top of Things to add is what was reported.
+   */
   ok('the filters are hidden outside the Fix list, since they filter only that list',
-    /getElementById\('tiles'\)/.test(html) && /getElementById\('filterHeading'\)/.test(html));
+    /getElementById\('tiles'\)/.test(html) && /getElementById\('filterCard'\)/.test(html)
+    && /<section class="card" id="filterCard" aria-labelledby="filterHeading">/.test(html),
+    'hiding the heading inside a card leaves the card itself on screen');
+  ok('and nothing looks the filters up by the heading id any more',
+    !/getElementById\('filterHeading'\)/.test(html));
 
   /* ---- and a page chip has to bring its section with it ------------------------- */
   ok('clicking a page in a finding switches the SECTION, not just the inner tab',

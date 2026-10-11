@@ -840,9 +840,10 @@
   .effort-quick { background: var(--good-soft); border-color: var(--good-line); color: var(--good); }
   .effort-medium { background: var(--info-soft); border-color: var(--info-line); color: var(--info); }
   .effort-big { background: var(--medium-soft); border-color: var(--medium-line); color: var(--medium); }
-  .impact-high { background: var(--good-soft); border-color: var(--good-line); color: var(--good); font-weight: 700; }
-  .impact-medium { background: var(--info-soft); border-color: var(--info-line); color: var(--info); }
-  .impact-low { background: var(--fill-soft); border-color: var(--line-strong); color: var(--muted); }
+  /*
+   * .impact-high / .impact-medium / .impact-low were here, styling the gain badge with the fix
+   * list's severity colours — which is most of why it read as a severity. Removed with the badge.
+   */
   /*
    * The suggestions panel is its own kind of thing: nothing in it is a mistake, so it should not
    * wear the fix list's severity colours. It takes the accent, which also gives the "Worth adding"
@@ -3452,7 +3453,15 @@
   <div class="panel" id="panelFixlist">
   <section aria-label="Summary" id="tiles"></section>
 
-  <section class="card" aria-labelledby="filterHeading">
+  <!--
+    The fix-list filters, which belong to the Fix list alone.
+
+    This had no id of its own: it pointed at "filterHeading", and that is the id of the <h2>
+    INSIDE it. So hiding the thing called filterHeading hid the heading and left the whole card on
+    screen — which is why the severity chips, the page box and the search box were appearing at the
+    top of Things to add.
+  -->
+  <section class="card" id="filterCard" aria-labelledby="filterHeading">
     <h2 class="card-title" id="filterHeading">Filter the fix list</h2>
     <!--
       On a phone these controls fold away behind a summary, because they are not
@@ -4057,7 +4066,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.54';
+  var PAGE_BUILD = '1.0.55';
 
   var state = {
     data: null,
@@ -5565,9 +5574,14 @@
      */
     var filtersOn = id === 'fixlist';
     var tiles = document.getElementById('tiles');
-    var filterHeading = document.getElementById('filterHeading');
+    /*
+     * The CARD, by its own id. The previous version looked this up as "filterHeading", which is
+     * the id of the heading inside the card — so the heading disappeared and the severity chips,
+     * the page number and the search box stayed on screen under every other section.
+     */
+    var filterCard = document.getElementById('filterCard');
     if (tiles) { tiles.style.display = filtersOn ? '' : 'none'; }
-    if (filterHeading) { filterHeading.style.display = filtersOn ? '' : 'none'; }
+    if (filterCard) { filterCard.style.display = filtersOn ? '' : 'none'; }
 
     /* Three of the sections are really one card with an inner tab set. */
     for (var m = 0; m < TOP_TABS.length; m++) {
@@ -6205,11 +6219,11 @@
     return 'Some work';
   }
 
-  function impactChipText(impact) {
-    if (impact === 'high') { return 'Would help a lot'; }
-    if (impact === 'low') { return 'Small gain'; }
-    return 'Would help somewhat';
-  }
+  /*
+   * impactChipText lived here, wording the gain badge as "Would help a lot" or "Small gain". It is
+   * gone with the badge — an unused function is worse than no function, because it suggests a
+   * feature that no longer exists. The `impact` field itself stays: the ranking reads it.
+   */
 
   function effortClass(effort) {
     if (effort === 'minutes') { return 'effort-quick'; }
@@ -6277,11 +6291,23 @@
   function suggestionCard(s, rank) {
     var kids = [];
 
+    /*
+     * Rank, "Add this", and how long it would take. NOT how much it would gain.
+     *
+     * There was a fourth badge here reading "Would help a lot" or "Small gain", drawn in the same
+     * greens and greys the FIX LIST uses for severity. The data behind it was not severity — the
+     * prompt is explicit that impact is how much fixing something would GAIN, as against severity,
+     * which is what it is costing now — but a colour-coded rating on the right of every row reads
+     * as one whatever the field is called. These are suggestions, not faults, and grading them was
+     * making the section look like a second, milder fix list.
+     *
+     * Nothing is lost: the list is already ranked by gain per unit of effort (see suggestionsList),
+     * the panel says so, and the time estimate stays on the card.
+     */
     var top = el('div', { cls: 'finding-top' }, [
       el('span', { cls: 'rank', text: String(rank) }),
       el('span', { cls: 'pill kind-add', text: 'Add this' }),
-      el('span', { cls: 'pill ' + effortClass(s.effort), text: effortChipText(s.effort) }),
-      el('span', { cls: 'pill impact-' + (s.impact || 'medium'), text: impactChipText(s.impact) })
+      el('span', { cls: 'pill ' + effortClass(s.effort), text: effortChipText(s.effort) })
     ]);
     kids.push(top);
 

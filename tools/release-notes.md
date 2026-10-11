@@ -18,21 +18,17 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Fixed: the Fix list was showing Things to add and the Coverage grid inside it, on a phone.** A
-  phone-only rule brought the *old* tab strip back on screen, and it came after the rule that hides
-  it — so on a narrow screen the three sections appeared a second time inside one of them. Three
-  sections that are already tabs, listed again inside a fourth, which is exactly the confusion the
-  tabs were meant to remove. Desktop was never affected.
-- **Check now is available from every section.** There is now one in the header, so you no longer
-  have to go back to Overview to run a check. It mirrors the real button exactly — same words, same
-  enabled state, same job. On a phone the floating button along the bottom now also appears in
-  every section; it used to wait until the Overview button had scrolled past the top, and a hidden
-  button measures as *still on screen*, so it never showed up in the sections where you most wanted
-  it.
-- **Overview is pinned at the start of the strip**, as Settings is at the end. Those two are the
-  ones you need without hunting; the nine in between scroll.
-- The header now **wraps onto two lines on a phone** — the new button pushed the read-only badge off
-  the right-hand edge.
+- **Fixed: the Fix list's filters were showing at the top of "Things to add" and "Coverage grid"** —
+  the severity chips (Critical 2, High 5, Medium 20…), the page box, the search box and "Showing 30
+  of 30 findings". The filter card had no id of its own, so the app was hiding its *heading* and
+  leaving the card on screen. It has an id now, and goes away with the Fix list.
+- **"Things to add" is ranked, with no severities on it.** The list is ordered by how much each idea
+  would help for the time it takes, and the numbers down the side are that ranking. What has gone is
+  the **graded badge** that used to sit on every suggestion — "Would help a lot" or "Small gain", in
+  the same greens and greys the Fix list uses for severity. The data was never severity (the prompt
+  is explicit that it is how much fixing something would *gain*), but a colour-coded rating at the
+  end of every row reads as one whatever it is called. Suggestions are not faults. The time estimate
+  stays, because that is effort and not a grade.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 
