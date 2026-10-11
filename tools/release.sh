@@ -100,6 +100,10 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 **New in this version**
 
 - Settings save themselves. Change the model, the marking model or Predict a mark and it is applied immediately, with a "Saved" confirmation - no Save button to forget. The folder path keeps its own button, because that is the one that can be wrong.
+- The predicted mark no longer contradicts itself. It showed a headline of 94 while
+  the criteria beneath added up to 75 with no total and no explanation. Each number
+  is now labelled, the criteria table states its own total, and the reason for the
+  difference is given in marks throughout instead of mixing marks and percentages.
 - The model dropdowns are readable. Every option used to repeat an identical
   "about 47 requests per check" suffix, so all thirteen rows looked the same apart
   from the model name. The figure is on the line underneath instead, where it
