@@ -6071,7 +6071,7 @@ section('12aj. Every section is a tab');
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
 
-  const SECTIONS = ['overview', 'fixlist', 'suggest', 'ask', 'predicted', 'coverage', 'since',
+  const SECTIONS = ['overview', 'fixlist', 'spag', 'suggest', 'ask', 'predicted', 'coverage', 'since',
     // Statistics AFTER Past checks, as asked.
     'slides', 'history', 'stats', 'info', 'settings'];
   // class="toptab[^"]*" rather than "toptab", because the pinned Settings button carries a
@@ -6081,7 +6081,7 @@ section('12aj. Every section is a tab');
 
   const panels = [...html.matchAll(/<div class="panel" id="panel([A-Za-z]+)">/g)].map((m) => m[1]);
   eq('and the panels they wrap are the expected ones', panels.join(','),
-    'Overview,Settings,Since,Predicted,Fixlist,Ask,Slides,Info,History,Stats,Cost,Connect');
+    'Overview,Settings,Since,Predicted,Fixlist,Spag,Ask,Slides,Info,History,Stats,Cost,Connect');
 
   ok('every tab points at a panel that exists, and only the ones it needs',
     /panels: \['Fixlist'\], inner: 'fix'/.test(html)
@@ -6093,7 +6093,7 @@ section('12aj. Every section is a tab');
   ok('the page is a flex column, which is what makes the order settable at all',
     /\.page \{ display: flex; flex-direction: column; \}/.test(css));
   const orders = [...css.matchAll(/#panel([A-Za-z]+) \{ order: (\d+); \}/g)].map((m) => [m[1], Number(m[2])]);
-  eq('every panel has an order', orders.length, 12);
+  eq('every panel has an order', orders.length, 13);
   const sorted = orders.slice().sort((a, b) => a[1] - b[1]).map((x) => x[0]).join(',');
   /*
    * "Use it on your phone" first, then the information card, then the allowance meter. The
@@ -6715,7 +6715,7 @@ section('12an. Settings that are shown must be settings that are saved');
    * The panels are panelOverview, panelSettings... and every tab pointed at panel-overview.
    */
   const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]);
-  const wanted = ['overview', 'fixlist', 'suggest', 'ask', 'predicted', 'coverage', 'since', 'slides',
+  const wanted = ['overview', 'fixlist', 'spag', 'suggest', 'ask', 'predicted', 'coverage', 'since', 'slides',
     'history', 'stats', 'info', 'settings'].map((x) => 'panel' + x.charAt(0).toUpperCase() + x.slice(1));
   ok('every tab controls a panel that exists',
     wanted.every((id) => controls.includes(id)) && !controls.some((c) => /^panel-/.test(c)),
@@ -6782,6 +6782,50 @@ section('12ap. Asking about the work');
   const aiSrc = fs.readFileSync(path.join(ROOT, 'lib', 'ai.js'), 'utf8');
 
   /* ---- the section exists ---- */
+  /* ---- SPaG ---- */
+  /*
+   * Asked for: "create a spag section in the top bar."
+   *
+   * The honest version of it. The free checks hold a FIXED list of common misspellings and a set of
+   * British/American pairs. That is not a spell-checker, and it does not read grammar or punctuation
+   * at all — so the section leads with what it cannot do. Saying "no spelling problems found" without
+   * that caveat would leave a student believing their writing had been checked when sixty-three known
+   * words had been looked for.
+   */
+  ok('there is a SPaG section in the strip',
+    /data-tab="spag"/.test(html) && /id="panelSpag"/.test(html) && /\{ id: 'spag', panels: \['Spag'\] \}/.test(html));
+  ok('and it says it is not a spell-checker, before it says anything else',
+    /not a spell-checker/.test(html) && /do not read grammar or punctuation at all/.test(html));
+  ok('it gathers only the two rules that are about how the work reads',
+    /function spagFindings/.test(html)
+    && /rule === 'common-misspellings' \|\| rule === 'terminology-inconsistency'/.test(html));
+  ok('it separates spelling from British/American wording',
+    /host\.appendChild\(el\('h3', \{ cls: 'spag-sub', text: 'Spelling' \}\)\)/.test(html)
+    && /text: 'British or American'/.test(html));
+  ok('and it says so in its own block when nothing was found, not "all clear"',
+    /That is a good sign, not a guarantee/.test(html));
+  ok('it closes by naming what it cannot check, with a way to have it read',
+    /What this does not check/.test(html) && /Ask AI to read it/.test(html));
+
+  /* ---- both assistants ---- */
+  ok('there is a button for Claude as well as ChatGPT',
+    /id="btnBriefingClaude"/.test(html) && /function openClaude/.test(html)
+    && /https:\/\/claude\.ai\/new/.test(html));
+  ok('and both open in a new tab rather than replacing the app',
+    /window\.open\(url, '_blank'\)/.test(html));
+
+  /* ---- why it is worth doing ---- */
+  /*
+   * The question that stops people using it. The answer is not "it is another AI" — it is that the
+   * assistant holds every page in the student's own words, can be asked without limit, and does not
+   * come out of the daily allowance.
+   */
+  ok('the section explains why sending it elsewhere helps',
+    /Why send it to ChatGPT or Claude\?/.test(html)
+    && /every page in your own words/.test(html)
+    && /as many questions as you like/.test(html)
+    && /does <strong>not use any of your daily allowance/.test(html));
+
   ok('there is an Ask AI section in the strip',
     /data-tab="ask"/.test(html) && /id="panelAsk"/.test(html)
     && /\{ id: 'ask', panels: \['Ask'\] \}/.test(html));

@@ -1098,6 +1098,53 @@
   .empty p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
   .empty .btn { margin-top: 4px; }
 
+  /* ---------- SPaG ---------- */
+
+  .spag-count { margin: 0 0 14px; font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .spag-clear { margin: 0 0 14px; font-size: 14.5px; line-height: 1.6; color: var(--good); font-weight: 600; }
+  .spag-sub {
+    margin: 18px 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .spag-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .spag-row:last-child { border-bottom: none; }
+  .spag-what { flex: 1 1 260px; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+  .spag-pages { display: inline-flex; flex-wrap: wrap; gap: 5px; }
+
+  /*
+   * The limits, given their own block rather than a line of small print. What a check cannot see is
+   * as important as what it found, and a student who reads only the findings would take a clean SPaG
+   * page as a clean piece of writing.
+   */
+  .spag-limits {
+    margin: 22px 0 0;
+    padding: 13px 14px;
+    background: var(--fill-soft);
+    border-left: 3px solid var(--line-strong);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .spag-limits-head {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .spag-limits p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+
   /* ---------- Ask AI ---------- */
 
   .ask-lede { margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: var(--ink-2); max-width: 64ch; }
@@ -1184,6 +1231,30 @@
   }
   .ask-export .muted { flex: 1 1 220px; }
 
+  /*
+   * Why it is worth sending the file somewhere else, said properly. The question "why would I do
+   * that?" is the one that stops people using it.
+   */
+  .ask-why {
+    margin: 20px 0 0;
+    padding: 13px 14px;
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .ask-why-head {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+  }
+  .ask-why-list { margin: 0; padding-left: 18px; }
+  .ask-why-list li { margin: 0 0 5px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+  .ask-why-list li:last-child { margin-bottom: 0; }
+
   .ask-fallback { margin-top: 12px; }
   .ask-fallback textarea {
     width: 100%;
@@ -1243,6 +1314,7 @@
 
   #panelOverview { order: 10; }
   #panelFixlist { order: 20; }
+  #panelSpag { order: 22; }
   #panelAsk { order: 25; }
   #panelPredicted { order: 30; }
   #panelSince { order: 40; }
@@ -3328,6 +3400,7 @@
     <button class="toptab toptab-start" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panelOverview" data-tab="overview" type="button">Overview</button>
     <div class="toptabs-scroll" id="topTabsScroll">
       <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panelFixlist" data-tab="fixlist" type="button">Fix list</button>
+      <button class="toptab" id="topTab-spag" role="tab" aria-selected="false" aria-controls="panelSpag" data-tab="spag" type="button">SPaG</button>
       <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panelSuggest" data-tab="suggest" type="button">Things to add</button>
       <button class="toptab" id="topTab-ask" role="tab" aria-selected="false" aria-controls="panelAsk" data-tab="ask" type="button">Ask AI</button>
       <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panelPredicted" data-tab="predicted" type="button">Predicted mark</button>
@@ -3860,6 +3933,27 @@
   claim about someone's coursework is the worst thing this app could do. The scope decides what
   travels with the question — a finding's pages, one page, or an outline of the deck.
 -->
+<!--
+  SPaG: spelling, punctuation and grammar.
+
+  Named for what it is, and honest about what it is not. The free checks hold a fixed list of common
+  misspellings and a set of UK/US word pairs; they are not a spell-checker and they do not look at
+  grammar or punctuation at all. A section that implied otherwise would leave a student believing
+  their writing had been checked when only forty known words had been looked for.
+-->
+<div class="panel" id="panelSpag">
+  <section class="card" aria-labelledby="spagHeading">
+    <h2 class="card-title" id="spagHeading">Spelling, punctuation and grammar</h2>
+    <p class="ask-lede" id="spagLede">
+      The free checks look for a fixed list of <strong>common misspellings</strong> and for words that
+      switch between British and American spelling. They are <strong>not a spell-checker</strong>: they
+      cannot see a word that is not on their list, and they do not read grammar or punctuation at all.
+    </p>
+
+    <div id="spagBody"></div>
+  </section>
+</div>
+
 <div class="panel" id="panelAsk">
   <section class="card" aria-labelledby="askHeading">
     <h2 class="card-title" id="askHeading">Ask about your work</h2>
@@ -3889,9 +3983,28 @@
     <div class="ask-export">
       <button class="btn btn-secondary btn-sm" id="btnBriefing" type="button">Copy everything for ChatGPT</button>
       <button class="btn btn-quiet btn-sm" id="btnBriefingOpen" type="button">Open ChatGPT</button>
+      <button class="btn btn-quiet btn-sm" id="btnBriefingClaude" type="button">Open Claude</button>
       <button class="btn btn-quiet btn-sm" id="btnBriefingDownload" type="button">Save as a file</button>
-      <span class="muted small" id="askExportNote">Every page in your own words, plus what the check found. Paste it into any AI assistant and ask it anything.</span>
+      <span class="muted small" id="askExportNote">Copy it, then paste it into the assistant.</span>
     </div>
+    <!--
+      WHY SENDING IT SOMEWHERE ELSE IS WORTH DOING. The app can only ask as many questions as the daily
+      allowance allows, and each one is a request spent. An assistant holding this file can answer as
+      many as the student likes, for nothing — and because the file carries every page in their own
+      words, it can talk about page 34 instead of giving advice that would fit anybody's project.
+    -->
+    <div class="ask-why">
+      <span class="ask-why-head">Why send it to ChatGPT or Claude?</span>
+      <ul class="ask-why-list">
+        <li>The file holds <strong>every page in your own words</strong>, so the assistant can point at
+          page 34 instead of giving advice that would fit anybody's coursework.</li>
+        <li>You can ask it <strong>as many questions as you like</strong> — there is no limit, and it
+          costs nothing.</li>
+        <li>It does <strong>not use any of your daily allowance</strong>. That is for checking your
+          work; this is for asking about it.</li>
+      </ul>
+    </div>
+
     <!--
       The clipboard needs a secure context, and http://192.168.x.x on a phone is not one — so the text
       is put in a box you can select from when the copy cannot be done for you.
@@ -4191,6 +4304,7 @@
   var TOP_TABS = [
     { id: 'overview', panels: ['Overview'] },
     { id: 'fixlist', panels: ['Fixlist'], inner: 'fix' },
+    { id: 'spag', panels: ['Spag'] },
     { id: 'suggest', panels: ['Fixlist'], inner: 'suggest' },
     { id: 'ask', panels: ['Ask'] },
     { id: 'predicted', panels: ['Predicted'] },
@@ -4456,7 +4570,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.67';
+  var PAGE_BUILD = '1.0.68';
 
   var state = {
     data: null,
@@ -5731,6 +5845,106 @@
    * leaving them to find out from the report afterwards.
    */
   /* ------------------------------------------------------------------ *
+   * SPaG: spelling, punctuation and grammar
+   * ------------------------------------------------------------------ */
+
+  /** The two rules that are about how the work reads, rather than how it looks or what it says. */
+  function spagFindings() {
+    var list = allFindings();
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var rule = String(list[i].rule || '');
+      if (rule === 'common-misspellings' || rule === 'terminology-inconsistency') { out.push(list[i]); }
+    }
+    return out;
+  }
+
+  /** One line: what it is, which pages, and the offer to ask about it. */
+  function spagRow(f) {
+    var row = el('div', { cls: 'spag-row' });
+    row.appendChild(el('span', { cls: 'spag-what', text: String(f.title || '') }));
+
+    var pages = el('span', { cls: 'spag-pages' });
+    var slides = f.slides || [];
+    for (var i = 0; i < slides.length; i++) {
+      (function (page) {
+        pages.appendChild(el('button', {
+          cls: 'pagechip',
+          text: String(page),
+          attrs: { type: 'button', 'aria-label': 'Show page ' + page },
+          on: { click: function () { jumpToPage(page); } },
+        }));
+      })(slides[i]);
+    }
+    row.appendChild(pages);
+
+    row.appendChild(askMiniButton(
+      'Where exactly is this, and what should it say instead?',
+      { type: 'finding', id: f.id },
+      'a spelling or wording finding: ' + String(f.title || '').slice(0, 80)
+    ));
+    return row;
+  }
+
+  /**
+   * The SPaG section.
+   *
+   * It leads with what the checks CANNOT do, because that is the honest thing to lead with. A fixed
+   * list of sixty-odd words is not a spell-checker, and saying "no spelling problems found" without
+   * that caveat would leave a student believing their writing had been checked when forty known words
+   * had been looked for. The grammar and punctuation half of SPaG is not checked at all — which is
+   * exactly what the Ask button at the bottom is for.
+   */
+  function renderSpag() {
+    var host = ui.spagBody;
+    if (!host) { return; }
+    clearNode(host);
+
+    var list = spagFindings();
+    var spelling = [];
+    var wording = [];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].rule) === 'terminology-inconsistency') { wording.push(list[i]); }
+      else { spelling.push(list[i]); }
+    }
+
+    if (!list.length) {
+      host.appendChild(el('p', { cls: 'spag-clear', text:
+        'Nothing on the list of common misspellings appears in your work, and your spelling does not '
+        + 'switch between British and American forms. That is a good sign, not a guarantee.' }));
+    } else {
+      host.appendChild(el('p', { cls: 'spag-count', text:
+        plural(list.length, 'thing') + ' to fix — ' + plural(spelling.length, 'misspelling')
+        + ' and ' + plural(wording.length, 'wording mix') + '.' }));
+    }
+
+    if (spelling.length) {
+      host.appendChild(el('h3', { cls: 'spag-sub', text: 'Spelling' }));
+      for (var s = 0; s < spelling.length; s++) { host.appendChild(spagRow(spelling[s])); }
+    }
+    if (wording.length) {
+      host.appendChild(el('h3', { cls: 'spag-sub', text: 'British or American' }));
+      for (var w = 0; w < wording.length; w++) { host.appendChild(spagRow(wording[w])); }
+    }
+
+    /* What it does not do, in its own block, because it is not a footnote. */
+    var limits = el('div', { cls: 'spag-limits' });
+    limits.appendChild(el('span', { cls: 'spag-limits-head', text: 'What this does not check' }));
+    limits.appendChild(el('p', { text:
+      'It looks for a fixed list of common misspellings and a set of British/American pairs. It cannot '
+      + 'find a word that is not on that list, and it does not read grammar, punctuation or sentence '
+      + 'structure at all. An assistant reading your actual pages can do both — and it does not use any '
+      + 'of your daily allowance.' }));
+    limits.appendChild(askMiniButton(
+      'Read my writing and tell me about the spelling, grammar and punctuation problems you can see.',
+      { type: 'deck' },
+      'the spelling, grammar and punctuation of your whole portfolio',
+      'Ask AI to read it'
+    ));
+    host.appendChild(limits);
+  }
+
+  /* ------------------------------------------------------------------ *
    * Ask AI
    * ------------------------------------------------------------------ */
 
@@ -5973,10 +6187,18 @@
     });
   }
 
-  /** Open the assistant. Its own button, because it is its own decision. */
-  function openChatGpt() {
-    try { window.open('https://chatgpt.com/', '_blank'); } catch (err) { /* a blocked popup is fine */ }
+  /**
+   * Open an assistant. Its own button, because it is its own decision.
+   *
+   * Both, because they are good at different things and a student may well have one and not the
+   * other. The file is plain markdown with the rules in it, so either can use it.
+   */
+  function openAssistant(which) {
+    var url = which === 'claude' ? 'https://claude.ai/new' : 'https://chatgpt.com/';
+    try { window.open(url, '_blank'); } catch (err) { /* a blocked popup is fine */ }
   }
+  function openChatGpt() { openAssistant('chatgpt'); }
+  function openClaude() { openAssistant('claude'); }
 
   /** The same file, as a download, for anyone who would rather keep it. */
   function downloadBriefing() {
@@ -6015,6 +6237,7 @@
     on(ui.btnAsk, 'click', function () { askQuestion(); });
     on(ui.btnBriefing, 'click', function () { copyBriefing(); });
     on(ui.btnBriefingOpen, 'click', function () { openChatGpt(); });
+    on(ui.btnBriefingClaude, 'click', function () { openClaude(); });
     on(ui.btnBriefingDownload, 'click', function () { downloadBriefing(); });
     /*
      * Ctrl/Cmd+Enter sends. A question often runs to a line or two, and a plain Enter should make a
@@ -9062,6 +9285,7 @@
       renderControls();
       renderTabs();
       renderFixList();
+      renderSpag();
       renderAsk();
       renderCoverage();
       renderSlides();
@@ -9605,7 +9829,8 @@
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
       'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'checkPlan',
-      'askChips', 'askAbout', 'askInput', 'askCost', 'btnAsk', 'askAnswer', 'askInline',
+      'askChips', 'askAbout', 'askInput', 'askCost', 'btnAsk', 'askAnswer', 'askInline', 'spagBody',
+      'btnBriefingClaude',
       'btnBriefing', 'btnBriefingOpen', 'btnBriefingDownload', 'askFallback', 'askFallbackText', 'askExportNote', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
