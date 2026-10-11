@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.70';
+const VERSION = '1.0.71';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -2923,6 +2923,29 @@ function askContext(deck, scope) {
         pageTextForAnswer(slides, pages, 1400) || '(nothing readable)',
       ].filter(Boolean).join('\n');
     }
+  } else if (type === 'spag') {
+    /*
+     * Every page, for a proper read of the writing.
+     *
+     * This is the one scope where the whole document travels, because a spelling mistake can be
+     * anywhere and a sample would miss it. It is still one request: the words alone are well within
+     * what a model can read at once, and no images are needed to check grammar. The per-page cap and
+     * the total cap are there so a runaway portfolio cannot turn one question into a huge request.
+     */
+    about = 'the spelling, grammar and punctuation of your whole portfolio';
+    const PER_PAGE = 2200;
+    const TOTAL = 120000;
+    const parts = [];
+    let spent = 0;
+    for (const slide of slides) {
+      if (spent >= TOTAL) { parts.push('--- (the rest of the portfolio was too long to include) ---'); break; }
+      const body = String(slide.text || '').replace(/\s+/g, ' ').trim();
+      const chunk = body.slice(0, PER_PAGE);
+      spent += chunk.length;
+      parts.push('--- PAGE ' + slide.index + (slide.title ? ' — "' + String(slide.title).slice(0, 70) + '"' : '')
+        + ' ---\n' + (chunk || '(no text on this page — images only)'));
+    }
+    body = 'THE WHOLE PORTFOLIO, PAGE BY PAGE:\n\n' + parts.join('\n\n');
   } else if (type === 'page' && scope.page != null) {
     const n = Number(scope.page);
     about = 'page ' + n + ' of their portfolio';

@@ -6071,7 +6071,7 @@ section('12aj. Every section is a tab');
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
 
-  const SECTIONS = ['overview', 'fixlist', 'spag', 'suggest', 'ask', 'predicted', 'coverage', 'since',
+  const SECTIONS = ['overview', 'fixlist', 'suggest', 'ask', 'predicted', 'coverage', 'spag', 'since',
     // Statistics AFTER Past checks, as asked.
     'slides', 'history', 'stats', 'info', 'settings'];
   // class="toptab[^"]*" rather than "toptab", because the pinned Settings button carries a
@@ -6833,6 +6833,38 @@ section('12ap. Asking about the work');
     && /text: 'British or American'/.test(html));
   ok('and it says so in its own block when nothing was found, not "all clear"',
     /That is a good sign, not a guarantee/.test(html));
+  /* ---- checking the writing for real ---- */
+  /*
+   * The free checks cover a fixed list of words. Asked for: a way to check the WHOLE portfolio, which
+   * is the half no free check touches. It is one request, the whole document goes with it, and no page
+   * images are needed to read grammar.
+   */
+  ok('the SPaG section can have the whole portfolio read',
+    /id="btnSpagCheck"/.test(html) && /function runSpagCheck/.test(html)
+    && /scope: \{ type: 'spag' \}/.test(html));
+  ok('and the server sends every page for it, not a sample',
+    /type === 'spag'/.test(server) && /THE WHOLE PORTFOLIO, PAGE BY PAGE/.test(server)
+    && /for \(const slide of slides\)/.test(server),
+    'a spelling mistake can be anywhere, so a sample would miss it');
+  ok('but with a cap, so one runaway portfolio cannot become a huge request',
+    /const PER_PAGE = 2200/.test(server) && /const TOTAL = 120000/.test(server));
+  ok('it asks for the page, the mistake and the correction',
+    /List every mistake you find: the page, what is wrong, and what it should say instead/.test(html));
+  ok('and it says what it costs before it is pressed',
+    /id="spagCost"/.test(html) && /setText\(ui\.spagCost, state\.spagAsking \? 'Reading your portfolio…' : askCostText\(\)\)/.test(html));
+
+  /* ---- where it sits, and what the button says ---- */
+  ok('SPaG comes after Coverage grid in the strip',
+    (() => {
+      const order = [...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1]);
+      return order.indexOf('spag') === order.indexOf('coverage') + 1;
+    })(),
+    'asked for it to sit after Coverage grid');
+  ok('the copy button says "Copy all data" rather than naming one assistant',
+    /id="btnBriefing" type="button">Copy all data</.test(html)
+    && !/Copy everything for ChatGPT/.test(html),
+    'it works with any assistant, so the button should not claim otherwise');
+
   ok('it closes by naming what it cannot check, with a way to have it read',
     /What this does not check/.test(html) && /Ask AI to read it/.test(html));
 

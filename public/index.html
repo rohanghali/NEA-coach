@@ -1145,6 +1145,24 @@
   }
   .spag-limits p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
 
+  .spag-ai {
+    margin: 22px 0 0;
+    padding: 14px 15px;
+    background: var(--fill-soft);
+    border-radius: var(--radius-sm);
+  }
+  .spag-ai-head {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .spag-ai p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+  .spag-ai .ask-answer { background: var(--card); }
+
   /* ---------- Ask AI ---------- */
 
   .ask-lede { margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: var(--ink-2); max-width: 64ch; }
@@ -3416,11 +3434,11 @@
     <button class="toptab toptab-start" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panelOverview" data-tab="overview" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 7.4 8 3l5.4 4.4V13a.6.6 0 0 1-.6.6H3.2a.6.6 0 0 1-.6-.6z"/></svg><span class="tablabel">Overview</span></button>
     <div class="toptabs-scroll" id="topTabsScroll">
     <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panelFixlist" data-tab="fixlist" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="2.6" width="10.8" height="10.8" rx="1.6"/><path d="m5.4 8.2 1.9 1.9 3.5-4.1"/></svg><span class="tablabel">Fix list</span></button>
-    <button class="toptab" id="topTab-spag" role="tab" aria-selected="false" aria-controls="panelSpag" data-tab="spag" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12.4 8 3.6l4.4 8.8"/><path d="M5.5 9.6h5"/></svg><span class="tablabel">SPaG</span></button>
-    <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panelSuggest" data-tab="suggest" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.6"/><path d="M8 5.4v5.2M5.4 8h5.2"/></svg><span class="tablabel">Things to add</span></button>
+        <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panelSuggest" data-tab="suggest" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.6"/><path d="M8 5.4v5.2M5.4 8h5.2"/></svg><span class="tablabel">Things to add</span></button>
     <button class="toptab" id="topTab-ask" role="tab" aria-selected="false" aria-controls="panelAsk" data-tab="ask" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 5.2a1.8 1.8 0 0 1 1.8-1.8h7.2a1.8 1.8 0 0 1 1.8 1.8v3.8a1.8 1.8 0 0 1-1.8 1.8H7.3l-2.9 2.4v-2.4h-.6a1.8 1.8 0 0 1-1.8-1.8z"/></svg><span class="tablabel">Ask AI</span></button>
     <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panelPredicted" data-tab="predicted" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.8"/><circle cx="8" cy="8" r="2.6"/></svg><span class="tablabel">Predicted mark</span></button>
     <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panelCoverage" data-tab="coverage" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="2.8" width="4.2" height="4.2" rx="1"/><rect x="9" y="2.8" width="4.2" height="4.2" rx="1"/><rect x="2.8" y="9" width="4.2" height="4.2" rx="1"/><rect x="9" y="9" width="4.2" height="4.2" rx="1"/></svg><span class="tablabel">Coverage grid</span></button>
+<button class="toptab" id="topTab-spag" role="tab" aria-selected="false" aria-controls="panelSpag" data-tab="spag" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12.4 8 3.6l4.4 8.8"/><path d="M5.5 9.6h5"/></svg><span class="tablabel">SPaG</span></button>
     <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panelSince" data-tab="since" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.8"/><path d="M8 4.6V8l2.3 1.6"/></svg><span class="tablabel">Since your last check</span></button>
     <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panelSlides" data-tab="slides" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.6 2.6h6.2a.6.6 0 0 1 .6.6v6.2"/><rect x="2.6" y="5.6" width="7.8" height="7.8" rx="1.4"/></svg><span class="tablabel">Slides</span></button>
     <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panelHistory" data-tab="history" type="button"><svg class="tabicon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="4.4" width="10.8" height="9.2" rx="1.4"/><path d="M5.4 2.6v3M10.6 2.6v3M2.6 7.6h10.8"/></svg><span class="tablabel">Past checks</span></button>
@@ -3959,6 +3977,21 @@
     </p>
 
     <div id="spagBody"></div>
+
+    <!--
+      A real read of the writing, which is the half no free check covers. One request, and the whole
+      portfolio goes with it — the words alone, because grammar needs no pictures.
+    -->
+    <div class="spag-ai">
+      <span class="spag-ai-head">Have it read properly</span>
+      <p>The checks above only look for words on a fixed list. The AI can read every page and look for
+        spelling, grammar and punctuation properly, and tell you the page and what it should say.</p>
+      <div class="ask-actions">
+        <button class="btn btn-secondary btn-sm" id="btnSpagCheck" type="button">Check the whole portfolio</button>
+        <span class="muted small" id="spagCost"></span>
+      </div>
+      <div class="ask-answer" id="spagAnswer" hidden></div>
+    </div>
   </section>
 </div>
 
@@ -3989,7 +4022,7 @@
     <div class="ask-answer" id="askAnswer" hidden></div>
 
     <div class="ask-export">
-      <button class="btn btn-secondary btn-sm" id="btnBriefing" type="button">Copy everything for ChatGPT</button>
+      <button class="btn btn-secondary btn-sm" id="btnBriefing" type="button">Copy all data</button>
       <button class="btn btn-quiet btn-sm" id="btnBriefingOpen" type="button">Open ChatGPT</button>
       <button class="btn btn-quiet btn-sm" id="btnBriefingClaude" type="button">Open Claude</button>
       <button class="btn btn-quiet btn-sm" id="btnBriefingDownload" type="button">Save as a file</button>
@@ -4326,11 +4359,11 @@
   var TOP_TABS = [
     { id: 'overview', panels: ['Overview'] },
     { id: 'fixlist', panels: ['Fixlist'], inner: 'fix' },
-    { id: 'spag', panels: ['Spag'] },
     { id: 'suggest', panels: ['Fixlist'], inner: 'suggest' },
     { id: 'ask', panels: ['Ask'] },
     { id: 'predicted', panels: ['Predicted'] },
     { id: 'coverage', panels: ['Fixlist'], inner: 'coverage' },
+    { id: 'spag', panels: ['Spag'] },
     { id: 'since', panels: ['Since'] },
     { id: 'slides', panels: ['Slides'] },
     { id: 'history', panels: ['History'] },
@@ -4592,7 +4625,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.70';
+  var PAGE_BUILD = '1.0.71';
 
   var state = {
     data: null,
@@ -5881,6 +5914,36 @@
     return out;
   }
 
+  /*
+   * The question sent for a proper read of the writing. Written out rather than left to the student,
+   * because the whole point of the button is that it knows what to ask for — and asking for page
+   * numbers, the correction, and the clumsy sentences is what turns a vague answer into a usable list.
+   */
+  var SPAG_QUESTION = 'Check the spelling, grammar and punctuation across my whole portfolio. '
+    + 'List every mistake you find: the page, what is wrong, and what it should say instead. '
+    + 'If a sentence is clumsy, unclear or too informal, say so too. '
+    + 'Be specific and brief. If you find nothing, say so plainly.';
+
+  /** Have the AI read the lot. One request, the whole portfolio, no pictures needed. */
+  function runSpagCheck() {
+    if (state.spagAsking) { return; }
+    state.spagAsking = true;
+    state.spagResult = null;
+    renderSpag();
+    apiPost('/api/ask', { question: SPAG_QUESTION, scope: { type: 'spag' } })
+      .then(function (res) {
+        state.spagAsking = false;
+        state.spagResult = res && typeof res === 'object' ? res : { ok: false, error: 'The app did not understand the reply.' };
+        renderSpag();
+        loadState();
+      })
+      .catch(function (err) {
+        state.spagAsking = false;
+        state.spagResult = { ok: false, error: friendlyError(err, 'Could not reach the app.') };
+        renderSpag();
+      });
+  }
+
   /** One line: what it is, which pages, and the offer to ask about it. */
   function spagRow(f) {
     var row = el('div', { cls: 'spag-row' });
@@ -5964,6 +6027,30 @@
       'Ask AI to read it'
     ));
     host.appendChild(limits);
+
+    /* The cost, and the answer, for the whole-portfolio check above. */
+    if (ui.spagCost) { setText(ui.spagCost, state.spagAsking ? 'Reading your portfolio…' : askCostText()); }
+    if (ui.btnSpagCheck) {
+      ui.btnSpagCheck.disabled = !!state.spagAsking;
+      setText(ui.btnSpagCheck, state.spagAsking ? 'Reading your portfolio…' : 'Check the whole portfolio');
+    }
+    if (ui.spagAnswer) {
+      clearNode(ui.spagAnswer);
+      var checked = state.spagResult;
+      if (!checked) {
+        show(ui.spagAnswer, false);
+      } else {
+        ui.spagAnswer.className = 'ask-answer' + (checked.ok ? '' : ' is-bad');
+        ui.spagAnswer.appendChild(el('span', {
+          cls: 'ask-answer-head',
+          text: checked.ok ? 'What the AI found' : 'That did not work',
+        }));
+        ui.spagAnswer.appendChild(el('div', {
+          text: checked.ok ? String(checked.answer || '') : String(checked.error || checked.reason || 'Something went wrong.'),
+        }));
+        show(ui.spagAnswer, true);
+      }
+    }
   }
 
   /* ------------------------------------------------------------------ *
@@ -6163,10 +6250,10 @@
     fetchBriefing().then(function (text) {
       state.briefingLoading = false;
       state.briefingText = text;
-      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy everything for ChatGPT'); }
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy all data'); }
     }).catch(function () {
       state.briefingLoading = false;
-      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy everything for ChatGPT'); }
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy all data'); }
     });
   }
 
@@ -6200,11 +6287,11 @@
     fetchBriefing().then(function (text) {
       state.briefingLoading = false;
       state.briefingText = text;
-      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy everything for ChatGPT'); }
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy all data'); }
       putOnClipboard(text);
     }).catch(function (err) {
       state.briefingLoading = false;
-      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy everything for ChatGPT'); }
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy all data'); }
       setBanner('ask', 'warn', friendlyError(err, 'The app could not build that file.'), true);
     });
   }
@@ -6257,6 +6344,7 @@
 
   function wireAsk() {
     on(ui.btnAsk, 'click', function () { askQuestion(); });
+    on(ui.btnSpagCheck, 'click', function () { runSpagCheck(); });
     on(ui.btnBriefing, 'click', function () { copyBriefing(); });
     on(ui.btnBriefingOpen, 'click', function () { openChatGpt(); });
     on(ui.btnBriefingClaude, 'click', function () { openClaude(); });
@@ -9852,6 +9940,7 @@
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
       'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'checkPlan',
       'askChips', 'askAbout', 'askInput', 'askCost', 'btnAsk', 'askAnswer', 'askInline', 'spagBody',
+      'btnSpagCheck', 'spagAnswer', 'spagCost',
       'btnBriefingClaude',
       'btnBriefing', 'btnBriefingOpen', 'btnBriefingDownload', 'askFallback', 'askFallbackText', 'askExportNote', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',

@@ -18,13 +18,15 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Every section in the strip has a small line icon** beside its name — a house for Overview, a
-  checked box for Fix list, a speech bubble for Ask AI, a target for Predicted mark, a grid for
-  Coverage grid, a clock, stacked pages, a bar chart, sliders, and so on.
-- They are deliberately plain: **one stroke weight, one 16-unit grid, two or three lines each**,
-  held back slightly until you hover or pick that section.
-- Their colour comes from the label beside them, so they **invert correctly on the selected tab**
-  and work in both the light and dark themes without any special cases.
+- **The SPaG section can now check the whole portfolio properly.** The free checks only look for a
+  fixed list of 63 words, so there is a **Check the whole portfolio** button: the AI reads **every
+  page** and lists the mistakes, the page each is on, and what it should say instead — including
+  clumsy or too-informal sentences, which nothing else looks at. It is **one request**, and it says
+  so before you press it.
+- **The SPaG section moved to after Coverage grid**, as asked.
+- **"Copy everything for ChatGPT" is now "Copy all data."** The file works with any assistant, so the
+  button no longer names just one — and there are separate **Open ChatGPT** and **Open Claude**
+  buttons beneath it.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 
