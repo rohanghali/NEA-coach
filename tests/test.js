@@ -1955,6 +1955,94 @@ section('11x. Working through the wizard does not throw you back to the start');
   ok('no render or wizard error was raised', page.errors.length === 0, JSON.stringify(page.errors));
 }
 
+section('11y. Settings says whether a key is already saved, without opening the group');
+{
+  /*
+   * Requested by the user. The collapsed "Free AI key" group said only "for the
+   * marking and the review", so there was no way to tell whether a key had already
+   * been added without expanding it. The header now answers it, which matters
+   * because a student who cannot remember will otherwise paste a second key.
+   */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  const keyNote = () => page.els.get('keyNote').textContent;
+  const keyClass = () => page.els.get('keyNote').className;
+  const draw = (config) => {
+    page.state.data = { config };
+    page.call('renderKeySection');
+  };
+
+  draw({ apiKeySet: false });
+  ok('with no key it says so plainly',
+    /not added yet/.test(keyNote()), JSON.stringify(keyNote()));
+  ok('and does not claim the AI is available',
+    /AI review is off/.test(keyNote()), JSON.stringify(keyNote()));
+  ok('and it is not marked as saved', !/saved/.test(keyClass()), keyClass());
+
+  draw({ apiKeySet: true, keyTail: 'Xy9z' });
+  ok('with a key it says a key is saved', /key saved/.test(keyNote()), JSON.stringify(keyNote()));
+  ok('and names the last four characters, so you can tell WHICH key',
+    /Xy9z/.test(keyNote()), JSON.stringify(keyNote()));
+  ok('and it is visually marked as set',
+    /\bsaved\b/.test(keyClass()), keyClass());
+  const panelText = page.els.get('apiKeyStatus').textContent;
+  ok('the same key text still appears in the panel itself',
+    /key ending Xy9z/.test(panelText), JSON.stringify(panelText));
+
+  // An older config need not carry a tail; it must not say "ending undefined".
+  draw({ apiKeySet: true });
+  ok('a key with no recorded tail does not leak "undefined"',
+    /key saved/.test(keyNote()) && !/undefined/.test(keyNote()), JSON.stringify(keyNote()));
+
+  // The portfolio group gets the same treatment, naming the file.
+  page.state.data = { config: { pdfName: 'My Portfolio.pdf' } };
+  page.call('renderUploadSection', page.state.data, page.state.data.config);
+  ok('the portfolio group names the file that is set',
+    /My Portfolio\.pdf/.test(page.els.get('portfolioNote').textContent),
+    JSON.stringify(page.els.get('portfolioNote').textContent));
+  page.state.data = { config: { pdfName: null, deckName: null } };
+  page.call('renderUploadSection', page.state.data, page.state.data.config);
+  ok('and says so when nothing is added',
+    /nothing added yet/.test(page.els.get('portfolioNote').textContent),
+    JSON.stringify(page.els.get('portfolioNote').textContent));
+}
+
+section('11z. Every ui.* the page uses is actually cached');
+{
+  /*
+   * Found while adding the key-status line, and it had been broken for a long time:
+   * `apiKeyStatus`, `apiKeyInput`, `btnTestKey`, `btnSaveKey` and `btnForgetKey`
+   * were all read as `ui.something` but were never listed in cacheElements(). Every
+   * one of them was therefore `undefined` at runtime, and because `on()` returns
+   * early on a null node, the Test key, Save key and Forget key buttons silently
+   * did NOTHING. The API key could only ever be set from the wizard, which uses a
+   * different input.
+   *
+   * This is the nastiest shape of bug in this codebase: a missing cache entry fails
+   * SILENTLY. There is no error, the button just does nothing. So the cache is now
+   * audited rather than trusted.
+   */
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const cachedBlock = page.match(/function cacheElements\(\)\s*\{[\s\S]*?\];/);
+  ok('cacheElements has a list to audit', !!cachedBlock);
+  const cached = new Set([...cachedBlock[0].matchAll(/'([^']+)'/g)].map((m) => m[1]));
+  const ids = new Set([...page.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+
+  const used = new Set([...page.matchAll(/\bui\.([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]));
+  // Only entries that HAVE an element are a defect. A name with no element is a
+  // deliberate optional guard, which is fine and common in this file.
+  const broken = [...used].filter((u) => !cached.has(u) && ids.has(u));
+  ok('no ui.* reference points at an element that was never cached',
+    broken.length === 0,
+    'not cached, so undefined at runtime: ' + broken.join(', '));
+
+  // And the specific controls the wizard's key screen depends on, named so a
+  // future removal is a failure rather than a shrug.
+  for (const name of ['apiKeyStatus', 'apiKeyInput', 'btnTestKey', 'btnSaveKey', 'btnForgetKey']) {
+    ok('  ' + name + ' is cached', cached.has(name), 'missing from cacheElements');
+  }
+}
+
 section('11u. The marking card follows live config');{
   const { publicConfig } = require(path.join(ROOT, 'server.js'));
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');

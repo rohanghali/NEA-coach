@@ -1150,6 +1150,13 @@
   .settings-group > summary:hover { background: var(--accent-soft); }
   .group-title { font-weight: 650; font-size: 15.5px; }
   .group-note { font-size: 13.5px; }
+  /*
+   * A group header stating that something IS set. Green because that colour already
+   * means "good to go" everywhere else in the app, and with a tick so it does not
+   * rely on colour alone for anyone who cannot distinguish it.
+   */
+  .group-note.saved { color: var(--good); font-weight: 600; }
+  .group-note.saved::before { content: '\2713\00a0'; }
   .group-body { padding: 4px 15px 16px; }
   /* The first heading inside a group needs no extra air above it. */
   .group-body > .sub:first-child { margin-top: 8px; }
@@ -1783,7 +1790,7 @@
       <details class="settings-group" open>
         <summary>
           <span class="group-title">Your portfolio</span>
-          <span class="group-note muted">what the app reads</span>
+          <span class="group-note muted" id="portfolioNote">what the app reads</span>
         </summary>
         <div class="group-body">
 
@@ -1855,7 +1862,7 @@
       <details class="settings-group" open>
         <summary>
           <span class="group-title">Free AI key</span>
-          <span class="group-note muted">for the marking and the review</span>
+          <span class="group-note muted" id="keyNote">for the marking and the review</span>
         </summary>
         <div class="group-body">
           <!--
@@ -3529,11 +3536,43 @@
    * it is saved, and never asks the student to edit config.json.
    * ------------------------------------------------------------------ */
 
+  /**
+   * Show the saved state in the Settings group HEADERS.
+   *
+   * A collapsed group said only "for the marking and the review", so there was no
+   * way to tell whether a key had already been added without expanding it. The
+   * header now answers that at a glance, which matters because a student who has
+   * forgotten whether they added one will otherwise paste a second.
+   */
+  function renderGroupNotes() {
+    var config = (state.data && state.data.config) || {};
+    if (ui.keyNote) {
+      if (config.apiKeySet) {
+        setText(ui.keyNote, config.keyTail ? 'key saved, ending ' + config.keyTail : 'key saved');
+        ui.keyNote.className = 'group-note saved';
+      } else {
+        setText(ui.keyNote, 'not added yet — the AI review is off');
+        ui.keyNote.className = 'group-note muted';
+      }
+    }
+    if (ui.portfolioNote) {
+      var name = config.pdfName || config.deckName || null;
+      if (name) {
+        setText(ui.portfolioNote, name);
+        ui.portfolioNote.className = 'group-note saved';
+      } else {
+        setText(ui.portfolioNote, 'nothing added yet');
+        ui.portfolioNote.className = 'group-note muted';
+      }
+    }
+  }
+
   function renderKeySection() {
     var data = state.data || {};
     var config = data.config || {};
     var tail = config.keyTail || null;
     var has = !!config.apiKeySet;
+    renderGroupNotes();
     if (ui.apiKeyStatus) {
       if (has && tail) {
         setText(ui.apiKeyStatus, 'A key ending ' + tail + ' is saved. It stays on this computer.');
@@ -5739,6 +5778,7 @@
    * place the section says which one, and the input becomes a replace control.
    */
   function renderUploadSection(data, config) {
+    renderGroupNotes();
     var deck = (data && data.deck) || null;
     var name = deck && deck.fileName ? String(deck.fileName) : '';
     /*
@@ -6427,7 +6467,17 @@
       'appVersion', 'footerDeck',
       'introOverlay', 'introDots', 'introSkip', 'introBack', 'introNext', 'introLater',
       'introBoards', 'introBoardStatus', 'introDrop', 'introDropMain', 'introDropSub', 'introFile', 'introFileStatus',
-      'introKey', 'introKeyStatus', 'introKeyTest', 'introKeySkip', 'btnShowSetup'
+      'introKey', 'introKeyStatus', 'introKeyTest', 'introKeySkip', 'btnShowSetup',
+      'keyNote', 'portfolioNote',
+      /*
+       * These five were referenced as ui.* but never cached, so every one of them
+       * was `undefined` at runtime. `on()` returns early on a null node, so Test
+       * key, Save key and Forget key silently did NOTHING, and ui.apiKeyInput was
+       * always undefined, meaning the key could never be changed from Settings -
+       * only from the wizard, which uses a different input. A missing entry here
+       * fails silently by design, which is why the cache is now audited by a test.
+       */
+      'apiKeyStatus', 'apiKeyInput', 'btnTestKey', 'btnSaveKey', 'btnForgetKey'
     ];
     for (var i = 0; i < ids.length; i++) { ui[ids[i]] = byId(ids[i]); }
   }
