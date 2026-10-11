@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.62';
+const VERSION = '1.0.63';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -2005,6 +2005,17 @@ const MIME = {
 };
 
 function serveStatic(req, res, urlPath) {
+  /*
+   * What iOS looks for by convention when it adds a page to the home screen.
+   *
+   * The page does name its icon explicitly with <link rel="apple-touch-icon">, so these are a
+   * fallback rather than the mechanism — but they returned 404, and a 404 on the one URL a platform
+   * probes by habit is how a home-screen icon ends up blank. Two lines to make the obvious names
+   * work.
+   */
+  const APPLE_ICON_ALIASES = ['/apple-touch-icon.png', '/apple-touch-icon-precomposed.png'];
+  if (APPLE_ICON_ALIASES.indexOf(urlPath) >= 0) { urlPath = '/icon-180.png'; }
+
   let rel = urlPath === '/' ? 'index.html' : urlPath.replace(/^\/+/, '');
   // Prevent path traversal out of the public folder.
   const full = path.normalize(path.join(PUBLIC_DIR, rel));

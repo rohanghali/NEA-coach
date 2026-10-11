@@ -18,15 +18,12 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **No floating "Check now" on a phone.** It is already in the header, and a bar across the bottom of
-  a small screen sits on top of the work being read — for a button that is one tap away at the top.
-  The back-to-top pill is unaffected.
-- **A small indicator instead of a scroller on a phone.** Three pixels of progress under the tabs,
-  with nothing to grab: the gesture there is a swipe, so a handle would be a target nobody would use.
-  It still shows how much of the row is on screen, which is the part that matters when the tabs run
-  off the edge. On a computer the draggable bar is unchanged.
-- **The "Deep thinking is on/off" phrase is smaller**, so it sits in the sentence rather than shouting
-  over it. Still bold and coloured, so it is still the thing your eye lands on.
+- **Checked that the icon really does reach all three places**, rather than assuming it. Mac and
+  Windows were already correct; the phone had one gap.
+- **Fixed: the apple-touch-icon URL returned "not found".** The page names its icon explicitly, so
+  this was a fallback rather than the mechanism — but a 404 on the URL iOS probes by convention is
+  how a home-screen icon ends up blank. That name and the older -precomposed one now serve the 180px
+  icon.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

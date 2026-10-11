@@ -6651,6 +6651,59 @@ section('12an. Settings that are shown must be settings that are saved');
     'dangling IDREFs: ' + controls.filter((c) => !wanted.includes(c)).join(', '));
 }
 
+const APPLE_RE = /apple-touch-icon\.png', '\/apple-touch-icon-precomposed\.png'\];/;
+
+section('12ao. One drawing, and every target it has to reach');
+{
+  /*
+   * Asked: "have you updated the app icon on windows mac and phone?" Worth an answer that is checked
+   * rather than assumed, because a build can ship the right files and install none of them.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const bat = fs.readFileSync(path.join(ROOT, 'Start NEA Coach.bat'), 'utf8');
+
+  /* ---- phone ---- */
+  ok('the page names its phone icon explicitly, which is what iOS actually uses',
+    /rel="apple-touch-icon" sizes="180x180" href="\/icon-180\.png"/.test(html));
+  ok('and the conventional iOS names serve the same file rather than 404',
+    APPLE_RE.test(server) || /apple-touch-icon-precomposed\.png'\]/.test(server));
+  const manifest = fs.readFileSync(path.join(ROOT, 'public', 'manifest.webmanifest'), 'utf8');
+  ok('the manifest offers both a normal and an Android maskable icon',
+    /"purpose": "maskable"/.test(manifest) && /icon-512-maskable\.png/.test(manifest),
+    'the maskable one is what Android crops to its own shape');
+  ok('every icon the manifest promises is actually on disk',
+    ['icon-192.png', 'icon-512.png', 'icon-512-maskable.png', 'icon-180.png', 'favicon.ico']
+      .every((f) => fs.existsSync(path.join(ROOT, 'public', f))));
+  ok('and the two mark-safe sizes for the phone address bar are there',
+    fs.existsSync(path.join(ROOT, 'public', 'icon-16.png'))
+    && fs.existsSync(path.join(ROOT, 'public', 'icon-32.png')));
+
+  /* ---- mac ---- */
+  ok('the Mac bundle is built with the .icns and told to use it',
+    /NEA Coach\.icns/.test(fs.readFileSync(path.join(ROOT, 'tools', 'package.sh'), 'utf8'))
+    && /CFBundleIconFile/.test(fs.readFileSync(path.join(ROOT, 'tools', 'package.sh'), 'utf8')));
+
+  /* ---- windows ---- */
+  /*
+   * A .bat draws as the same generic gear whatever you do, so the launcher makes a .lnk pointing at
+   * the .ico. This is the one target with no build step of its own, and it was the one worth checking:
+   * the icon FILE being in the zip proves nothing if nothing installs it.
+   */
+  ok('the Windows launcher makes a shortcut carrying the icon',
+    /createShortcut|CreateShortcut/.test(bat) && /IconLocation=.{0,40}NEA Coach\.ico/.test(bat));
+  ok('and it only makes it when it is missing, so deleting it sticks',
+    /if \(-not \(Test-Path \$p\)\)/.test(bat));
+  ok('with a guard for the icon actually being present',
+    /if not exist "%~dp0assets\\NEA Coach\.ico" goto :no_shortcut/.test(bat));
+
+  /* ---- and all four come from ONE drawing ---- */
+  const icons = fs.readFileSync(path.join(ROOT, 'tools', 'make-icons.js'), 'utf8');
+  for (const target of ['favicon.ico', 'icon-180.png', 'NEA Coach.ico', 'NEA Coach.icns']) {
+    ok('tools/make-icons.js writes ' + target, icons.indexOf(target) >= 0);
+  }
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();
