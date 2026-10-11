@@ -40,7 +40,32 @@ function makeEl(id) {
     checked: false,
     disabled: false,
     value: '',
-    textContent: '',
+    /*
+     * textContent is an ACCESSOR, not a field, and it aggregates from children the way a
+     * browser does.
+     *
+     * It was a plain string, so text built with the page's el() helper — which appends
+     * document.createTextNode — lived only in text-node children and reading
+     * `element.textContent` returned ''. That is worse than a missing feature: a test
+     * asserting that some text is ABSENT then passes for the wrong reason, because
+     * everything is absent.
+     */
+    _text: '',
+    get textContent() {
+      if (this.children && this.children.length) {
+        let out = '';
+        for (const c of this.children) {
+          const t = c === null || c === undefined ? '' : c.textContent;
+          out += t === undefined || t === null ? '' : String(t);
+        }
+        return out;
+      }
+      return this._text === undefined || this._text === null ? '' : String(this._text);
+    },
+    set textContent(v) {
+      this._text = v === undefined || v === null ? '' : String(v);
+      this.children = [];
+    },
     innerHTML: '',
     nodeValue: '',
     children: [],
@@ -59,9 +84,13 @@ function makeEl(id) {
       toggle(c) { if (this._s.has(c)) { this._s.delete(c); } else { this._s.add(c); } },
     },
     appendChild(c) { this.children.push(c); return c; },
-    removeChild(c) { this.children = this.children.filter((x) => x !== c); },
+    removeChild(c) {
+      this.children = this.children.filter((x) => x !== c);
+      // Empty means genuinely empty: leaving the old own-text behind would resurrect it.
+      if (!this.children.length) { this._text = ''; }
+    },
     insertBefore(c) { this.children.unshift(c); return c; },
-    replaceChildren() { this.children = []; },
+    replaceChildren() { this.children = []; this._text = ''; },
     setAttribute(k, v) {
       /*
        * `style` is a getter here (an inline-style object), so a naive assignment
@@ -290,7 +319,7 @@ function loadPage(appRoot) {
     // The feel layer, so a test can fire a ripple or a burst and inspect the DOM
     // it produces instead of only being able to see that the page loaded.
     'spawnRipple', 'celebrate', 'rollFigure', 'rolledFigure', 'sparkLayer',
-    'renderToTop', 'wireToTop', 'fileKind',
+    'renderToTop', 'wireToTop', 'fileKind', 'loadedFiles', 'renderLoadedFiles', 'renderGroupNotes',
   ];
   const marker = '}());';
   const at = script.lastIndexOf(marker);

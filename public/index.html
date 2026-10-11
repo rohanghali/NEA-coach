@@ -567,7 +567,35 @@
   .upload-row { margin-bottom: 6px; }
   .upload-row input[type="file"] { max-width: 100%; font-size: 14px; }
   .upload-status { margin: 0 0 12px; }
-  .upload-current { margin: 0 0 10px; font-size: 14px; }
+  /*
+   * "What is loaded", one row per format. Deliberately a list of two named things rather
+   * than a sentence: the question is "which of these two have I given it?", and a list
+   * answers it without being read.
+   */
+  .loaded {
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .loaded-row {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    padding: 9px 12px;
+    font-size: 14px;
+    background: var(--fill-faint);
+    border-left: 3px solid var(--line-strong);
+  }
+  .loaded-row + .loaded-row { border-top: 1px solid var(--line); }
+  .loaded-row.is-in { background: var(--good-soft); border-left-color: var(--good); }
+  .loaded-mark { flex: 0 0 auto; font-weight: 700; color: var(--muted); }
+  .loaded-row.is-in .loaded-mark { color: var(--good); }
+  .loaded-label { flex: 0 0 auto; font-weight: 650; }
+  .loaded-state { color: var(--muted); overflow-wrap: anywhere; }
+  .loaded-row.is-in .loaded-state { color: var(--ink-2); }
   /*
    * What each format is good for. A quiet box rather than more paragraph of help text,
    * because it is reference material: read once, by someone wondering which file to add.
@@ -2204,12 +2232,23 @@
         <div class="group-body">
 
           <h4 class="sub" id="uploadHeading">Your portfolio</h4>
+
+          <!--
+            What is actually loaded, one row per format.
+
+            They do different jobs and EITHER can be present without the other, so the state of each
+            is a separate question. Before this the answer was spread across two paragraphs of prose,
+            and the group's own header got it wrong for a PowerPoint on its own: it read
+            `config.deckName`, a field the server has never sent. A wrong key failing silently is
+            this codebase's signature fault, so the fix is a place that NAMES both files rather than
+            another sentence describing them.
+          -->
+          <ul class="loaded" id="uploadedWhat" aria-label="What has been added"></ul>
+
           <p class="upload-help" id="uploadHelp">Add your PDF export, your PowerPoint file, or both.
             The box below takes either, and the note at the bottom of this section says what each one
             is good for. The app copies what you add into its own folder and reads that copy, so your
             original is never changed or moved.</p>
-          <p class="upload-current" id="uploadCurrent"></p>
-          <p class="upload-current" id="pdfCurrent"></p>
           <div class="upload-row">
             <!--
               ONE picker, two formats. There used to be a separate box for each, which read as though
@@ -4037,9 +4076,18 @@
       }
     }
     if (ui.portfolioNote) {
-      var name = config.pdfName || config.deckName || null;
-      if (name) {
-        setText(ui.portfolioNote, name);
+      /*
+       * NAMES BOTH. This read `config.pdfName || config.deckName || null`, and `deckName` is
+       * not a field the server has ever sent — so with a PowerPoint on its own the header said
+       * "nothing added yet" while a portfolio was loaded and being marked. Wrong, silent, and
+       * exactly the wrong way round for the one place that answers "what have I given it?".
+       */
+      var files = loadedFiles();
+      var have = [];
+      if (files.pptx) { have.push('PowerPoint'); }
+      if (files.pdf) { have.push('PDF'); }
+      if (have.length) {
+        setText(ui.portfolioNote, have.join(' and ') + ' added');
         ui.portfolioNote.className = 'group-note saved';
       } else {
         setText(ui.portfolioNote, 'nothing added yet');
@@ -6330,6 +6378,65 @@
   }
 
   /*
+   * The two files, from the LIVE config.
+   *
+   * `deckFile` and `pdfFile` are the absolute paths the server has already resolved, and
+   * `pdfName` is derived from `pdfFile` server-side for the same reason: reading a name out of
+   * the saved report is how the card at the top of this page once went on describing the previous
+   * portfolio after a new one was chosen. The PowerPoint falls back to the report's own name,
+   * because a folder-based setup leaves `deckFile` null while still having a real file.
+   */
+  function loadedFiles() {
+    var data = state.data || {};
+    var config = data.config || {};
+    var deck = data.deck || null;
+    var base = function (p) { return String(p || '').split(/[\\/]/).pop(); };
+    return {
+      pdf: config.pdfName ? String(config.pdfName) : base(config.pdfFile),
+      pptx: config.deckFile ? base(config.deckFile) : (deck && deck.fileName ? String(deck.fileName) : ''),
+      pages: deck && typeof deck.slideCount === 'number' ? deck.slideCount : null,
+      size: deck && deck.fileSizeBytes ? formatBytes(deck.fileSizeBytes) : '',
+    };
+  }
+
+  /*
+   * One row per format: whether it is loaded, and what it is for.
+   *
+   * The absent row carries the CONSEQUENCE rather than a bare dash. A missing PDF is the reason
+   * a predicted mark reads low, and that is worth saying in the one place a student looks to
+   * find out what they have and have not given the app.
+   */
+  function renderLoadedFiles() {
+    var host = ui.uploadedWhat;
+    if (!host) { return; }
+    clearNode(host);
+    var files = loadedFiles();
+    var rows = [
+      {
+        label: 'PDF',
+        file: files.pdf,
+        detail: '',
+        missing: 'not added — the AI is reading your words only, so drawn and photographed work is invisible to it and the mark will read low',
+      },
+      {
+        label: 'PowerPoint',
+        file: files.pptx,
+        detail: files.pages ? ', ' + plural(files.pages, 'page') + (files.size ? ' (' + files.size + ')' : '') : '',
+        missing: 'not added — the caption, layout and speaker-notes checks cannot run without it',
+      },
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var has = !!row.file;
+      host.appendChild(el('li', { cls: 'loaded-row' + (has ? ' is-in' : '') }, [
+        el('span', { cls: 'loaded-mark', text: has ? '\u2713' : '\u2013', attrs: { 'aria-hidden': 'true' } }),
+        el('span', { cls: 'loaded-label', text: row.label }),
+        el('span', { cls: 'loaded-state', text: has ? row.file + row.detail : row.missing })
+      ]));
+    }
+  }
+
+  /*
    * The portfolio chooser, worded for what is actually true.
    *
    * It used to say "choose your portfolio" whether or not one was already set,
@@ -6358,18 +6465,7 @@
         ? 'Choosing a file here REPLACES the portfolio being marked — it becomes the one at the top of this page. Your file is copied into the app\u2019s own folder and read there, so the original is never changed or moved.'
         : 'Add a PDF, a PowerPoint file, or both — the box below takes either. Whatever you add becomes the portfolio being marked, shown at the top of this page, and the app copies it into its own folder and reads that copy, so the file you pick is never changed or moved.');
     }
-    if (ui.uploadCurrent) {
-      var size = deck && deck.fileSizeBytes ? formatBytes(deck.fileSizeBytes) : '';
-      /*
-       * Shown only when there IS a PowerPoint. It used to announce "No PowerPoint file
-       * chosen" whenever one was absent, which in a box that also takes a PDF read as a
-       * fault the student was supposed to fix.
-       */
-      setText(ui.uploadCurrent, set
-        ? 'PowerPoint file: ' + name + (size ? ' (' + size + ')' : '') + (deck && typeof deck.slideCount === 'number' ? ', ' + plural(deck.slideCount, 'page') : '')
-        : '');
-      show(ui.uploadCurrent, !!set);
-    }
+    renderLoadedFiles();
     if (ui.uploadInput) {
       ui.uploadInput.setAttribute('aria-label', set ? 'Choose a different portfolio file' : 'Choose your portfolio file');
     }
@@ -6383,11 +6479,6 @@
     var pdfName = config && config.pdfFile ? String(config.pdfName || '') : '';
     var ai = (data && data.ai) || {};
     var willSee = !!pdfName;
-    if (ui.pdfCurrent) {
-      setText(ui.pdfCurrent, willSee
-        ? 'Pages supplied by: ' + pdfName + '. Adding or replacing a PDF here changes which portfolio is marked.'
-        : 'No PDF added yet. The AI is reading your words only, so sketched, drawn and photographed work is invisible to it and your predicted mark will read low.');
-    }
     show(ui.btnClearPdf, willSee);
     if (ui.btnClearDeck) { show(ui.btnClearDeck, !!set); }
     if (willSee && ai.visionRan === false && ai.ran) {
@@ -7122,8 +7213,8 @@
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
       'coverageBody', 'slidesDetails', 'slidesSummaryLabel', 'slidesHead', 'slidesBody',
       'settingsDetails', 'settingsFacts', 'settingsForm', 'deckDirInput', 'modelSelect', 'btnSaveSettings',
-      'uploadInput', 'uploadStatus', 'uploadProgress', 'uploadBarFill', 'uploadHeading', 'uploadHelp', 'uploadCurrent',
-      'pdfStatus', 'pdfProgress', 'pdfBarFill', 'pdfCurrent', 'btnClearPdf', 'btnClearDeck',
+      'uploadInput', 'uploadStatus', 'uploadProgress', 'uploadBarFill', 'uploadHeading', 'uploadHelp', 'uploadedWhat',
+      'pdfStatus', 'pdfProgress', 'pdfBarFill', 'btnClearPdf', 'btnClearDeck',
       'markToggle', 'visionModelSelect', 'themeSelect', 'btnSaveBoard', 'boardSaveNote', 'btnBestMarks', 'bestMarksNote', 'compareCard', 'compareBody', 'compareWhen', 'connectBody', 'connectNote', 'historyCard', 'historyBody', 'historyNote', 'quotaWhen', 'reviewedName', 'reviewedHow', 'reviewedWarn', 'statsDetails', 'statsBody', 'statsSummary', 'infoDetails',
       'appVersion', 'footerDeck',
       'introOverlay', 'introDots', 'introSkip', 'introBack', 'introNext', 'introLater',

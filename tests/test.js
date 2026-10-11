@@ -2104,17 +2104,34 @@ section('11y. Settings says whether a key is already saved, without opening the 
   ok('a key with no recorded tail does not leak "undefined"',
     /key saved/.test(keyNote()) && !/undefined/.test(keyNote()), JSON.stringify(keyNote()));
 
-  // The portfolio group gets the same treatment, naming the file.
-  page.state.data = { config: { pdfName: 'My Portfolio.pdf' } };
-  page.call('renderUploadSection', page.state.data, page.state.data.config);
-  ok('the portfolio group names the file that is set',
-    /My Portfolio\.pdf/.test(page.els.get('portfolioNote').textContent),
-    JSON.stringify(page.els.get('portfolioNote').textContent));
-  page.state.data = { config: { pdfName: null, deckName: null } };
-  page.call('renderUploadSection', page.state.data, page.state.data.config);
-  ok('and says so when nothing is added',
-    /nothing added yet/.test(page.els.get('portfolioNote').textContent),
-    JSON.stringify(page.els.get('portfolioNote').textContent));
+  /*
+   * The portfolio group says WHICH of the two are loaded.
+   *
+   * Note what this used to assert and why it passed: it drove the note with
+   * `{ pdfName: null, deckName: null }`, and `deckName` is not a field the server has ever
+   * sent. So the test agreed with the bug. The PowerPoint case below is the one that was
+   * broken — a loaded portfolio reported as "nothing added yet".
+   */
+  const drawPortfolio = (config, deck) => {
+    page.state.data = { config: config, deck: deck || null };
+    page.call('renderUploadSection', page.state.data, config);
+    return page.els.get('portfolioNote').textContent;
+  };
+  eq('a PDF alone is reported as the PDF',
+    drawPortfolio({ pdfName: 'My Portfolio.pdf', pdfFile: '/x/My Portfolio.pdf' }), 'PDF added');
+  eq('a PowerPoint alone is reported as the PowerPoint',
+    drawPortfolio({ deckFile: '/x/My Portfolio.pptx' }, { fileName: 'My Portfolio.pptx' }), 'PowerPoint added');
+  eq('both are reported as both',
+    drawPortfolio({ deckFile: '/x/a.pptx', pdfName: 'a.pdf', pdfFile: '/x/a.pdf' }, { fileName: 'a.pptx' }),
+    'PowerPoint and PDF added');
+  eq('and nothing is reported as nothing', drawPortfolio({}, null), 'nothing added yet');
+  ok('the file itself is named in the list rather than in the header',
+    (() => {
+      drawPortfolio({ pdfName: 'My Portfolio.pdf', pdfFile: '/x/My Portfolio.pdf' });
+      const rows = page.els.get('uploadedWhat').children
+        .map((c) => c.children.map((x) => x.textContent).join(' ')).join(' | ');
+      return /My Portfolio\.pdf/.test(rows);
+    })());
 }
 
 section('11z. Every ui.* the page uses is actually cached');
@@ -2393,10 +2410,17 @@ section('11p. Which portfolio is being marked');
   // The old competing phrasings must be gone, or the ambiguity returns.
   ok('no section claims "In use:" as a second verdict', !/In use: /.test(page),
     'found a competing "In use:" label');
-  ok('the upload section names itself as a PowerPoint file, not as the verdict',
-    /PowerPoint file: /.test(page));
-  ok('the PDF line says what it supplies, not what is marked',
-    /Pages supplied by: /.test(page));
+  /*
+   * The upload section names the two formats rather than competing with the verdict at the
+   * top of the page. It does that with a labelled status list now instead of prose, which
+   * also happens to be what answers "which of them have I actually given it?".
+   */
+  ok('the upload section labels the two formats rather than the verdict',
+    /id="uploadedWhat"/.test(page) && /label: 'PDF'/.test(page) && /label: 'PowerPoint'/.test(page),
+    'the two formats are not named side by side');
+  ok('and the PDF row explains what a PDF is for, not that it is the mark',
+    /the AI is reading your words only/.test(page),
+    'the PDF row no longer says what a PDF supplies');
 
   // The decision itself, in both directions.
   ok('a PDF is what gets marked when one is set',
@@ -4064,8 +4088,97 @@ section('12q. One picker for the portfolio, and what each format is good for');
    * The line announcing "No PowerPoint file chosen" used to be shown whenever a
    * PowerPoint was absent. In a box that also takes a PDF that read as a fault to fix.
    */
-  ok('the absent-PowerPoint line is hidden rather than announced',
-    /show\(ui\.uploadCurrent, !!set\)/.test(live), 'the negative line would still be shown');
+  /*
+   * The old "No PowerPoint file chosen" announcement is gone with the prose it lived in.
+   * Absence is now a row in the status list, which says what is missing and what it costs
+   * without reading as a fault the student is supposed to go and fix.
+   */
+  ok('absence is shown as a row rather than announced as a fault',
+    !/No PowerPoint file chosen/.test(live) && /not added/.test(live),
+    'the negative announcement is gone but nothing says what is missing instead');
+}
+
+section('12r. What has been loaded, said plainly');
+{
+  /*
+   * Requested: "make it clearer what has been uploaded though with a place that shows which
+   * has been uploaded out of the pptx and pdf".
+   *
+   * It was unclear for a real reason, and not just a cosmetic one. The group header read
+   * \`config.pdfName || config.deckName || null\`, and \`deckName\` is not a field the server
+   * has EVER sent — so with a PowerPoint on its own the header said "nothing added yet" while
+   * a portfolio was loaded and being marked. Silent, and wrong in the one place that answers
+   * the question.
+   */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  ok('the page still loads with the status list', page.errors.length === 0, JSON.stringify(page.errors));
+
+  const draw = (config, deck) => {
+    page.state.data = { ok: true, config: config, deck: deck || null };
+    const a = page.call('renderLoadedFiles');
+    const b = page.call('renderGroupNotes');
+    return {
+      header: page.els.get('portfolioNote').textContent,
+      cls: page.els.get('portfolioNote').className,
+      rows: page.els.get('uploadedWhat').children.map((c) => c.children.map((x) => x.textContent).join(' ')),
+      ok: a.ok && b.ok,
+      error: a.error || b.error,
+    };
+  };
+
+  const pdfCfg = { pdfName: 'Arjun.pdf', pdfFile: '/x/Arjun.pdf' };
+  const pptxCfg = { deckFile: '/x/y/Arjun.pptx' };
+  const deck = { fileName: 'Arjun.pptx', slideCount: 29, fileSizeBytes: 4700000 };
+  const both = Object.assign({}, pptxCfg, pdfCfg);
+
+  let r = draw(pdfCfg, null);
+  ok('both renders run without throwing', r.ok, r.error);
+  eq('a PDF alone is reported as the PDF', r.header, 'PDF added');
+  ok('and marked as satisfied', /saved/.test(r.cls), r.cls);
+
+  r = draw(pptxCfg, deck);
+  eq('a PowerPoint alone is reported as the PowerPoint', r.header, 'PowerPoint added');
+  ok('this is the case that used to say nothing was added at all',
+    r.header !== 'nothing added yet', r.header);
+
+  r = draw(both, deck);
+  eq('both are reported as both', r.header, 'PowerPoint and PDF added');
+
+  r = draw({}, null);
+  eq('nothing is reported as nothing', r.header, 'nothing added yet');
+  ok('and marked as not yet done', /muted/.test(r.cls), r.cls);
+
+  // The rows: one per format, so either can be understood without the other.
+  r = draw(both, deck);
+  eq('there is one row per format', r.rows.length, 2);
+  ok('the PDF row names the file', /PDF.*Arjun\.pdf/.test(r.rows.join(' ~ ')), r.rows.join(' ~ '));
+  ok('the PowerPoint row names the file and its length',
+    /PowerPoint.*Arjun\.pptx.*29 pages/.test(r.rows.join(' ~ ')), r.rows.join(' ~ '));
+
+  r = draw(pdfCfg, null);
+  ok('an absent PowerPoint row says what it costs, not merely that it is missing',
+    /PowerPoint.*not added.*checks cannot run/.test(r.rows.join(' ~ ')), r.rows.join(' ~ '));
+
+  r = draw(pptxCfg, deck);
+  ok('an absent PDF row says what the AI is missing',
+    /PDF.*not added.*words only/.test(r.rows.join(' ~ ')), r.rows.join(' ~ '));
+
+  /*
+   * And the field that caused it must not come back. Reading a config field the server does
+   * not send is this codebase's signature fault, and it fails silently every time.
+   */
+  /*
+   * Comments are stripped before the check, because the notes recording why the bug happened
+   * name the field. HTML comments matter as much as block comments here — the markup carries
+   * an explanation of the same fault.
+   */
+  const live = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+  ok('nothing reads a config field the server does not send',
+    !/config\.deckName/.test(live),
+    'config.deckName has never been sent by the server, and reading it is what hid a loaded PowerPoint');
 }
 
 })().then(summary, (err) => {

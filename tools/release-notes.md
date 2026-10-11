@@ -18,27 +18,28 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **One box for your portfolio instead of two.** Settings used to offer a PowerPoint box and a
-  PDF box side by side, which read as though you were meant to supply both. There is now a single
-  picker that takes either, and a short note underneath saying what each one is actually good for:
-  the **PDF** is what the AI reads — every page, including your sketches and photographs — while
-  the **PowerPoint** adds the layout checks a PDF cannot support (uncaptioned images, text running
-  off the page, text shrunk to fit, speaker notes). If you have both, add both.
+- **Settings now shows which of the two files you have added.** Your portfolio section opens with two
+  rows, one for the **PDF** and one for the **PowerPoint**, each ticked and naming the file, or saying
+  what is missing and what it costs you — "not added — the AI is reading your words only, so drawn and
+  photographed work is invisible to it and the mark will read low". The group's own header names them
+  too, so you can see it without opening the section.
+- **Fixed a bug in that header.** It read a field the app never sends, so with a PowerPoint and no PDF
+  it said *"nothing added yet"* while a portfolio was loaded and being marked. Wrong way round, and
+  silent, in the one place that answers "what have I given it?".
 
-**In the previous version (v1.0.26)**
+**In the previous version (v1.0.27)**
 
-- **Removed a warning that was not true.** With only a PDF, the app used to say the free
-  structural checks had nothing to read and the pages could not be counted. They can and are: a
-  PDF is read into a real document with its page count and every page's text.
+- **One box for your portfolio instead of two**, with a note saying what each format is good for. The
+  PDF is what the AI reads, page by page, including your sketches and photographs. The PowerPoint adds
+  the layout checks a PDF cannot support.
+
+**In v1.0.26**
+
+- **Removed a warning that was not true** — that with only a PDF the free checks had nothing to read.
 
 **In v1.0.25**
 
 - **A "Top" button** in the bottom corner, once you are far enough down a report for it to help.
-
-**In v1.0.24**
-
-- **The smallest font the app complains about is now 10pt, down from 12pt.** On one real
-  portfolio awarded 90/100, the only two mechanical complaints it made were two pages at 10.6pt.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.
