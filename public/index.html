@@ -485,6 +485,21 @@
   .predicted-row-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
   .predicted-name { font-size: 14.5px; font-weight: 600; }
   .predicted-mark { font-size: 13.5px; color: var(--muted); white-space: nowrap; }
+  /*
+   * The visual review could not run, so the number below is text-only. Amber and first in
+   * the panel on purpose: it has to be read BEFORE the figure, not after it.
+   */
+  .predicted-blocked {
+    margin: 0 0 12px;
+    padding: 9px 11px;
+    border: 1px solid var(--medium-line);
+    border-left: 3px solid var(--medium);
+    border-radius: var(--radius-sm);
+    background: var(--medium-soft);
+    color: var(--warn-text);
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
   .predicted-unstable {
     flex: 1 1 100%;
     margin: 8px 0 0;
@@ -5715,6 +5730,33 @@
        * it read as a jumble of percentages and half-sentences.
        */
       var supporting = [];
+
+      /*
+       * A PDF was supplied and the AI STILL could not look at the pages.
+       *
+       * This is the case that produced 74 out of 100 for a portfolio that really scored 99:
+       * the marking model returned HTTP 503 four times, the visual review was abandoned, and
+       * the app carried on and showed the text-only figure as a mark. On a portfolio whose
+       * marks live in its sketches that is not a low mark, it is the wrong question.
+       *
+       * So this goes FIRST in the panel, next to the number, and it says what happened and
+       * what to do rather than leaving a plausible figure to be believed. A missing PDF is
+       * NOT this case — that is a choice, and the calm note at the end already covers it.
+       */
+      var visionFailed = (ai && ai.visionFailure) || null;
+      if (visionFailed) {
+        var because = visionFailed.reason === 'rate-limited'
+          ? 'You have used the daily free allowance for the marking model'
+          : visionFailed.reason === 'busy'
+            ? 'The marking model was busy'
+            : visionFailed.reason === 'no-response'
+              ? 'The marking model did not answer'
+              : 'The marking model could not be used';
+        supporting.push(el('p', { cls: 'predicted-blocked', text:
+          because + ', so the AI never saw your pages. This figure comes from your TEXT alone, '
+          + 'which reads low for a portfolio whose marks are in its sketches, photographs and CAD. '
+          + 'It is not a judgement of the work. Press Check now to try again — it usually works within a few minutes.' }));
+      }
 
       /*
        * The AI's raw reading is NOT repeated here.

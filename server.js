@@ -408,7 +408,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.29';
+const VERSION = '1.0.30';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -1286,7 +1286,16 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
      * the raw number, the adjusted one, and why they differ. A prediction presented
      * without its error bar invites more trust than it has earned.
      */
-    const markModel = String(cfg.visionModel || '').trim() || cfg.model;
+    /*
+     * The model that ACTUALLY produced the marks.
+     *
+     * `aiResult.visionModel` is set by the AI pass to the model that really answered, which
+     * is not always the configured one: if the chosen model was busy, the review fails over
+     * to another. Since the anchors are grouped BY MODEL, calibrating against the configured
+     * name after a fallback would apply the wrong line — or none at all, which is what
+     * happened when a busy model left a 99/100 portfolio showing 74.
+     */
+    const markModel = String((aiResult && aiResult.visionModel) || cfg.visionModel || '').trim() || cfg.model;
     const calibration = calibrationOf(predicted.predicted, predicted.maximum, {
       board: cfg.specId,
       model: markModel,
@@ -1444,6 +1453,12 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
          */
         visionUnstable: ((aiResult && aiResult.visionMarkSpread) || 0) >= ai.VISION_SPREAD_CAUTION,
         visionModel: (aiResult && aiResult.visionModel) || cfg.visionModel || null,
+        /*
+         * Set only when a PDF WAS supplied and the review still could not run — the case
+         * where a text-only figure must not be presented as a judgement. Null when there is
+         * no PDF at all, because that is a choice the page already explains calmly.
+         */
+        visionFailure: (aiResult && aiResult.visionFailure) || null,
         markEnabled: cfg.markEnabled !== false,
         pdfName: cfg.pdfFile ? path.basename(cfg.pdfFile) : null,
         slidesSkipped: (aiResult && aiResult.slidesSkipped) || 0,

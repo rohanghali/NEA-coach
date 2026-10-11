@@ -18,24 +18,27 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **It has an icon now** — in the browser tab, on a phone home screen, and on the desktop. If
-  you already added it to your phone, remove the old shortcut and add it again: iOS takes the
-  icon at the moment you add it, so the old one will keep its blank tile.
-- **A real Mac app.** The download now contains `NEA Coach.app`. Drag it to your Desktop or to
-  Applications — it carries everything inside it, so it keeps working wherever you put it, and
-  it has a proper icon in the Dock.
-- **A Desktop shortcut on Windows.** `Start NEA Coach.bat` puts "NEA Coach" on your Desktop with
-  the icon the first time it runs. If you delete it, it stays deleted.
+- **Fixed the big one: a portfolio can no longer be marked low just because the marking model
+  was busy.** Google occasionally returns "this model is currently experiencing high demand".
+  When that happened, the app gave up on looking at your pages entirely and reported a
+  **text-only** figure as though it were a mark — 74 out of 100 for a portfolio that really
+  scored **99**. It now moves to a different model and looks at the pages anyway.
+- **It can only move to a model it has been checked against.** The app has compared itself with
+  three real marked portfolios per model, and it will only fall back to one of those — because a
+  model with no measured error cannot be corrected, and an uncorrected number is exactly what
+  went wrong here.
+- **If a review still cannot happen, it now says so next to the number.** It names the cause
+  ("the marking model was busy", "you have used the daily free allowance"), says plainly that the
+  figure comes from your text alone and is not a judgement of the work, and tells you to press
+  Check now again. A plausible-looking wrong number was worse than an honest gap.
+- **The correction now follows the model that actually did the marking.** Previously it used the
+  model you had *chosen*; if a fallback had been used, the wrong line — or none at all — would
+  have been applied.
 
-**In v1.0.28**
+**In v1.0.29**
 
-- **Settings shows which of the two files you have added** — one row for the PDF and one for the
-  PowerPoint, each naming the file or saying what is missing. It also fixed a bug in that header
-  that reported a loaded PowerPoint as "nothing added yet".
-
-**In v1.0.27**
-
-- **One box for your portfolio instead of two**, with a note saying what each format is good for.
+- **An icon**, in the browser tab, on a phone home screen, and on the desktop, plus a real
+  `NEA Coach.app` for macOS and a Desktop shortcut on Windows.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

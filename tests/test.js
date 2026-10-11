@@ -19,6 +19,7 @@ const ROOT = path.join(__dirname, '..');
 const { parsePresentation } = require(path.join(ROOT, 'lib/pptx.js'));
 const { runLocalChecks, DISABLED_RULES } = require(path.join(ROOT, 'lib/checks.js'));
 const ai = require(path.join(ROOT, 'lib/ai.js'));
+const calibration = require(path.join(ROOT, 'lib/calibration.js'));
 
 let passed = 0;
 let failed = 0;
@@ -1544,8 +1545,18 @@ section('12. Scoring calibration');
 
   // It must actually reach the report and the UI.
   ok('the report carries the calibration', /predicted: Object\.assign\(\{\}, predicted, \{ calibration \}\)/.test(serverSrc));
+  /*
+   * The marking model, not the page reader — and the one that ACTUALLY marked it.
+   *
+   * This used to require the configured `cfg.visionModel`. That is wrong once the review
+   * can fail over to another model: the anchors are grouped by model, so calibrating
+   * against the configured name would apply the wrong line, or none. The field it must use
+   * is whatever the AI pass recorded as having really answered.
+   */
   ok('it is computed with the marking model, not the page reader',
-    /const markModel = String\(cfg\.visionModel \|\| ''\)\.trim\(\) \|\| cfg\.model;/.test(serverSrc));
+    /const markModel = String\(\(aiResult && aiResult\.visionModel\) \|\| cfg\.visionModel \|\| ''\)\.trim\(\) \|\| cfg\.model;/
+      .test(serverSrc),
+    'the calibration must follow the model that actually produced the marks');
   /*
    * ONE short line, whichever way the correction went.
    *
@@ -4371,6 +4382,188 @@ section('12s. The icon, in every place it appears');
   ok('and it is staged outside the folder it copies, or the copy would recurse',
     /\.nea-app-stage/.test(pkg));
   ok('assets ship, so both platforms can find their icon', /^\s*assets$/m.test(pkg));
+}
+
+section('12t. When the marking model is busy, the review moves to another one');
+{
+  /*
+   * This is the fix for a 99/100 portfolio being reported as 74, and the evidence is the
+   * student's own scan log:
+   *
+   *   [12:40:25] Visual review will use Rohan Ghali.pdf (12.6 MB)
+   *   [12:40:41] Retrying the visual review (attempt 1, HTTP 503)
+   *   [12:43:53] Retrying the visual review (attempt 2)
+   *   [12:44:10] Retrying the visual review (attempt 3, HTTP 503)
+   *   [12:44:37] Retrying the visual review (attempt 4, HTTP 503)
+   *   [12:44:58] A visual review call failed: This model is currently experiencing high demand.
+   *
+   * Four 503s over four minutes, the visual review abandoned, and the app went on to report a
+   * TEXT-ONLY figure as a mark. On a portfolio whose marks live in its sketches and
+   * photographs that is not a low mark, it is the wrong question — the text-only reading for
+   * that portfolio is about 75 against a real 99.
+   *
+   * The replacement matters as much as the failover: only models this app has actually been
+   * calibrated against are offered, so the fallback's reading can still be corrected. An
+   * uncorrectable number is the thing being avoided.
+   */
+  const ranked = calibration.calibratedModels();
+  ok('the app knows which models it can actually correct', ranked.length >= 2, JSON.stringify(ranked));
+  eq('and ranks the best-calibrated first', ranked[0].model, 'gemini-3.5-flash');
+  ok('each entry records how far out its corrected figure has been',
+    ranked.every((r) => typeof r.worstResidual === 'number' && r.anchors >= 2), JSON.stringify(ranked));
+  ok('the ranking is derived from the anchors, not written down',
+    ranked[0].worstResidual <= ranked[1].worstResidual,
+    ranked.map((r) => r.model + ':' + r.worstResidual).join(', '));
+
+  // A model the app cannot correct must never be offered as a replacement.
+  const available = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-pro'];
+  const chain = calibration.calibratedModels()
+    .map((c) => c.model)
+    .filter((n) => n !== 'gemini-3.8-flash' && available.indexOf(n) > -1);
+  ok('an uncorrectable model is never offered as a fallback',
+    chain.every((m) => calibration.calibratedModels().some((c) => c.model === m)), chain.join(', '));
+
+  /* ---- the real thing, with the API stubbed ------------------------------------- */
+  const https = require('https');
+  const { EventEmitter } = require('events');
+  const realRequest = https.request;
+  const criteria = [
+    { id: 'a', name: 'Investigating', weight: 10 },
+    { id: 'b', name: 'Brief', weight: 10 },
+  ];
+  const visionReply = (mark) => ({
+    candidates: [{ content: { parts: [{ text: JSON.stringify({
+      coverage: criteria.map((c) => ({
+        criterion: c.id, status: 'strong', coveragePercent: 90, suggestedMark: mark, slides: [1], comment: 'ok',
+      })),
+      strengths: [], suggestions: [], findings: [], error: '',
+    }) }] } }],
+    usageMetadata: { promptTokenCount: 40000, candidatesTokenCount: 500 },
+  });
+
+  const seen = [];
+  // Only the CONFIGURED model is unavailable. If every model failed, the test would prove
+  // nothing about failing over.
+  let failModels = ['gemini-3.8-flash'];
+  let failStatus = 503;
+  https.request = (opts, onResponse) => {
+    const req = new EventEmitter();
+    let body = '';
+    req.setTimeout = () => {};
+    req.write = (b) => { body += b; };
+    req.end = () => {
+      // The model is named in the request path, which is how the real client sends it.
+      const found = /models\/([^:?]+)/.exec(opts.path || '');
+      const name = found ? found[1] : '?';
+      seen.push(name);
+      const res = new EventEmitter();
+      res.headers = {};
+      setTimeout(() => {
+        if (failModels.indexOf(name) > -1) {
+          res.statusCode = failStatus;
+          onResponse(res);
+          res.emit('data', Buffer.from(JSON.stringify({ error: { message: 'This model is currently experiencing high demand.' } })));
+        } else {
+          res.statusCode = 200;
+          onResponse(res);
+          res.emit('data', Buffer.from(JSON.stringify(visionReply(9))));
+        }
+        res.emit('end');
+      }, 0);
+    };
+    return req;
+  };
+
+  try {
+    const pass = await ai.runVisionPass({
+      deck: { slideCount: 60 },
+      apiKey: 'test',
+      model: 'gemini-3.8-flash',
+      fallbackModels: ['gemini-3.5-flash'],
+      spec: { criteria: criteria },
+      pdf: Buffer.from('%PDF-1.4 not really a pdf'),
+      onLog: () => {},
+      runs: 1,
+    });
+    ok('a busy marking model no longer loses the whole review',
+      !!(pass && pass.ok), JSON.stringify(pass && pass.reason));
+    eq('the review reports the model that really answered', pass && pass.model, 'gemini-3.5-flash');
+    eq('and it tried the configured model first', seen[0], 'gemini-3.8-flash');
+    ok('before moving to the calibrated one',
+      seen.indexOf('gemini-3.5-flash') > 0, seen.join(', '));
+    ok('with the page coverage intact, so a mark can still be made',
+      !!(pass && pass.coverage && pass.coverage.length), JSON.stringify(pass && pass.coverage));
+
+    /*
+     * A failure no other model would survive — a rejected request — must NOT be retried
+     * against every model in turn: that would spend a request per model to learn the same
+     * thing. It comes back straight away, carrying the reason.
+     */
+    seen.length = 0;
+    failStatus = 400;
+    const rejected = await ai.runVisionPass({
+      deck: { slideCount: 60 },
+      apiKey: 'test',
+      model: 'gemini-3.8-flash',
+      fallbackModels: ['gemini-3.5-flash'],
+      spec: { criteria: criteria },
+      pdf: Buffer.from('%PDF-1.4 not really a pdf'),
+      onLog: () => {},
+      runs: 1,
+    });
+    eq('with nothing to fall back to the review reports failure rather than a number',
+      rejected && rejected.ok, false);
+    eq('and it names the reason, so the page can explain it', rejected.reason, 'error');
+    eq('without trying the other model at all', seen.length, 1);
+    ok('recording what it tried', Array.isArray(rejected.tried) && rejected.tried.length === 1,
+      JSON.stringify(rejected.tried));
+  } finally {
+    https.request = realRequest;
+  }
+
+  // The reason codes the page switches on.
+  eq('a busy service is reported as busy', ai.visionFailureReason(503), 'busy');
+  eq('and so is a bad gateway', ai.visionFailureReason(502), 'busy');
+  eq('a daily cap is named as one, because it is a different instruction',
+    ai.visionFailureReason(429), 'rate-limited');
+  eq('a silent timeout is its own case', ai.visionFailureReason(0), 'no-response');
+  eq('a model that is gone is named as unavailable', ai.visionFailureReason(404), 'unavailable');
+
+  /* ---- and the page must say so, next to the number ------------------------------ */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  const textOf = (node) => {
+    if (!node) { return ''; }
+    let out = node.textContent ? String(node.textContent) : '';
+    for (const k of (node.children || [])) { out += ' ' + textOf(k); }
+    return out;
+  };
+  const predicted = { rows: [{ id: 'a', name: 'A', weight: 10, mark: 9, max: 10 }], predicted: 74, maximum: 100, percentage: 74, weightsKnown: true };
+  const drawMark = (aiBlock) => {
+    page.state.data = { ok: true, config: {}, deck: null, local: { findings: [] }, ai: aiBlock };
+    page.call('renderPredicted');
+    return textOf(page.els.get('predictedBody')).replace(/\s+/g, ' ');
+  };
+
+  const busy = drawMark({ ran: true, visionRan: false, visionFailure: { reason: 'busy', status: 503 }, predicted: predicted });
+  ok('the page says the AI never saw the pages', /never saw your pages/.test(busy), busy.slice(0, 160));
+  ok('and says the figure comes from the text alone', /TEXT alone/.test(busy));
+  ok('and says it is not a judgement of the work', /not a judgement/.test(busy));
+  ok('and tells the student what to do', /Press Check now to try again/.test(busy));
+
+  const capped = drawMark({ ran: true, visionRan: false, visionFailure: { reason: 'rate-limited', status: 429 }, predicted: predicted });
+  ok('a daily cap is explained as one, not as the app being worse',
+    /daily free allowance/.test(capped), capped.slice(0, 160));
+
+  const fine = drawMark({ ran: true, visionRan: true, predicted: predicted });
+  ok('and a review that worked carries no such warning', !/never saw your pages/.test(fine));
+
+  /*
+   * A missing PDF is NOT a failure and must not get the alarm. The student chose it, and the
+   * calm note at the end of the panel already explains the consequence.
+   */
+  const noPdf = drawMark({ ran: true, visionRan: false, predicted: predicted });
+  ok('no PDF at all is not treated as a failure', !/never saw your pages/.test(noPdf));
 }
 
 })().then(summary, (err) => {
