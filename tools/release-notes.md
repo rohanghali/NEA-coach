@@ -18,20 +18,23 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **"Use it on your phone" is now its own section at the bottom of the page**, instead of being
-  buried in the advanced settings. It was in the wrong place twice over: it is not an option to
-  tune, and it was the one part of the page a phone user could not find on the phone they were
-  holding. It now says to use *Add to Home Screen* once it opens.
-- **A "Check again" button on it.** The address changes whenever your router reassigns it, so
-  "come back here and copy the new one" needed a way to actually come back. It also fills itself
-  in as soon as the page loads, rather than waiting to be asked.
+- Nothing about how the app works has changed. This release is so that the copy you download
+  is clean: the source contained a note quoting a real student by name, and that note is inside
+  the HTML every user downloads. The names are gone, and the working notes now refer to the four
+  measured portfolios as P1 to P4 by their real marks.
+- **Reinstalling is optional** — nothing behaves differently. If you already have v1.0.31 there
+  is no reason to fetch this.
+
+**In v1.0.31**
+
+- **"Use it on your phone" is now its own section at the bottom of the page**, with a
+  "Check again" button for when your router reassigns the address.
 
 **In v1.0.30**
 
 - **A busy marking model can no longer turn a 99/100 portfolio into 74.** When Google returned
   "this model is experiencing high demand", the app gave up on reading your pages and reported a
-  text-only figure as a mark. It now moves to a different model and looks at the pages anyway —
-  and only ever to one it has been calibrated against, so the result can still be corrected.
+  text-only figure as a mark. It now moves to a different model and looks at the pages anyway.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.
