@@ -608,6 +608,48 @@ passes WCAG AA. CSS braces balance, and no duplicate selectors were introduced �
 
 ---
 
+## 6e. The page can now be tested (tests/dom.js)
+
+**The gap this closed.** Every test read `public/index.html` as TEXT. Not one ran a
+render function. An undefined property inside `renderFixList` would have blanked the
+page for every user, and the suite would have stayed green — and it could not have
+caught it, because the page is one big IIFE with nothing reachable from Node.
+
+`tests/dom.js` loads the real script into a DOM stand-in and exposes the internals.
+Section **11v** feeds it the real saved report and asserts that `renderAll` completes,
+that no individual render function throws (naming the one that does), and that findings,
+the score and the deck name actually reach the DOM. It also covers the two states a new
+user meets first: **no report at all**, and **a scan that produced no mark** — which
+must hide the card rather than show "0 out of 0". 11 assertions; 569 pass in total.
+
+**Two traps in the stand-in, both already paid for once:**
+
+- `hidden` is modelled as a reflected attribute whose effect is `display: none`, with an
+  inline `style.display` overriding it. Getting this wrong produced a **false failure**
+  where a working button looked broken, and I chased the page instead of the stub.
+- `setAttribute('style', …)` is parsed into the inline-style object. The page's own
+  `el()` helper sets styles that way, and without it *every* styled render reported a
+  false failure.
+
+`renderCost` was the specific function that surfaced this. If a future change makes a
+render function throw, 11v now names it.
+
+## 6f. Mobile layout, and why it silently rots
+
+Grouped Settings, card titles and the key-action row were added with **no rule in the
+`max-width: 700px` block at all** — the exact failure the stylesheet's own comment warns
+about. The **11i** test exists to catch it, but its `mustAdapt` list is explicit, so a
+new element is only protected once someone remembers to add it. The four classes are now
+on the list, and the mobile block stacks the group summaries, tightens group padding,
+shrinks the card titles and makes the key buttons full width.
+
+**Be accurate about what that assertion does:** it is a presence check on the class name,
+not a judgement that the rules are good. It catches a MISSING rule — which is the bug
+that actually happened — and nothing more. A falsification attempt confirmed that
+removing one of several rules for the same class still passes.
+
+---
+
 ## 7. Still to do
 
 ### Already built, waiting on a Gemini API key
