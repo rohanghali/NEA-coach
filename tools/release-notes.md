@@ -18,17 +18,20 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The allowance now counts each model separately, which is what was wrong with it.** Your free
-  allowance is per model, but every request the app made was recorded against the *text* model —
-  including the page-reading requests, which use the marking model. So the text model looked
-  busier than it was, the other model's row read zero, and neither matched what Google actually
-  shows you. The number of requests was right; which model they belonged to was not.
-- **"Worth adding" is no longer the grey one.** Unselected tabs were pale grey on a white card,
-  which read as disabled rather than as *"there is something in here"*. They are normal ink now,
-  the open one is washed with the accent, and the suggestions panel has the accent as its own
-  colour — suggestions are not mistakes, so they should not wear the Fix list's severity colours.
-- The focus ring around whatever you are tabbing to was a pale blue in four places, which is weak
-  on a white card. It is the accent colour now.
+- **The background moves now** — three soft drape bands, like folded cloth, drifting very slowly
+  over each other behind the page. Still pale blue and still quiet: it is meant to be noticed over
+  a minute, not in a glance.
+- **It is built so it cannot make the page stutter.** Every one of the three layers animates
+  *transform* only, which is the one kind of animation a browser does on the graphics card without
+  touching the main thread or repainting anything. No blur, no shadows, no sliding gradients — all
+  of those force a full-screen repaint sixty times a second, which is what made an earlier version
+  of this page feel heavy. Three layers, and a test now fails if a fourth is added or if any
+  keyframe animates anything but transform.
+- **The old drifting colour wash no longer animates.** It is a flat, static tint now, because there
+  is no sense paying for two sets of motion at once — and its 52-second drift was too slow to see
+  anyway.
+- **It stops while the tab is in the background.** A hidden tab has no reason to keep a graphics
+  layer awake.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

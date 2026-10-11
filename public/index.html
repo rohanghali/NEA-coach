@@ -1066,6 +1066,74 @@
   .empty p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
   .empty .btn { margin-top: 4px; }
 
+  /* ---------- the moving background ---------- */
+
+  .waves {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    /*
+     * Strictly decorative. If a browser does not understand something here it loses a soft shape,
+     * never content.
+     */
+  }
+
+  .wave {
+    position: absolute;
+    left: -30%;
+    width: 160%;
+    border-radius: 50% 50% 0 0 / 26% 26% 0 0;
+    /*
+     * A bright crest falling away into colour. The gradient is painted ONCE and then only
+     * transformed, which is what makes it free to move.
+     */
+    background: linear-gradient(180deg, var(--wave-hi) 0%, var(--wave-lo) 58%, transparent 100%);
+    transform: translate3d(0, 0, 0);
+    /* Its own compositing layer, so the browser never repaints the page behind it. */
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  /*
+   * The speeds are deliberately slow and NOT multiples of each other, so the three never settle
+   * into a visible repeat. 54, 71 and 88 seconds.
+   */
+  .wave-1 { top: 26%; height: 44vh; animation: wave-a 54s ease-in-out infinite alternate; }
+  .wave-2 {
+    top: 46%;
+    height: 56vh;
+    background: linear-gradient(180deg, var(--wave-far) 0%, var(--wave-lo) 62%, transparent 100%);
+    animation: wave-b 71s ease-in-out infinite alternate;
+  }
+  .wave-3 {
+    top: 66%;
+    height: 68vh;
+    background: linear-gradient(180deg, var(--wave-lo) 0%, var(--wave-far) 70%, transparent 100%);
+    animation: wave-c 88s ease-in-out infinite alternate;
+  }
+
+  /* Transform and scale only. Nothing here can trigger a repaint. */
+  @keyframes wave-a {
+    from { transform: translate3d(-3.5%, 1.4%, 0) rotate(-1.5deg) scale(1.02); }
+    to   { transform: translate3d(3.5%, -1.4%, 0) rotate(1.5deg) scale(1.07); }
+  }
+  @keyframes wave-b {
+    from { transform: translate3d(2.5%, -1.1%, 0) rotate(1.1deg) scale(1.05); }
+    to   { transform: translate3d(-2.5%, 1.6%, 0) rotate(-1.1deg) scale(1.0); }
+  }
+  @keyframes wave-c {
+    from { transform: translate3d(-2%, 1.2%, 0) rotate(-0.8deg) scale(1.0); }
+    to   { transform: translate3d(2.6%, -1.8%, 0) rotate(0.8deg) scale(1.05); }
+  }
+
+  /*
+   * Off when the tab is in the background. CSS animations keep running in a hidden tab; there is
+   * no reason to hold a GPU layer awake to animate something nobody is looking at.
+   */
+  .is-hidden .wave { animation-play-state: paused; }
+
   /* ---------- the information panel ---------- */
 
   /*
@@ -1858,6 +1926,11 @@
     --aurora-2: rgba(124, 58, 237, 0.24);
     --aurora-3: rgba(8, 145, 178, 0.22);
     --aurora-4: rgba(236, 72, 153, 0.17);
+    /* The drape bands behind the page. Two colours each: a bright crest and a soft fall. */
+    --wave-hi: rgba(255, 255, 255, 0.94);
+    --wave-lo: rgba(191, 209, 240, 0.72);
+    --wave-far: rgba(224, 233, 249, 0.6);
+    --wave-wash: rgba(222, 231, 249, 0.85);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -1873,6 +1946,11 @@
       --aurora-2: rgba(139, 92, 246, 0.16);
       --aurora-3: rgba(6, 182, 212, 0.13);
       --aurora-4: rgba(236, 72, 153, 0.15);
+      /* Darker, because a white drape on a dark page is a spotlight rather than a shadow. */
+      --wave-hi: rgba(46, 55, 74, 0.85);
+      --wave-lo: rgba(31, 44, 71, 0.75);
+      --wave-far: rgba(26, 35, 54, 0.6);
+      --wave-wash: rgba(24, 31, 46, 0.85);
     }
   }
   :root[data-theme="dark"] {
@@ -1888,6 +1966,11 @@
     --aurora-2: rgba(139, 92, 246, 0.16);
     --aurora-3: rgba(6, 182, 212, 0.13);
     --aurora-4: rgba(236, 72, 153, 0.15);
+    /* Darker, because a white drape on a dark page is a spotlight rather than a shadow. */
+    --wave-hi: rgba(46, 55, 74, 0.85);
+    --wave-lo: rgba(31, 44, 71, 0.75);
+    --wave-far: rgba(26, 35, 54, 0.6);
+    --wave-wash: rgba(24, 31, 46, 0.85);
   }
 
   /* ---------- ambient background ---------- */
@@ -1902,19 +1985,22 @@
    * html rather than body on purpose: body's background propagates to the canvas,
    * and a negative-z pseudo-element on body would be painted underneath it.
    */
+  /*
+   * The colour ground, now STATIC.
+   *
+   * This was four drifting radial gradients. It is a single flat wash now, because the drape bands
+   * below carry the movement and there is no sense paying for two sets of motion — the drift was
+   * 52 seconds long, so nothing was actually visible in it anyway.
+   *
+   * z-index -2, with the waves at -1, so the order is: wash, drapes, page.
+   */
   html::before {
     content: '';
     position: fixed;
-    inset: -12vh -12vw;
-    z-index: -1;
+    inset: 0;
+    z-index: -2;
     pointer-events: none;
-    background:
-      radial-gradient(38rem 30rem at 16% 10%, var(--aurora-1), transparent 62%),
-      radial-gradient(34rem 28rem at 86% 4%, var(--aurora-2), transparent 60%),
-      radial-gradient(42rem 34rem at 66% 96%, var(--aurora-3), transparent 64%),
-      radial-gradient(30rem 26rem at 8% 78%, var(--aurora-4), transparent 66%);
-    animation: aurora 52s ease-in-out infinite alternate;
-    will-change: transform;
+    background: linear-gradient(180deg, var(--wave-wash) 0%, transparent 42%), var(--bg);
   }
   @keyframes aurora {
     from { transform: translate3d(-1.2%, -0.8%, 0) scale(1); }
@@ -2419,6 +2505,24 @@
 </style>
 </head>
 <body>
+<!--
+  The moving background: overlapping drape bands, like folded cloth.
+
+  Kept to three layers ON PURPOSE, and every one of them animates TRANSFORM only. That is the
+  whole performance story: transform and opacity are the two properties a browser can animate on
+  the compositor, so these cost the main thread nothing per frame. Anything else — a background
+  position, a box-shadow, a blur, a filter — forces a repaint of a full-screen layer sixty times a
+  second, which is exactly what made this page feel heavy before.
+
+  No blur filter either, though it would be the obvious way to soften an edge: blurring three
+  full-screen layers is far more expensive than the shape it would buy, and these bands are drawn
+  with soft gradients already.
+-->
+<div class="waves" id="waves" aria-hidden="true">
+  <span class="wave wave-1"></span>
+  <span class="wave wave-2"></span>
+  <span class="wave wave-3"></span>
+</div>
 
 <!-- First-run setup. Hidden by default and revealed by the script only when the
      user has never finished it, so a returning user never sees a flash of it. -->
@@ -3509,7 +3613,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.46';
+  var PAGE_BUILD = '1.0.47';
 
   var state = {
     data: null,
@@ -8947,6 +9051,21 @@
     }, { passive: true });
   }
 
+  /*
+   * Pause the background when the tab is not being looked at.
+   *
+   * CSS animations keep running in a hidden tab, which means a GPU layer and its compositing work
+   * stay awake for an animation nobody can see. classList.toggle with the second argument is used
+   * rather than add/remove so the two states cannot drift apart.
+   */
+  function wireVisibility() {
+    document.addEventListener('visibilitychange', function () {
+      var root = document.documentElement;
+      if (!root || !root.classList) { return; }
+      root.classList.toggle('is-hidden', !!document.hidden);
+    });
+  }
+
   function init() {
     cacheElements();
     buildChips();
@@ -8954,6 +9073,7 @@
     wireIntro();
     wireToTop();
     wireAurora();
+    wireVisibility();
     if (ui.themeSelect) { ui.themeSelect.value = currentTheme(); }
     applyFilterFolding();
     loadModelChoices();

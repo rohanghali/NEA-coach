@@ -5828,6 +5828,72 @@ section('12ah. The allowance counts the right model, and the tab has colour');
     })(), 'a literal colour here is how the dark-mode bugs happened');
 }
 
+section('12ai. The moving background stays off the main thread');
+{
+  /*
+   * Requested: a dynamic, minimalistic moving background like layered drape bands, "try to make it
+   * not laggy", keeping the soft blue theme.
+   *
+   * The performance rule is absolute and worth a test rather than a comment: TRANSFORM ONLY. A
+   * browser can animate transform and opacity on the compositor, without touching the main thread
+   * or repainting. Every other property — background-position, box-shadow, a blur, a filter —
+   * forces a full-screen repaint on every frame, which is exactly what made this page feel heavy
+   * before. So the test reads the keyframes and refuses anything else.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
+
+  ok('the background is built from a small, fixed number of layers',
+    /<div class="waves" id="waves" aria-hidden="true">/.test(html)
+    && (html.match(/class="wave wave-\d"/g) || []).length === 3,
+    'more layers means more full-screen fill to composite');
+  ok('it sits behind the content and cannot be clicked',
+    /\.waves \{[\s\S]{0,400}z-index: -1;[\s\S]{0,200}pointer-events: none;/.test(css));
+
+  /* ---- the rule that keeps it cheap -------------------------------------------- */
+  const frames = [...css.matchAll(/@keyframes (wave-[abc]) \{([\s\S]*?)\n  \}/g)];
+  eq('there is a keyframe set per layer', frames.length, 3);
+  const bad = frames.filter((m) => {
+    const props = [...m[2].matchAll(/([a-z-]+)\s*:/g)].map((x) => x[1]);
+    return props.some((pr) => pr !== 'transform');
+  }).map((m) => m[1]);
+  eq('and every one of them animates transform and NOTHING else', bad.join(','), '');
+  /*
+   * Declared ONCE on the shared .wave rule, which is the right way to do it: all three layers get
+   * it, and there is one place to change it. Counting occurrences would have demanded three
+   * copies of the same line.
+   */
+  ok('the layers are promoted to their own compositing layer',
+    /\.wave \{[\s\S]{0,900}will-change: transform;/.test(css),
+    'without this the browser may repaint instead of composite');
+  ok('and the layers use translate3d, which keeps them on the GPU',
+    frames.every((m) => /translate3d\(/.test(m[2])));
+
+  /* ---- what would defeat all of that ------------------------------------------ */
+  const waveRules = [...css.matchAll(/\.wave[^{}]*\{([^}]*)\}/g)].map((m) => m[1]).join('\n');
+  ok('no blur or filter anywhere in the moving layers',
+    !/filter\s*:/.test(waveRules), 'blurring three full-screen layers is far worse than the shape it buys');
+  ok('and no box-shadow, which repaints the layer it sits on',
+    !/box-shadow/.test(waveRules));
+  ok('the old drifting aurora no longer animates, so there is only one set of motion',
+    !/animation: aurora/.test(css), 'two independent animation systems, both costing frames');
+  ok('the colour ground is a flat static wash now',
+    /html::before \{[\s\S]{0,500}background: linear-gradient\(180deg, var\(--wave-wash\)/.test(css));
+
+  /* ---- and it stops when nobody is looking ------------------------------------ */
+  ok('the animation is paused while the tab is in the background',
+    /\.is-hidden \.wave \{ animation-play-state: paused; \}/.test(css)
+    && /wireVisibility\(\)/.test(html), 'a hidden tab has no reason to hold a GPU layer awake');
+  ok('reduced motion still switches all of it off',
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,220}animation-duration: 0\.01ms !important/.test(css));
+
+  /* ---- soft blue, in both themes ---------------------------------------------- */
+  const blocks = (html.match(/--wave-hi:/g) || []).length;
+  eq('the drape colours are defined for light AND both dark paths', blocks, 3);
+  ok('and they are blue-grey rather than the old pink and violet',
+    /--wave-lo: rgba\(191, 209, 240/.test(html) && !/--wave-hi: rgba\(236, 72, 153/.test(html));
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();
