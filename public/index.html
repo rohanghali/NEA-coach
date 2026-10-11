@@ -1541,6 +1541,8 @@
 
   <section class="card" aria-labelledby="actionsHeading">
     <h2 class="sr-only" id="actionsHeading">Checks</h2>
+    <!-- Filled by renderSampleNotice() only while the bundled sample is being read. -->
+    <div id="sampleNotice"></div>
     <div class="actions-row">
       <button class="btn btn-primary btn-lg" id="btnCheck" type="button">
         <span class="spinner" id="checkSpinner" style="display:none"></span><span id="btnCheckLabel">Check now</span>
@@ -2890,6 +2892,42 @@
     if (ui.thinkingToggle) { ui.thinkingToggle.disabled = busy; }
     show(ui.checkSpinner, busy);
     setText(ui.btnCheckLabel, busy ? 'Checking…' : 'Check now');
+    renderSampleNotice();
+  }
+
+  /**
+   * Say out loud when the app is reading the BUNDLED SAMPLE, not the student's work.
+   *
+   * findDeck falls back to sample/ so a freshly copied app is never dead on
+   * arrival, but the fallback used to be silent: pressing Check now with nothing
+   * uploaded returned a full report of findings about a stranger's coursework, and
+   * nothing anywhere said so. That is worse than an error, because an error is
+   * obviously about you and a false report is not.
+   *
+   * The notice cannot be dismissed — it clears itself the moment a real portfolio
+   * exists — and it sits with the Check button, which is the one place a user is
+   * about to act on the findings.
+   */
+  function renderSampleNotice() {
+    var host = ui.sampleNotice;
+    if (!host) { return; }
+    clearNode(host);
+    var cfg = (state.data && state.data.config) || {};
+    if (!cfg.readingSample) { return; }
+    host.appendChild(el('div', { cls: 'banner banner-warn', attrs: { role: 'status' } }, [
+      el('div', { cls: 'banner-text' }, [
+        el('strong', { text: 'This is the built-in sample, not your portfolio. ' }),
+        el('span', {
+          text: 'Anything below describes a made-up example deck. Add your own file to get advice about your work.'
+        })
+      ]),
+      el('button', {
+        cls: 'btn btn-secondary',
+        text: 'Add my portfolio',
+        attrs: { type: 'button' },
+        on: { click: function () { openSettings(); if (ui.uploadInput) { ui.uploadInput.click(); } } }
+      })
+    ]));
   }
 
   /* ------------------------------------------------------------------ *
@@ -6125,6 +6163,7 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
+      'sampleNotice',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
@@ -6458,7 +6497,25 @@
     }
   }
 
-  /** Persist the board choice, then move on. Never blocks the flow on failure. */
+  /**
+   * Show or hide the wizard overlay.
+   *
+   * Both mechanisms are set on purpose. The element carries `hidden` in the markup
+   * and the stylesheet has `.intro-overlay[hidden] { display: none }`, while the
+   * generic show() only writes style.display. Relying on an inline style to beat
+   * an attribute selector is exactly the kind of thing that works until one day it
+   * does not, and the failure is invisible: a button that "does nothing".
+   */
+  function introVisible(visible) {
+    var o = ui.introOverlay;
+    if (!o) { return; }
+    if (visible) { o.hidden = false; o.removeAttribute('hidden'); o.style.display = ''; }
+    else { o.hidden = true; o.style.display = 'none'; }
+  }
+
+  /**
+   * Persist the board choice, then move on. Never blocks the flow on failure.
+   */
   function introSaveBoard(next) {
     var status = document.getElementById('introBoardStatus');
     var chosen = introChosenSpec;
@@ -6554,20 +6611,20 @@
     if (btn) { btn.disabled = true; }
     apiPost('/api/scan', { recheckAll: false, thinking: false }).then(function () {
       introMarkDone();
-      if (ui.introOverlay) { show(ui.introOverlay, false); }
+      introVisible(false);
       // Show the run in the app itself rather than hiding it behind the wizard.
       loadState();
       beginPolling();
     }).catch(function (err) {
       if (btn) { btn.disabled = false; }
       setBanner('intro', 'error', friendlyError(err, 'The check could not be started. Is NEA Coach still running?'), true);
-      if (ui.introOverlay) { show(ui.introOverlay, false); }
+      introVisible(false);
     });
   }
 
   function introClose() {
     introMarkDone();
-    if (ui.introOverlay) { show(ui.introOverlay, false); }
+    introVisible(false);
   }
 
   function introNext() {
@@ -6616,7 +6673,7 @@
         introForget();
         introStep = 0;
         if (ui.settingsDetails) { ui.settingsDetails.open = false; }
-        show(ui.introOverlay, true);
+        introVisible(true);
         introShow(0);
       }, false);
     }
@@ -6649,7 +6706,7 @@
       }
     }
     if (cfg.specId) { introChosenSpec = cfg.specId; }
-    show(ui.introOverlay, true);
+    introVisible(true);
     introShow(0);
   }
 

@@ -1770,8 +1770,62 @@ section('11v. Changing the API key');
   ok('and still says nothing was lost', /nothing was lost/i.test(aiSrc));
 }
 
-section('11u. The marking card follows live config');
+section('11t. The bundled sample is never mistaken for the student\'s work');
 {
+  /*
+   * Reported by the user: with nothing uploaded, pressing Check now produced a
+   * full report and the app never said the findings were about the bundled sample
+   * deck. Two separate faults had to line up, and both are covered here.
+   *
+   *   1. findDeck's fallback sets `usedSample`, but the search ALSO walked into
+   *      the app's own sample/ folder (the default deckDir is "..", and the walk
+   *      goes three levels deep), so it returned the sample as an ordinary
+   *      candidate and the fallback never ran.
+   *   2. Even once flagged, buildStateResponse merges the live config OVER the
+   *      saved report, so a report written while the sample was being read kept
+   *      claiming `readingSample: true` after a real portfolio was uploaded.
+   */
+  const serverSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+
+  // The walk must not adopt the app's own demonstration deck.
+  ok('the deck search skips the app\'s own sample folder',
+    /path\.resolve\(full\) === bundledSampleDir/.test(serverSrc));
+  ok('and skips a nested copy of it, identified by its contents',
+    /looksLikeBundledSample/.test(serverSrc)
+    && /AQA-GCSE-Portfolio-SAMPLE\\\.pptx/.test(serverSrc));
+  ok('but only when it is not the folder the student actually chose',
+    /path\.resolve\(full\) !== path\.resolve\(dir\)/.test(serverSrc));
+
+  // The flag must be derived live, like pdfName, or the stale report wins.
+  const { publicConfig } = require(path.join(ROOT, 'server.js'));
+  const fake = { deckDir: '/nonexistent-folder-xyz', deckFile: null, pdfFile: null, apiKey: '' };
+  const live = publicConfig(fake, true);
+  ok('publicConfig accepts the live sample flag rather than trusting the report',
+    live.readingSample === true, String(live.readingSample));
+  const liveFalse = publicConfig(fake, false);
+  ok('and reports false when the student\'s own file is being read',
+    liveFalse.readingSample === false, String(liveFalse.readingSample));
+  ok('it is derived even when the caller does not pass one',
+    typeof publicConfig(fake).readingSample === 'boolean',
+    String(publicConfig(fake).readingSample));
+
+  // And the report written during a scan records which file it actually read.
+  ok('the report records whether it read the sample',
+    /readingSample: !!found\.usedSample/.test(serverSrc));
+
+  // The UI must say so, in the place a user is about to act on the findings.
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  ok('the page renders a notice when it is reading the sample',
+    /function renderSampleNotice/.test(page));
+  ok('the notice is drawn by renderActions, beside the Check button',
+    /renderActions\(\) \{[\s\S]{0,400}renderSampleNotice\(\)/.test(page));
+  ok('and it offers a way to add a real portfolio',
+    /Add my portfolio/.test(page));
+  ok('the notice is not dismissible, so it cannot be lost',
+    !/renderSampleNotice[\s\S]{0,900}banner-dismiss/.test(page));
+}
+
+section('11u. The marking card follows live config');{
   const { publicConfig } = require(path.join(ROOT, 'server.js'));
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const serverSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');

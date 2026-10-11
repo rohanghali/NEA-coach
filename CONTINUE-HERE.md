@@ -470,6 +470,47 @@ saved — it just opens with a welcome-back note offering to skip to the end. To
 again in the same browser: **Settings → Getting started → Show setup again**, or clear
 that one localStorage key.
 
+### The bundled sample was reviewed as if it were the student's own work
+
+**Reported by the user:** with nothing uploaded, pressing Check now produced a full
+report, and the app never said the findings were about the demo deck. Two faults had
+to line up:
+
+1. **The search adopted the app's own `sample/` folder.** The default `deckDir` is
+   `..` (the parent of the app) and the walk goes three levels deep, so it wandered
+   into the bundled `sample/` directory and returned the demo deck as an ordinary
+   candidate. The explicit fallback that sets `usedSample` therefore never ran, and
+   the flag that existed all along was never set. Fixed by skipping the app's own
+   sample directory during the walk, including a nested copy of it — identified by
+   its contents (`AQA-GCSE-Portfolio-SAMPLE.pptx`) rather than its name, so a
+   student's own folder called "sample" is untouched. Skipped only when it is not the
+   folder actually selected, so choosing it deliberately still works.
+2. **The stale report won the merge.** `buildStateResponse` does
+   `Object.assign({}, report.config, publicCfg)`, so a value present only in the
+   report survives. A report written while the sample was being read kept
+   `readingSample: true` even after a real portfolio was uploaded — **the same class
+   of bug as `pdfName`.** Fixed the same way: derived live in `publicConfig`, which
+   now takes the flag as an argument.
+
+The UI now shows a non-dismissible warning beside the Check button whenever the
+sample is being read, with an "Add my portfolio" button. It cannot be dismissed
+because it clears itself the moment a real file exists.
+
+Regression coverage: section **11t** (11 assertions), including the merge-order trap.
+Verified end to end against an isolated copy: `readingSample` is `true` with no
+portfolio, still `true` after scanning the sample, and `false` immediately after a
+real upload.
+
+### The "Show setup again" button
+
+**Reported as doing nothing.** The overlay carries `hidden` in the markup and the
+stylesheet has `.intro-overlay[hidden] { display: none }`, while `show()` only wrote
+`style.display`. That relies on an inline style beating an attribute selector, and
+the failure mode is silent — a button that appears dead. Introduced `introVisible()`,
+which sets the attribute AND the inline style AND removes the attribute, so visibility
+no longer depends on CSS specificity at all. Verified by firing real click events at
+the page's own handlers with the overlay in its true post-completion state.
+
 ---
 
 ## 7. Still to do

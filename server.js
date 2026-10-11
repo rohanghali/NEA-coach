@@ -470,7 +470,14 @@ function saveConfig(cfg) {
 }
 
 /** The config as a client may see it: no API key, no access code. */
-function publicConfig(cfg) {
+/**
+ * The config the browser is allowed to see.
+ *
+ * `readingSample` is passed in by buildStateResponse, which has already worked it
+ * out. When the caller omits it — the /api/config handler, for instance, which does
+ * not care — it is derived here so the field is never simply absent.
+ */
+function publicConfig(cfg, readingSample) {
   return Object.assign({}, cfg, {
     apiKey: undefined,
     accessCode: undefined,
@@ -502,6 +509,17 @@ function publicConfig(cfg) {
      */
     specId: cfg.specId || 'eduqas-alevel',
     specPresets: ai.SPEC_PRESETS.map((s) => ({ id: s.id, label: s.label })),
+    /*
+     * Whether the app is currently reading the BUNDLED SAMPLE rather than the
+     * student's own file. Computed live, from the live config, for the same reason
+     * pdfName is: buildStateResponse merges the live config OVER the saved report,
+     * so any value only present in the report survives stale. That is exactly how
+     * the sample flag went wrong — a report created while the sample was being read
+     * kept claiming the sample even after a real portfolio was uploaded.
+     */
+    readingSample: readingSample !== undefined
+      ? !!readingSample
+      : (function () { const f = findDeck(cfg); return !!(f && !f.error && f.usedSample); }()),
   });
 }
 
@@ -638,6 +656,36 @@ function findDeck(cfg) {
   }
 
   const candidates = [];
+  /*
+   * The app's own bundled sample folder.
+   *
+   * The search walks up to three levels deep, and the default folder is "..",
+   * the parent of the app. That means the walk can wander INTO this app's own
+   * `sample/` directory and pick up the demonstration deck as though the student
+   * had put it there. The consequences are quiet and bad: the fallback below
+   * never runs, so `usedSample` is never set, and a report about a made-up
+   * example deck is presented as though it were the student's own work.
+   *
+   * Skipping that one directory leaves the explicit fallback to do its job, and
+   * that path DOES mark the result. Only skipped when it is not the configured
+   * folder, so selecting sample/ deliberately still works.
+   */
+  const bundledSampleDir = path.resolve(path.join(APP_DIR, 'sample'));
+  /**
+   * Is this directory another copy of the app's bundled sample?
+   *
+   * The plain path check above misses a nested copy — an older release unzipped
+   * inside the search folder, for instance. Identified by its contents rather
+   * than its name, so a student's own folder called "sample" is left alone.
+   */
+  const looksLikeBundledSample = (d) => {
+    try {
+      return fs.readdirSync(d).some((n) => /^AQA-GCSE-Portfolio-SAMPLE\.pptx$/i.test(n));
+    } catch (err) {
+      return false;
+    }
+  };
+
   const walk = (d, depth) => {
     if (depth > 3) return;
     let list;
@@ -649,8 +697,13 @@ function findDeck(cfg) {
     for (const e of list) {
       if (e.name.startsWith('~$') || e.name.startsWith('.')) continue; // Office lock files
       const full = path.join(d, e.name);
-      if (e.isDirectory()) walk(full, depth + 1);
-      else if (/\.pptx$/i.test(e.name)) {
+      if (e.isDirectory()) {
+        if (path.resolve(full) !== path.resolve(dir)) {
+          if (path.resolve(full) === bundledSampleDir) continue;
+          if (e.name.toLowerCase() === 'sample' && looksLikeBundledSample(full)) continue;
+        }
+        walk(full, depth + 1);
+      } else if (/\.pptx$/i.test(e.name)) {
         try {
           const st = fs.statSync(full);
           candidates.push({ filePath: full, mtime: st.mtimeMs, size: st.size });
@@ -1214,6 +1267,9 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
         specName: spec.name,
         specCriteriaCount: (spec.criteria || []).length,
         specSkipped: spec.skipped || [],
+        // Frozen into the report so opening an old report cannot claim the sample
+        // was the student's own work.
+        readingSample: !!found.usedSample,
       },
       log: scanLog.slice(-60),
     };
@@ -2069,6 +2125,22 @@ function buildStateResponse() {
   const cfg = loadConfig();
   const report = lastReport || readJsonSafe(LAST_REPORT_PATH, null);
 
+  /*
+   * Is the app currently reading the STUDENT's portfolio, or the bundled sample?
+   *
+   * findDeck falls back to sample/ so that a freshly copied app is never dead on
+   * arrival. That is the right behaviour for a demo, but it was silent: a user
+   * with no portfolio pressed Check now, got a full report and a cheerful
+   * "opened" banner, and had no way to know the findings were about a stranger's
+   * coursework. Reported by the user, and it is a bad first impression.
+   *
+   * `usedSample` was already being set by findDeck and never read by anything.
+   * This reads it and tells the UI, which shows a standing banner until a real
+   * file is added.
+   */
+  const current = findDeck(cfg);
+  const readingSample = !!(current && !current.error && current.usedSample);
+
   if (!report) {
     return {
       ok: true,
@@ -2099,6 +2171,7 @@ function buildStateResponse() {
         specLoaded: false,
         specName: null,
         specCriteriaCount: 0,
+        readingSample: readingSample,
       },
       firstRun: true,
     };
@@ -2124,7 +2197,7 @@ function buildStateResponse() {
    * fell back to a single hard-coded board — which is exactly why AQA was missing
    * as an option. Deriving it at serve time means the list is always current.
    */
-  const publicCfg = publicConfig(cfg);
+  const publicCfg = publicConfig(cfg, readingSample);
   const previousReport = readJsonSafe(PREVIOUS_REPORT_PATH, null);
   return Object.assign({}, report, {
     /*
