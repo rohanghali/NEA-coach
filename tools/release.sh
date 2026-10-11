@@ -98,6 +98,8 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 - Settings rebuilt into four groups — Your portfolio, Exam board, Free AI key, and Advanced (collapsed) — instead of one long list.
 - An **Advanced → "Set up for the best possible marks"** button, which turns on the predicted mark and uses the strongest model available.
 - Fewer false alarms: a genuinely good portfolio no longer gets told its cover page is too empty, and near-identical font sizes are no longer counted as different headings.
+- The launcher now checks WHICH copy is running. If an older NEA Coach is still open, it says so and names both versions, instead of quietly opening the old one.
+- Clearer page: card titles, more depth, and a stronger focus ring for keyboard use.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server" window) before starting this one, or the old version will keep answering your browser.
 
