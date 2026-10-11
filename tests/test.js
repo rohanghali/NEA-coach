@@ -3718,7 +3718,8 @@ section('12l. The feel layer: ripples, rolling figures and the reward for finish
       return blurred.length > 0 && blurred.every((s) => /topbar|intro|to-top|dock/.test(s));
     })(), 'a scrolling surface was blurred, which is what makes a long report stutter');
   ok('cards rise in without being left holding a transform',
-    /\.page > \.card \{[^}]*animation:\s*rise [^}]*backwards/.test(css)
+    // .panel > .card now: the cards live inside section panels, not directly in .page.
+    /\.(?:page|panel) > \.card \{[^}]*animation:\s*rise [^}]*backwards/.test(css)
     && !/animation:\s*rise [^}]*both/.test(css));
   ok('the ring starts empty, so it draws itself in rather than unwinding',
     /id="ringValue"[\s\S]{0,160}stroke-dashoffset="326\.73"/.test(src));
@@ -5967,6 +5968,97 @@ section('12ai. The moving background stays off the main thread');
   eq('the drape colours are defined for light AND both dark paths', blocks, 3);
   ok('and they are blue-grey rather than the old pink and violet',
     /--wave-lo: rgba\(191, 209, 240/.test(html) && !/--wave-hi: rgba\(236, 72, 153/.test(html));
+}
+
+section('12aj. Every section is a tab');
+{
+  /*
+   * The page was one long scroll and is now eleven sections behind a tab strip. Two things about
+   * how that was done are worth holding, because both are easy to undo by accident:
+   *
+   *   - the ORDER is CSS, not document order. Settings is fourth in the markup and last in the
+   *     tabs, and Information is three separate blocks that are nowhere near each other. Ordering
+   *     in the stylesheet avoided moving large pieces of markup, which is how quiet breakage
+   *     happens.
+   *   - Fix list, Things to add and Coverage grid still share ONE card whose inner tabs are driven
+   *     by the existing setTab(). Three tabs now call it rather than a strip of buttons.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
+
+  const SECTIONS = ['overview', 'fixlist', 'suggest', 'predicted', 'coverage', 'since',
+    'slides', 'stats', 'history', 'info', 'settings'];
+  const buttons = [...html.matchAll(/class="toptab"[^>]*data-tab="([a-z]+)"/g)].map((m) => m[1]);
+  eq('there is one tab button per section, in order', buttons.join(','), SECTIONS.join(','));
+
+  const panels = [...html.matchAll(/<div class="panel" id="panel([A-Za-z]+)">/g)].map((m) => m[1]);
+  eq('and the panels they wrap are the expected ones', panels.join(','),
+    'Overview,Settings,Since,Predicted,Fixlist,Slides,Info,History,Stats,Cost,Connect');
+
+  ok('every tab points at a panel that exists, and only the ones it needs',
+    /panels: \['Fixlist'\], inner: 'fix'/.test(html)
+    && /panels: \['Connect', 'Info', 'Cost'\]/.test(html),
+    'the mapping from section to panel is where a wrong tab would show nothing');
+  ok('no tab is left with an empty panel list', !/panels: \[\]/.test(html));
+
+  /* ---- order is CSS, and must stay that way ------------------------------------ */
+  ok('the page is a flex column, which is what makes the order settable at all',
+    /\.page \{ display: flex; flex-direction: column; \}/.test(css));
+  const orders = [...css.matchAll(/#panel([A-Za-z]+) \{ order: (\d+); \}/g)].map((m) => [m[1], Number(m[2])]);
+  eq('every panel has an order', orders.length, 11);
+  const sorted = orders.slice().sort((a, b) => a[1] - b[1]).map((x) => x[0]).join(',');
+  /*
+   * "Use it on your phone" first, then the information card, then the allowance meter. The
+   * connection card is LAST in the markup, so this order is the only reason it appears at the top
+   * of the section.
+   */
+  ok('and Information comes out as connect, info, allowance meter — whatever the markup order',
+    /Connect,Info,Cost/.test(sorted), sorted);
+  ok('with the settings card last, as it is in the tabs',
+    sorted.split(',').pop() === 'Settings');
+
+  /* ---- the inner strip is reused, not duplicated -------------------------------- */
+  ok('the old strip inside the Fix list card is hidden rather than deleted',
+    /\.tabs \{ display: none; \}/.test(css) && /id="panelFix"/.test(html),
+    'its panels are still the thing setTab() shows');
+  ok('and the three sections that share it drive it by name',
+    /inner: 'fix'/.test(html) && /inner: 'suggest'/.test(html) && /inner: 'coverage'/.test(html));
+  ok('the filters are hidden outside the Fix list, since they filter only that list',
+    /getElementById\('tiles'\)/.test(html) && /getElementById\('filterHeading'\)/.test(html));
+
+  /* ---- and a page chip has to bring its section with it ------------------------- */
+  ok('clicking a page in a finding switches the SECTION, not just the inner tab',
+    /function jumpToPage\(page\) \{[\s\S]{0,400}setTopTab\('fixlist', false\);/.test(html),
+    'the inner tab would change inside a panel that is not on screen, so the click would appear dead');
+
+  /* ---- a phone gets one scrollable row ------------------------------------------ */
+  ok('the strip scrolls sideways rather than wrapping',
+    /\.toptabs \{[\s\S]{0,700}overflow-x: auto/.test(css) && !/flex-wrap: wrap/.test(/ \.toptabs \{[\s\S]{0,900}?\}/.exec(css)[0]),
+    'eleven tabs wrapped onto rows would push the content off the bottom of a narrow screen');
+  ok('and the open one is the accent, with a label colour that flips with the theme',
+    /\.toptab\[aria-selected="true"\] \{[\s\S]{0,160}background: var\(--accent\)/.test(css)
+    && /\.toptab\[aria-selected="true"\] \{[\s\S]{0,200}color: var\(--card\)/.test(css));
+  ok('the open tab is scrolled into view, since the strip is one scrolling row',
+    /strip\.scrollLeft = Math\.max\(0, offset/.test(html),
+    'eleven tabs means the selected one is usually off the right-hand edge');
+
+  /* ---- two bugs that only LOOKING at the page found ---------------------------- */
+  /*
+   * The footer sat inside .page, which is a flex column now, so the default order of 0 put it
+   * ABOVE the header. It is the last thing on the page in every sense.
+   */
+  ok('the footer is ordered last, because it is a child of the flex column',
+    /\.footer \{ order: 999; \}/.test(css), 'a default order of 0 renders it above the header');
+  /*
+   * And the version it shows was a hardcoded `var APP_VERSION = '1.0.0'` that no release ever
+   * updated — so the footer told every user they were on 1.0.0 while the app was on 1.0.50.
+   * server.js has a comment saying this was fixed; the VERSION it reports WAS fixed, and the
+   * footer had a second copy nobody looked at.
+   */
+  ok('the footer version comes from the running app, not from a constant',
+    !/var APP_VERSION = /.test(html)
+    && /setText\(ui\.appVersion, \(data && data\.version\)/.test(html),
+    'a hardcoded version is a version that will be wrong');
 }
 
 })().then(summary, (err) => {

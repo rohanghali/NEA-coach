@@ -18,32 +18,27 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-Four more things move in the background, on top of the drape bands:
+- **The page is eleven sections behind a tab strip along the top.** No more scrolling to the
+  bottom for Settings, or hunting for the coverage grid:
+  **Overview · Fix list · Things to add · Predicted mark · Coverage grid · Since your last check ·
+  Slides · Statistics · Past checks · Information · Settings**
+- The order is the one I would use it in: **the work first** (overview, then the two lists you act
+  on), then the mark, then the reference material, with **Settings last** because you visit it
+  once. Say the word if you would rather something sat elsewhere — it is a one-line change.
+- On a phone the strip is **one row you swipe sideways**. Eleven tabs do not fit across a narrow
+  screen, and wrapping them onto rows would push the content off the bottom of it.
+- **"Use it on your phone" is now at the top of Information**, and **the allowance meter is in
+  Information too**, as asked.
+- The open tab is the accent colour, and the strip scrolls it into view — with eleven tabs the one
+  you are on is usually off the right-hand edge.
 
-- **Dust motes** drifting slowly upward — tiny specks, like dust in sunlight.
-- **Colour clouds** — two big soft ones, well behind everything and much slower, so the background
-  has some depth to it.
-- **Two soft glows** that slowly brighten and fade.
-- **Once in a while, a faint streak of light** crossing the page. It spends most of its cycle
-  invisible; the crossing takes about five seconds out of every thirty-four.
+**Two bugs that only looking at the page found**
 
-**Still built so it cannot make the page stutter.** Every one of them animates *transform* or
-*opacity* only, which the graphics card handles without touching the main thread or repainting
-anything. There are seven moving layers in total, and a test fails if that rule is broken or if the
-count grows without someone deciding to.
-
-The dust is worth a note: it is **one** layer carrying a tiled field of specks, scrolled by exactly
-its own height so the loop is seamless. Twenty individually animated dots would have been twenty
-layers to composite for the same picture, and would have cost more than everything else here
-together.
-
-It is all blue and teal — the violet and pink are gone, since the background is meant to stay soft
-blue.
-
-**Next:** the tabs. Overview, Fix list, Things to add, Predicted mark, Coverage grid, Since your
-last check, Slides, Statistics, Past checks, Information, Settings — across the top, in one
-scrollable row on a phone, with "use it on your phone" moved into Information. That is a large
-restructure of the page, so it is getting its own release rather than being rushed alongside this.
+- **The footer said "Version 1.0.0".** It was a hardcoded constant that no release ever updated, so
+  it had been wrong for fifty versions. It now shows the version the running app reports, which is
+  the same value the update notice uses, so the two cannot drift.
+- **The footer jumped to the top of the page** once the sections became panels, because the page is
+  now a flex column and the footer's default position was first.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

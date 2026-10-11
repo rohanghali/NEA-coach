@@ -1097,6 +1097,89 @@
   .empty p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
   .empty .btn { margin-top: 4px; }
 
+  /* ---------- the section tabs ---------- */
+
+  /*
+   * The page is a flex column so that the ORDER can be set independently of the DOM order. The
+   * tab order is not the document order — Settings sits fourth in the markup and last in the
+   * tabs, and Information is three separate blocks that are not next to each other at all — and
+   * reordering in CSS avoids moving large pieces of markup around, which is the kind of edit that
+   * breaks something quietly.
+   */
+  .page { display: flex; flex-direction: column; }
+
+  .topbar { order: 1; }
+  /*
+   * The footer lives INSIDE .page in this markup, and .page is a flex column now — so with the
+   * default order of 0 it rendered above the header. It is last in every sense.
+   */
+  .footer { order: 999; }
+  .banners { order: 2; }
+  .toptabs { order: 3; }
+
+  .panel { display: none; }
+  .panel.is-active { display: flex; flex-direction: column; }
+
+  #panelOverview { order: 10; }
+  #panelFixlist { order: 20; }
+  #panelPredicted { order: 30; }
+  #panelSince { order: 40; }
+  #panelSlides { order: 50; }
+  #panelStats { order: 60; }
+  #panelHistory { order: 70; }
+  /* "Use it on your phone" sits at the TOP of the information page, as asked: it is its own
+     block in the markup, well after the information card, so it is ordered before it here. */
+  #panelConnect { order: 80; }
+  #panelInfo { order: 90; }
+  #panelCost { order: 100; }
+  #panelSettings { order: 110; }
+
+  /* ---------- the strip itself ---------- */
+
+  .toptabs {
+    display: flex;
+    gap: 4px;
+    margin: 0 0 14px;
+    padding: 4px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    /* One row, swiped sideways. The scrollbar is hidden because the fade at the edge already
+       says there is more. */
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .toptabs::-webkit-scrollbar { display: none; }
+
+  .toptab {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 9px 14px;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--ink-2);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .toptab:hover { background: var(--accent-soft); color: var(--accent-dark); }
+  .toptab[aria-selected="true"] {
+    background: var(--accent);
+    /* var(--card) flips with the theme, so the label stays legible on the accent in both. */
+    color: var(--card);
+  }
+
+  /*
+   * The old strip inside the Fix list card. Its buttons are gone from view but its panels are
+   * still driven by setTab(), which is what the three new tabs call.
+   */
+  .tabs { display: none; }
+
   /* ---------- the moving background ---------- */
 
   .waves {
@@ -2366,14 +2449,14 @@
    * the element is held at its start state before the animation begins and then
    * released to its ordinary styles, so nothing is left holding a transform.
    */
-  .page > .card { animation: rise 460ms var(--ease-out) backwards; }
+  .panel > .card { animation: rise 460ms var(--ease-out) backwards; }
   /* Explicit steps, because the page's children are a header, a banners div and
      then the cards, so a plain 2-3-4 ladder would start the first card late. */
-  .page > .card:nth-child(3) { animation-delay: 20ms; }
-  .page > .card:nth-child(4) { animation-delay: 55ms; }
-  .page > .card:nth-child(5) { animation-delay: 90ms; }
-  .page > .card:nth-child(6) { animation-delay: 125ms; }
-  .page > .card:nth-child(n+7) { animation-delay: 160ms; }
+  .panel > .card:nth-child(3) { animation-delay: 20ms; }
+  .panel > .card:nth-child(4) { animation-delay: 55ms; }
+  .panel > .card:nth-child(5) { animation-delay: 90ms; }
+  .panel > .card:nth-child(6) { animation-delay: 125ms; }
+  .panel > .card:nth-child(n+7) { animation-delay: 160ms; }
   @keyframes rise {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -2810,6 +2893,31 @@
 
   <div class="banners" id="banners"></div>
 
+<!--
+  The section tabs.
+
+  They replace a single long page, and the strip inside the Fix list card as well: Fix list,
+  Things to add and Coverage grid were three tabs nested in one card, and are now three of
+  these. The old strip is still in the markup and still does the showing and hiding — it is
+  simply hidden — so that tested code path is reused rather than rewritten.
+
+  One row that scrolls sideways on a phone: eleven tabs will not fit across a narrow screen,
+  and wrapping them would push the content off the bottom of it.
+-->
+<nav class="toptabs" id="topTabs" role="tablist" aria-label="Sections">
+  <button class="toptab" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview" type="button">Overview</button>
+  <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panel-fixlist" data-tab="fixlist" type="button">Fix list</button>
+  <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panel-suggest" data-tab="suggest" type="button">Things to add</button>
+  <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panel-predicted" data-tab="predicted" type="button">Predicted mark</button>
+  <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panel-coverage" data-tab="coverage" type="button">Coverage grid</button>
+  <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panel-since" data-tab="since" type="button">Since your last check</button>
+  <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panel-slides" data-tab="slides" type="button">Slides</button>
+  <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-tab="stats" type="button">Statistics</button>
+  <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" type="button">Past checks</button>
+  <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panel-info" data-tab="info" type="button">Information</button>
+  <button class="toptab" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" type="button">Settings</button>
+</nav>
+
   <!--
     The single answer to "which portfolio is being marked?".
     It used to be said twice, in two places, in two different ways — the upload
@@ -2817,6 +2925,7 @@
     as two competing answers. This is now the only place that answers it, and the
     sections below simply say what each file is FOR.
   -->
+  <div class="panel" id="panelOverview">
   <section class="card reviewed-card" aria-labelledby="reviewedHeading" id="reviewedCard">
     <h2 class="sr-only" id="reviewedHeading">Which portfolio is being marked</h2>
     <div class="reviewed-line">
@@ -2901,6 +3010,8 @@
     <p class="actions-hint muted" id="checkCoverage" style="display:none"></p>
   </section>
 
+  </div>
+  <div class="panel" id="panelSettings">
   <details class="card details-card" id="settingsDetails">
     <summary>
       <span class="summary-title">Settings</span>
@@ -3204,6 +3315,8 @@
     the first thing worth seeing, and a student who has just acted on the fix list
     is looking for exactly this. The choice is remembered.
   -->
+  </div>
+  <div class="panel" id="panelSince">
   <details class="card details-card" id="compareCard" style="display:none">
     <summary>
       <span class="summary-title">Since your last check</span>
@@ -3217,6 +3330,8 @@
     against a mark scheme, because a prediction from the free mechanical checks
     would be a lie — those checks measure tidiness, not design thinking.
   -->
+  </div>
+  <div class="panel" id="panelPredicted">
   <section class="card" aria-labelledby="predictedHeading" id="predictedCard" style="display:none">
     <div class="cost-head">
       <h2 class="card-title" id="predictedHeading">Predicted mark</h2>
@@ -3225,6 +3340,8 @@
     <div id="predictedBody"></div>
   </section>
 
+  </div>
+  <div class="panel" id="panelFixlist">
   <section aria-label="Summary" id="tiles"></section>
 
   <section class="card" aria-labelledby="filterHeading">
@@ -3288,6 +3405,8 @@
     </div>
   </section>
 
+  </div>
+  <div class="panel" id="panelSlides">
   <details class="card details-card" id="slidesDetails">
     <summary>
       <span class="summary-title">Slides</span>
@@ -3311,6 +3430,8 @@
     The reference section. Everything a student might want to look up, in one place at
     the bottom, folded away because none of it needs reading twice.
   -->
+  </div>
+  <div class="panel" id="panelInfo">
   <details class="card details-card" id="infoDetails">
     <summary>
       <span class="summary-title">Information</span>
@@ -3390,6 +3511,8 @@
   </details>
 
   <!-- Past scans. Hidden until there is at least one to show. -->
+  </div>
+  <div class="panel" id="panelHistory">
   <section class="card" aria-labelledby="historyHeading" id="historyCard" style="display:none">
     <div class="cost-head">
       <h2 class="card-title" id="historyHeading">Past checks</h2>
@@ -3402,6 +3525,8 @@
     Portfolio statistics. A card of its own rather than mixed into the report,
     because these are facts about the document, not findings about the work.
   -->
+  </div>
+  <div class="panel" id="panelStats">
   <details class="card details-card" id="statsDetails" style="display:none">
     <summary>
       <span class="summary-title">Portfolio statistics</span>
@@ -3410,6 +3535,8 @@
     <div class="details-body" id="statsBody"></div>
   </details>
 
+  </div>
+  <div class="panel" id="panelCost">
   <section class="card" aria-labelledby="costHeading">
     <div class="cost-head">
       <h2 class="card-title" id="costHeading">Today&rsquo;s free AI allowance</h2>
@@ -3432,6 +3559,8 @@
     from the phone — so a day when the address changed looked exactly like the app being
     broken. It is read from this Mac's own network interfaces instead, so it is always current.
   -->
+  </div>
+  <div class="panel" id="panelConnect">
   <section class="card" id="connectCard" aria-labelledby="connectHeading">
     <h2 class="card-title" id="connectHeading">Use it on your phone</h2>
     <p class="field-hint muted small">
@@ -3447,6 +3576,7 @@
     </div>
   </section>
 
+  </div>
   <footer class="footer">
     <p>NEA Coach runs entirely on this Mac. It reads your .pptx but never writes to it.</p>
     <p class="muted small">Version <span id="appVersion">1.0.0</span><span id="footerDeck"></span></p>
@@ -3485,7 +3615,15 @@
    * Constants
    * ------------------------------------------------------------------ */
 
-  var APP_VERSION = '1.0.0';
+  /*
+   * There is no APP_VERSION.
+   *
+   * There was, hardcoded as '1.0.0', and it was never updated by a single release — so the footer
+   * told every user they were on version 1.0.0 while the app was on 1.0.50. server.js carries a
+   * comment saying this was fixed, because the VERSION it reports WAS fixed; the footer had its own
+   * copy that nobody looked at. A version that cannot go stale is the only kind worth showing, and
+   * the server reports one on every state response, so the footer reads that.
+   */
 
   var SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
   var SEVERITY_LABEL = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' };
@@ -3543,6 +3681,34 @@
 
 
   var LS_TAB = 'neaCoach.tab';
+  /* Which top-level section you were last on, so a reload does not throw you back to Overview. */
+  var LS_TOP = 'neaCoach.section';
+
+  /*
+   * The sections, in the order they appear, and which panels each one shows.
+   *
+   * Fix list, Things to add and Coverage grid share ONE panel — the card that holds all three —
+   * and pick which of its inner panels is visible. Information is the reverse: three separate
+   * blocks in the markup, shown together as one section.
+   */
+  var TOP_TABS = [
+    { id: 'overview', panels: ['Overview'] },
+    { id: 'fixlist', panels: ['Fixlist'], inner: 'fix' },
+    { id: 'suggest', panels: ['Fixlist'], inner: 'suggest' },
+    { id: 'predicted', panels: ['Predicted'] },
+    { id: 'coverage', panels: ['Fixlist'], inner: 'coverage' },
+    { id: 'since', panels: ['Since'] },
+    { id: 'slides', panels: ['Slides'] },
+    { id: 'stats', panels: ['Stats'] },
+    { id: 'history', panels: ['History'] },
+    { id: 'info', panels: ['Connect', 'Info', 'Cost'] },
+    { id: 'settings', panels: ['Settings'] },
+  ];
+
+  function topTabExists(id) {
+    for (var i = 0; i < TOP_TABS.length; i++) { if (TOP_TABS[i].id === id) { return true; } }
+    return false;
+  }
   var LS_SEV = 'neaCoach.severity';
   var LS_DONE = 'neaCoach.done';
   var LS_THEME = 'neaCoach.theme';
@@ -3783,7 +3949,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.50';
+  var PAGE_BUILD = '1.0.51';
 
   var state = {
     data: null,
@@ -4224,7 +4390,12 @@
     var name = data && data.deck && data.deck.fileName ? data.deck.fileName : '';
     setText(ui.deckName, name ? name : (data ? 'No PowerPoint found yet' : 'Loading your portfolio…'));
     setText(ui.footerDeck, name ? ' · ' + name : '');
-    setText(ui.appVersion, APP_VERSION);
+    /*
+     * The version the RUNNING app reports, which is the one that matters when something is wrong.
+     * data.version is the server's own VERSION — the same value the update banner compares against
+     * — so this can never drift from it.
+     */
+    setText(ui.appVersion, (data && data.version) ? String(data.version) : '');
   }
 
   function deckMetaText() {
@@ -5215,6 +5386,105 @@
    * Rendering: tabs
    * ------------------------------------------------------------------ */
 
+  /**
+   * Show a top-level section.
+   *
+   * @param {string} id       one of TOP_TABS
+   * @param {boolean} [persist] remember it for the next visit
+   * @param {boolean} [quiet]   do not scroll to the top (used on first paint)
+   */
+  function setTopTab(id, persist, quiet) {
+    if (!topTabExists(id)) { id = 'overview'; }
+    state.topTab = id;
+    if (persist !== false) { lsSet(LS_TOP, id); }
+
+    /* The panels THIS section uses. */
+    var wanted = [];
+    for (var i = 0; i < TOP_TABS.length; i++) {
+      if (TOP_TABS[i].id === id) { wanted = TOP_TABS[i].panels; }
+    }
+
+    /*
+     * Open exactly those and close every other panel.
+     *
+     * Note this walks every section's panel list rather than just the wanted ones: one card is
+     * shared by three sections (Fix list, Things to add, Coverage grid) and the other two would
+     * otherwise leave it open behind them. A panel is active if, and only if, the current section
+     * names it.
+     */
+    for (var j = 0; j < TOP_TABS.length; j++) {
+      var list = TOP_TABS[j].panels;
+      for (var k = 0; k < list.length; k++) {
+        var node = document.getElementById('panel' + list[k]);
+        if (node) { node.className = wanted.indexOf(list[k]) >= 0 ? 'panel is-active' : 'panel'; }
+      }
+    }
+
+    for (var b = 0; b < TOP_TABS.length; b++) {
+      var btn = document.getElementById('topTab-' + TOP_TABS[b].id);
+      if (btn) { btn.setAttribute('aria-selected', TOP_TABS[b].id === id ? 'true' : 'false'); }
+    }
+
+    /*
+     * Bring the open tab into view.
+     *
+     * The strip is one row that scrolls, so with eleven tabs the selected one is usually off the
+     * right-hand edge — a screenshot of the Information section showed it selected but invisible,
+     * which makes the strip look like it has nothing to do with the page below it.
+     *
+     * scrollLeft is set directly rather than calling scrollIntoView: scrollIntoView can also move
+     * the PAGE vertically, and this must not fight the scroll to the top that follows.
+     */
+    var strip = ui.topTabs;
+    var active = document.getElementById('topTab-' + id);
+    if (strip && active && typeof strip.scrollLeft === 'number') {
+      var offset = Number(active.offsetLeft);
+      var width = Number(strip.clientWidth);
+      var own = Number(active.offsetWidth);
+      if (isFinite(offset) && isFinite(width) && isFinite(own) && width > 0) {
+        strip.scrollLeft = Math.max(0, offset - (width - own) / 2);
+      }
+    }
+
+    /*
+     * The filters belong to the Fix list alone. They are two separate blocks inside the shared
+     * card, so they are hidden directly rather than by panel.
+     */
+    var filtersOn = id === 'fixlist';
+    var tiles = document.getElementById('tiles');
+    var filterHeading = document.getElementById('filterHeading');
+    if (tiles) { tiles.style.display = filtersOn ? '' : 'none'; }
+    if (filterHeading) { filterHeading.style.display = filtersOn ? '' : 'none'; }
+
+    /* Three of the sections are really one card with an inner tab set. */
+    for (var m = 0; m < TOP_TABS.length; m++) {
+      if (TOP_TABS[m].id === id && TOP_TABS[m].inner) { setTab(TOP_TABS[m].inner, false); }
+    }
+
+    if (!quiet) {
+      try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (err) { window.scrollTo(0, 0); }
+    }
+    return id;
+  }
+
+  /** Put the tab strip on screen in whatever state the page is already in. */
+  function wireTopTabs() {
+    var host = ui.topTabs;
+    if (!host) { return; }
+    on(host, 'click', function (event) {
+      var node = event.target;
+      while (node && node !== host) {
+        if (node.getAttribute && node.getAttribute('data-tab')) {
+          setTopTab(node.getAttribute('data-tab'), true);
+          return;
+        }
+        node = node.parentNode;
+      }
+    });
+    var saved = lsGet(LS_TOP, null);
+    setTopTab(topTabExists(saved) ? saved : 'overview', false, true);
+  }
+
   function setTab(name, persist) {
     state.nextTab = name === 'coverage' ? 'coverage' : (name === 'suggest' ? 'suggest' : 'fix');
     if (persist !== false) { lsSet(LS_TAB, state.nextTab); }
@@ -5383,6 +5653,12 @@
   function jumpToPage(page) {
     state.pageFilter = String(page);
     if (ui.pageFilterInput) { ui.pageFilterInput.value = String(page); }
+    /*
+     * The SECTION as well as the inner tab. A page chip can be clicked from Things to add or
+     * Coverage grid, and switching only the inner tab would move the fix list into view inside a
+     * panel that is not being shown — so the click appeared to do nothing.
+     */
+    setTopTab('fixlist', false);
     setTab('fix');
     renderControls();
     renderFixList();
@@ -8209,7 +8485,7 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel',
+      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
@@ -9244,6 +9520,7 @@
     wireToTop();
     wireAurora();
     wireVisibility();
+    wireTopTabs();
     if (ui.themeSelect) { ui.themeSelect.value = currentTheme(); }
     applyFilterFolding();
     loadModelChoices();
