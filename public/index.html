@@ -1304,6 +1304,21 @@
   .tabs { display: none; }
 
   /*
+   * No disclosure caret on a panel-level card.
+   *
+   * .details-card draws a custom ▾ with an ::after, so hiding the native marker still left the
+   * caret on screen — and since these summaries are no longer clickable, it was a caret on a thing
+   * that did not open. "The drop down isn't working" is exactly right: there should not be one. The
+   * inner settings groups keep theirs, because those still fold.
+   */
+  /*
+   * Specific enough to win regardless of order: .details-card[open] > summary::after sets the
+   * caret further down the file at equal specificity, so the first attempt at this lost and the ▴
+   * stayed on screen.
+   */
+  .page .panel > details.details-card > summary::after { content: none; }
+
+  /*
    * Nothing folds away any more.
    *
    * These were collapsible cards on a page you scrolled; now each one IS its own tab, so a second
@@ -3109,8 +3124,8 @@
       <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panel-coverage" data-tab="coverage" type="button">Coverage grid</button>
       <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panel-since" data-tab="since" type="button">Since your last check</button>
       <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panel-slides" data-tab="slides" type="button">Slides</button>
-      <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-tab="stats" type="button">Statistics</button>
       <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" type="button">Past checks</button>
+      <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-tab="stats" type="button">Statistics</button>
       <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panel-info" data-tab="info" type="button">Information</button>
     </div>
     <button class="toptab toptab-end" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" type="button">Settings</button>
@@ -3919,8 +3934,8 @@
     { id: 'coverage', panels: ['Fixlist'], inner: 'coverage' },
     { id: 'since', panels: ['Since'] },
     { id: 'slides', panels: ['Slides'] },
-    { id: 'stats', panels: ['Stats'] },
     { id: 'history', panels: ['History'] },
+    { id: 'stats', panels: ['Stats'] },
     { id: 'info', panels: ['Connect', 'Info', 'Cost'] },
     { id: 'settings', panels: ['Settings'] },
   ];
@@ -4169,7 +4184,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.58';
+  var PAGE_BUILD = '1.0.59';
 
   var state = {
     data: null,
@@ -5760,14 +5775,31 @@
      * scrollLeft is set directly rather than calling scrollIntoView: scrollIntoView can also move
      * the PAGE vertically, and this must not fight the scroll to the top that follows.
      */
-    var strip = ui.topTabsScroll || ui.topTabs;
+    /*
+     * Bring the open tab into view — but ONLY when it is one of the tabs that scrolls.
+     *
+     * Overview and Settings are pinned outside the strip. This used offsetLeft, which is measured
+     * from the offsetParent and NOT from the strip — the browser reported offsetParent as BODY — so
+     * a pinned tab's position out at the far right of the row scrolled the whole middle strip to the
+     * end every time Settings was clicked.
+     *
+     * Rects are relative to the viewport and the current scroll is added back, which gives the tab's
+     * position within the strip's CONTENTS whatever contains what. The result is clamped as well, so
+     * a miscalculated target can never fling the strip to one end.
+     */
+    var strip = ui.topTabsScroll;
     var active = document.getElementById('topTab-' + id);
-    if (strip && active && typeof strip.scrollLeft === 'number') {
-      var offset = Number(active.offsetLeft);
-      var width = Number(strip.clientWidth);
-      var own = Number(active.offsetWidth);
-      if (isFinite(offset) && isFinite(width) && isFinite(own) && width > 0) {
-        strip.scrollLeft = Math.max(0, offset - (width - own) / 2);
+    if (strip && active && typeof strip.contains === 'function' && strip.contains(active)
+        && typeof strip.getBoundingClientRect === 'function'
+        && typeof active.getBoundingClientRect === 'function') {
+      var stripBox = strip.getBoundingClientRect();
+      var activeBox = active.getBoundingClientRect();
+      var wide = Number(strip.scrollWidth);
+      var view = Number(strip.clientWidth);
+      if (stripBox.width > 0 && isFinite(wide) && isFinite(view)) {
+        var offset = (activeBox.left - stripBox.left) + (Number(strip.scrollLeft) || 0);
+        var target = offset - (stripBox.width - activeBox.width) / 2;
+        strip.scrollLeft = Math.max(0, Math.min(Math.max(0, wide - view), target));
       }
     }
 

@@ -6018,7 +6018,8 @@ section('12aj. Every section is a tab');
   const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
 
   const SECTIONS = ['overview', 'fixlist', 'suggest', 'predicted', 'coverage', 'since',
-    'slides', 'stats', 'history', 'info', 'settings'];
+    // Statistics AFTER Past checks, as asked.
+    'slides', 'history', 'stats', 'info', 'settings'];
   // class="toptab[^"]*" rather than "toptab", because the pinned Settings button carries a
   // second class for its divider.
   const buttons = [...html.matchAll(/class="toptab[^"]*"[^>]*data-tab="([a-z]+)"/g)].map((m) => m[1]);
@@ -6143,6 +6144,39 @@ section('12aj. Every section is a tab');
     // Gathered here rather than reusing the later variable: this runs before it is declared.
     (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')
       .indexOf('.toptabs-scroll { scrollbar-width: none; }') >= 0);
+
+  /* ---- two bugs reported after using it ------------------------------------------ */
+  /*
+   * "when i click on something in the scrolling tabs at the beginning it moves the scrollbar to
+   * the end."
+   *
+   * The scroll-into-view measured offsetLeft, which is relative to the OFFSETPARENT, not to the
+   * strip — the browser reported that parent as BODY. Overview and Settings are pinned OUTSIDE the
+   * strip, so a pinned tab's position out at the far right of the row scrolled the entire middle
+   * strip to its end. Only a tab that is actually inside the scroller should move it.
+   */
+  ok('only a tab inside the scroller moves the scroller',
+    /strip\.contains\(active\)/.test(html),
+    'a pinned Overview or Settings click scrolled the middle strip to the end');
+  ok('and the distance is measured from the strip, not from the page',
+    /activeBox\.left - stripBox\.left/.test(html) && !/active\.offsetLeft/.test(html),
+    'offsetLeft answered relative to BODY here, which is a different number');
+  ok('with the result clamped, so no miscalculation can fling it to an end',
+    /Math\.min\(Math\.max\(0, wide - view\), target\)/.test(html));
+
+  /*
+   * "settings is not working the drop down isnt working there shouldnt be a drop down."
+   *
+   * There should not be one: Settings is its own section now. The summary still SHOWED a caret,
+   * because .details-card draws it with an ::after rather than the native marker — so hiding the
+   * marker left a ▾ on screen that does nothing when clicked.
+   */
+  ok('a panel-level card shows no disclosure caret',
+    /\.page \.panel > details\.details-card > summary::after \{ content: none; \}/.test(css),
+    'the custom ::after caret survived hiding the native marker');
+  ok('and the takeaway note still hides A caret, because those really fold',
+    /\.tabs \{ display: none; \}/.test(css) && /\.settings-group > summary::-webkit-details-marker/.test(css),
+    'the inner settings groups are collapsible and should keep their marker');
 
   /* ---- the note that says what a check WOULD do ---------------------------------- */
   /*
@@ -6283,7 +6317,7 @@ section('12aj. Every section is a tab');
     /renderTabRail\(\);[\s\S]{0,200}renderDock\(\);/.test(html));
 
   ok('the open tab is scrolled into view, since the strip is one scrolling row',
-    /strip\.scrollLeft = Math\.max\(0, offset/.test(html),
+    /strip\.scrollLeft = Math\.max\(0, Math\.min/.test(html),
     'eleven tabs means the selected one is usually off the right-hand edge');
 
   /* ---- two bugs that only LOOKING at the page found ---------------------------- */
