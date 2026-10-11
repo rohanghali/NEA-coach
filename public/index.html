@@ -1583,6 +1583,311 @@
     :root:not([data-theme="light"]) .ring-track { stroke: #242932; }
     :root:not([data-theme="light"]) .bar { background: #242932; }
   }
+
+  /* ==================================================================
+   * The feel layer.
+   *
+   * Every rule below is decoration. Delete this whole block and the app
+   * still works and still reads the same — that is the test for whether
+   * something belongs here. The global `prefers-reduced-motion` rule near
+   * the top of the sheet already flattens every duration, so nothing here
+   * needs its own guard.
+   *
+   * Two rules were deliberately NOT followed:
+   *   - no backdrop-filter on cards. A dozen blurred layers is the
+   *     quickest way to make a long report scroll badly, and the
+   *     background is soft enough that a plain translucent fill looks
+   *     the same. Blur is spent only on the header, where it matters.
+   *   - nothing that moves is ever left holding a transform, so no
+   *     element becomes a stray containing block for a fixed child.
+   * ================================================================== */
+
+  :root {
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* rgba first, then color-mix. An older browser that does not understand
+       color-mix drops the second declaration and keeps the first; without
+       that ordering an unsupported value would leave the header transparent. */
+    --glass: rgba(255, 255, 255, 0.72);
+    --glass: color-mix(in srgb, var(--card) 74%, transparent);
+    --card-tint: rgba(255, 255, 255, 0.88);
+    --card-tint: color-mix(in srgb, var(--card) 88%, transparent);
+    --glass-edge: rgba(255, 255, 255, 0.62);
+    --card-edge: rgba(255, 255, 255, 0.62);
+    --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+    --lift: 0 2px 4px rgba(16, 24, 40, 0.05), 0 14px 30px -10px rgba(16, 24, 40, 0.2);
+    --aurora-1: rgba(37, 99, 235, 0.14);
+    --aurora-2: rgba(124, 58, 237, 0.11);
+    --aurora-3: rgba(8, 145, 178, 0.1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --glass: rgba(20, 23, 29, 0.72);
+      --glass: color-mix(in srgb, var(--card) 74%, transparent);
+      --card-tint: rgba(23, 27, 34, 0.88);
+      --card-tint: color-mix(in srgb, var(--card) 88%, transparent);
+      --glass-edge: rgba(255, 255, 255, 0.07);
+      --card-edge: transparent;
+      --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.38);
+      --lift: 0 2px 6px rgba(0, 0, 0, 0.45), 0 16px 34px -12px rgba(0, 0, 0, 0.62);
+      --aurora-1: rgba(59, 130, 246, 0.2);
+      --aurora-2: rgba(139, 92, 246, 0.16);
+      --aurora-3: rgba(6, 182, 212, 0.13);
+    }
+  }
+  :root[data-theme="dark"] {
+    --glass: rgba(20, 23, 29, 0.72);
+    --glass: color-mix(in srgb, var(--card) 74%, transparent);
+    --card-tint: rgba(23, 27, 34, 0.88);
+    --card-tint: color-mix(in srgb, var(--card) 88%, transparent);
+    --glass-edge: rgba(255, 255, 255, 0.07);
+    --card-edge: transparent;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.38);
+    --lift: 0 2px 6px rgba(0, 0, 0, 0.45), 0 16px 34px -12px rgba(0, 0, 0, 0.62);
+    --aurora-1: rgba(59, 130, 246, 0.2);
+    --aurora-2: rgba(139, 92, 246, 0.16);
+    --aurora-3: rgba(6, 182, 212, 0.13);
+  }
+
+  /* ---------- ambient background ---------- */
+
+  /*
+   * Three very soft pools of colour behind everything, drifting slowly. This is
+   * what stops a long page of white cards reading as a flat document, and it is
+   * what the translucent cards are translucent *over*.
+   *
+   * Transform-only, so it runs on the compositor and repaints nothing, and the
+   * alphas are low enough that body text on top keeps full contrast. It hangs off
+   * html rather than body on purpose: body's background propagates to the canvas,
+   * and a negative-z pseudo-element on body would be painted underneath it.
+   */
+  html::before {
+    content: '';
+    position: fixed;
+    inset: -12vh -12vw;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(38rem 30rem at 16% 10%, var(--aurora-1), transparent 62%),
+      radial-gradient(34rem 28rem at 86% 4%, var(--aurora-2), transparent 60%),
+      radial-gradient(42rem 34rem at 66% 96%, var(--aurora-3), transparent 64%);
+    animation: aurora 52s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes aurora {
+    from { transform: translate3d(-1.2%, -0.8%, 0) scale(1); }
+    to { transform: translate3d(1.4%, 1.2%, 0) scale(1.05); }
+  }
+
+  ::selection { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+
+  /* The default scrollbars are the loudest un-designed thing left on the page. */
+  * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    background-clip: content-box;
+    border: 3px solid transparent;
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); background-clip: content-box; }
+
+  /* ---------- glass header ---------- */
+
+  /*
+   * The header sticks, because it carries the two things worth reaching for at
+   * any point in a long report — Check now and the read-only badge — and needing
+   * to scroll to the top before every action is the single most tiring thing
+   * about a long page.
+   *
+   * It is a floating rounded bar rather than a full-bleed strip on purpose: the
+   * page column is capped at 1040px, and bleeding a blurred strip out to the
+   * window edges from inside that column needs a 100vw hack that adds a
+   * horizontal scrollbar. A floating bar also reads as deliberate.
+   */
+  .topbar {
+    position: sticky;
+    top: 8px;
+    z-index: 60;
+    padding: 12px 14px;
+    margin-bottom: 22px;
+  }
+  .topbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: 18px;
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid var(--glass-edge);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 10px 26px -16px rgba(16, 24, 40, 0.3);
+  }
+  /* On a phone the header wraps to several rows; pinning that would eat the
+     screen, so it goes back to scrolling away like ordinary content. */
+  @media (max-width: 700px) {
+    .topbar { position: static; padding: 0; margin-bottom: 14px; }
+    .topbar::before { display: none; }
+  }
+
+  /* ---------- glass cards ---------- */
+
+  /*
+   * The 1px lit top edge is doing most of the work here: that inner highlight is
+   * the cue that reads as a glass surface rather than as a white rectangle. Dark
+   * mode turns it off, because against near-black a light top edge fights the
+   * flat look the dark palette is going for.
+   */
+  .card {
+    background: var(--card);
+    background: var(--card-tint);
+    /* border-color must never be left holding a color-mix that the browser does
+       not understand: the property would fall back to currentColor and draw a
+       black outline round every card. */
+    border-color: var(--line);
+    border-color: color-mix(in srgb, var(--line) 74%, transparent);
+    box-shadow: inset 0 1px 0 var(--card-edge), var(--card-shadow);
+    transition:
+      transform 220ms var(--ease-out),
+      box-shadow 220ms var(--ease-out),
+      border-color 220ms var(--ease-out);
+  }
+  /* A closed details card and an open one should both feel grabbable. */
+  .card:hover {
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 var(--card-edge), var(--lift);
+    border-color: var(--line-strong);
+    border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
+  }
+
+  /* ---------- press feedback ---------- */
+
+  /*
+   * A spring on release and a ripple from the point of the press. This is the one
+   * place where decoration is doing real work: the app's slow actions are network
+   * calls, and without immediate physical acknowledgement a button feels broken
+   * for the second or two before anything else on the page moves.
+   *
+   * The ripple colour is `currentColor`, so a white-on-blue primary button
+   * ripples white and a blue-on-white quiet button ripples blue, with no second
+   * rule and no per-variant bookkeeping.
+   */
+  .btn {
+    position: relative;
+    overflow: hidden;
+    transition:
+      background 150ms var(--ease-out),
+      border-color 150ms var(--ease-out),
+      box-shadow 200ms var(--ease-out),
+      transform 180ms var(--ease-spring);
+  }
+  .btn:hover:not([disabled]) { transform: translateY(-1px); }
+  /* Must outrank .btn-primary:active's translateY(1px) further up the sheet, and
+     must outrank the hover rule directly above, so it carries the same
+     specificity and simply comes later. */
+  .btn:active:not([disabled]) { transform: scale(0.965); transition-duration: 60ms; }
+
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.26;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    animation: ripple 640ms var(--ease-out) forwards;
+  }
+  @keyframes ripple {
+    40% { opacity: 0.2; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+  }
+
+  /* ---------- progress ---------- */
+
+  /*
+   * The bar only exists on screen while a check is running, and `display: none`
+   * suspends animations, so this sweep costs nothing at rest — no flag, no class
+   * to add and remove, and no chance of a shimmer sitting on a finished bar.
+   */
+  .bar-fill { position: relative; overflow: hidden; transition: width 420ms var(--ease-out); }
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 28%, rgba(255, 255, 255, 0.45) 50%, transparent 72%);
+    transform: translateX(-100%);
+    animation: sweep 2.4s var(--ease-out) infinite;
+  }
+  @keyframes sweep { to { transform: translateX(100%); } }
+
+  /* ---------- figures ---------- */
+
+  /*
+   * Tabular figures on anything that counts, so a rolling number does not jitter
+   * its own width as it climbs.
+   */
+  .ring-score, .predicted-pct, .stat-value, .progress-pct {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+  /* The ring draws itself in on first paint rather than snapping. */
+  .ring-value { transition: stroke-dashoffset 900ms var(--ease-out); }
+
+  /* ---------- arrival ---------- */
+
+  /*
+   * Cards rise in, lightly staggered down the page. `backwards` fill, not `both`:
+   * the element is held at its start state before the animation begins and then
+   * released to its ordinary styles, so nothing is left holding a transform.
+   */
+  .page > .card { animation: rise 460ms var(--ease-out) backwards; }
+  /* Explicit steps, because the page's children are a header, a banners div and
+     then the cards, so a plain 2-3-4 ladder would start the first card late. */
+  .page > .card:nth-child(3) { animation-delay: 20ms; }
+  .page > .card:nth-child(4) { animation-delay: 55ms; }
+  .page > .card:nth-child(5) { animation-delay: 90ms; }
+  .page > .card:nth-child(6) { animation-delay: 125ms; }
+  .page > .card:nth-child(n+7) { animation-delay: 160ms; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---------- small rewards ---------- */
+
+  a:focus-visible,
+  button:focus-visible,
+  summary:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  /* The celebration layer. Fixed, inert and above everything except the wizard. */
+  #sparks {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .spark {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    will-change: transform, opacity;
+    animation: spark 900ms var(--ease-out) forwards;
+  }
+  @keyframes spark {
+    from { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    to {
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.35) rotate(var(--rot));
+      opacity: 0;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1733,7 +2038,8 @@
         <svg class="ring" viewBox="0 0 120 120" role="img" aria-labelledby="ringTitle">
           <title id="ringTitle">Number of points to check, and how many pages are already clear</title>
           <circle class="ring-track" cx="60" cy="60" r="52"></circle>
-          <circle class="ring-value" id="ringValue" cx="60" cy="60" r="52"></circle>
+          <circle class="ring-value" id="ringValue" cx="60" cy="60" r="52"
+                  stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
         </svg>
         <div class="ring-centre">
           <span class="ring-score" id="scoreNumber">–</span>
@@ -3076,7 +3382,7 @@
       ui.ringValue.setAttribute('stroke-dashoffset', String(CIRC * (1 - cleanFraction)));
       ui.ringValue.setAttribute('class', 'ring-value ' + ringBand(cleanFraction * 100));
     }
-    setText(ui.scoreNumber, totalIssues ? String(totalIssues) : (data ? '0' : '–'));
+    rollFigure('issues', ui.scoreNumber, totalIssues ? String(totalIssues) : (data ? '0' : '–'));
     if (ui.ringOutOf) {
       /*
        * Worded so the number and the ring agree in the reader's head. The ring fills in
@@ -4107,7 +4413,14 @@
          * once per item.
          */
         var box = event.target;
+        /*
+         * Measure the box BEFORE the re-render, which removes it from the DOM.
+         * The burst is fired from where the tick was, so it reads as a
+         * consequence of that click rather than as a generic page-level effect.
+         */
+        var spot = box.getBoundingClientRect();
         renderPreservingScroll(box, function () { toggleDone(findingId, box.checked); });
+        if (box.checked) { celebrate(spot.left + 9, spot.top + spot.height / 2, 1); }
       };
     }(finding.id)), false);
 
@@ -5236,7 +5549,7 @@
 
       var big = el('div', { cls: 'predicted-top' }, [
         el('div', { cls: 'predicted-figure' }, [
-          el('div', { cls: 'predicted-pct', text: headline }),
+          rolledFigure('predicted', headline, 'predicted-pct'),
           /*
            * What the big number IS.
            *
@@ -6183,6 +6496,19 @@
       state.data = data;
       state.lastLoadedAt = Date.now();
       clearBanner('fetch');
+
+      /*
+       * The moment the whole app exists for. Fired once, on the running→finished
+       * edge, so it cannot repeat on the polls that follow or on a reload of a
+       * report that was already finished.
+       */
+      var runningNow = !!(data.scan && data.scan.running);
+      if (runningNow) {
+        scanWasRunning = true;
+      } else if (scanWasRunning) {
+        scanWasRunning = false;
+        celebrate(window.innerWidth / 2, Math.max(96, window.innerHeight * 0.22), 3);
+      }
 
       if (data.scan && data.scan.running) {
         if (!pollTimer) { beginPolling(); }
@@ -7327,6 +7653,173 @@
      * signal for "already on screen". Manual re-opening from Settings resets it.
      */
     if (!introOpen) { introOpenAt(0); }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Feel: ripples, rolling figures and the small celebrations.
+   *
+   * All of this is decoration and all of it is skippable. A reader who has
+   * asked their system for reduced motion gets final values immediately and
+   * sees no ripple and no spark at all — the checks below are the only place
+   * the preference is consulted, because the CSS side of it is already
+   * handled by the global rule at the top of the sheet.
+   * ------------------------------------------------------------------ */
+
+  var calmMotion = false;
+  try {
+    calmMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  } catch (err) { calmMotion = false; }
+
+  /*
+   * One delegated listener rather than one per button. Almost every button in
+   * this app is rebuilt by renderAll, so per-button listeners would have to be
+   * re-attached on every render — and the ones that were missed would fail
+   * silently, which is this codebase's signature bug.
+   */
+  document.addEventListener('pointerdown', function (event) {
+    if (calmMotion || !event || event.button) { return; }
+    var target = event.target;
+    var button = target && target.closest ? target.closest('.btn') : null;
+    if (button) { spawnRipple(button, event.clientX, event.clientY); }
+  }, true);
+
+  function spawnRipple(button, clientX, clientY) {
+    /* The reduced-motion check lives here as well as in the listener, so any
+       future caller cannot bypass it. */
+    if (calmMotion || !button || button.disabled) { return; }
+    var box = button.getBoundingClientRect();
+    if (!box.width || !box.height) { return; }
+    var x = (typeof clientX === 'number' ? clientX : box.left + box.width / 2) - box.left;
+    var y = (typeof clientY === 'number' ? clientY : box.top + box.height / 2) - box.top;
+    /*
+     * Sized to reach the furthest corner from the press, so the circle always
+     * covers the whole button before it fades — a fixed size would leave a
+     * visible gap on a wide button pressed near one end.
+     */
+    var dx = Math.max(x, box.width - x);
+    var dy = Math.max(y, box.height - y);
+    var size = 2 * Math.sqrt(dx * dx + dy * dy);
+    var span = document.createElement('span');
+    span.className = 'ripple';
+    span.setAttribute('aria-hidden', 'true');
+    span.style.width = size + 'px';
+    span.style.height = size + 'px';
+    span.style.left = x + 'px';
+    span.style.top = y + 'px';
+    button.appendChild(span);
+    var drop = function () { if (span.parentNode) { span.parentNode.removeChild(span); } };
+    span.addEventListener('animationend', drop, false);
+    /* Belt and braces: under reduced motion the animation is 0.01ms and may never
+       fire animationend, which would leave an orphaned span inside the button. */
+    window.setTimeout(drop, 900);
+  }
+
+  /*
+   * Rolling figures.
+   *
+   * Keyed rather than remembered on the element, because renderPredicted builds
+   * a fresh node on every render: an element-local memory would make the headline
+   * count up from zero again after every unrelated setting change, and on every
+   * poll of a running check.
+   */
+  var counted = {};
+
+  function rollFigure(key, node, text) {
+    if (!node) { return; }
+    text = text === null || text === undefined ? '' : String(text);
+    var match = /(\d+)/.exec(text);
+    var previous = counted[key];
+    if (calmMotion || !match) {
+      setText(node, text);
+      counted[key] = { text: text, value: match ? parseInt(match[1], 10) : null };
+      return;
+    }
+    var to = parseInt(match[1], 10);
+    var from = 0;
+    /*
+     * Only the FIRST number on the line is animated, and only when everything
+     * else about the line is unchanged. That is what lets "about 81 of 100 marks"
+     * roll its 81 into 88 while the "of 100 marks" stays put, and what stops a
+     * change of wording being animated into a number that never existed.
+     */
+    if (previous && typeof previous.value === 'number' && previous.text
+        && previous.text.replace(/\d+/g, '#') === text.replace(/\d+/g, '#')) {
+      from = previous.value;
+    }
+    counted[key] = { text: text, value: to };
+    if (from === to) { setText(node, text); return; }
+
+    var template = text.replace(/\d+/, '\u0000');
+    var started = Date.now();
+    var tick = function () {
+      var t = Math.min(1, (Date.now() - started) / 640);
+      var eased = 1 - Math.pow(1 - t, 3);
+      setText(node, template.replace('\u0000', String(Math.round(from + (to - from) * eased))));
+      if (t < 1) { window.setTimeout(tick, 16); }
+      else { setText(node, text); }
+    };
+    tick();
+  }
+
+  /* The same thing as a freshly built node, for panels that redraw themselves. */
+  function rolledFigure(key, text, cls) {
+    var node = el('div', { cls: cls });
+    rollFigure(key, node, text);
+    return node;
+  }
+
+  var SPARK_COLOURS = ['#2563eb', '#7c3aed', '#0891b2', '#087443', '#f59e0b'];
+  var sparksHost = null;
+  var scanWasRunning = false;
+
+  function sparkLayer() {
+    if (!sparksHost) {
+      sparksHost = document.getElementById('sparks');
+      if (!sparksHost) {
+        sparksHost = document.createElement('div');
+        sparksHost.id = 'sparks';
+        sparksHost.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(sparksHost);
+      }
+    }
+    return sparksHost;
+  }
+
+  function dropLater(node, ms) {
+    window.setTimeout(function () { if (node.parentNode) { node.parentNode.removeChild(node); } }, ms);
+  }
+
+  /*
+   * A short outward burst. `weight` is how big a moment it is: ticking off one
+   * finding is a 1, a whole finished check is a 3.
+   *
+   * Coordinates are viewport pixels, which is what the fixed spark layer wants
+   * and what getBoundingClientRect already returns.
+   */
+  function celebrate(x, y, weight) {
+    if (calmMotion) { return; }
+    /* Guarded so a caller that could not measure a position simply gets no
+       burst, rather than sparks stacked at the origin. */
+    if (!isFinite(x) || !isFinite(y)) { return; }
+    var host = sparkLayer();
+    if (!host) { return; }
+    weight = weight || 1;
+    var count = 10 + weight * 8;
+    var reach = 34 + weight * 26;
+    for (var i = 0; i < count; i++) {
+      var angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      var distance = reach * (0.55 + Math.random() * 0.6);
+      var dot = document.createElement('span');
+      dot.className = 'spark';
+      dot.style.left = x + 'px';
+      dot.style.top = y + 'px';
+      dot.style.background = SPARK_COLOURS[i % SPARK_COLOURS.length];
+      dot.style.setProperty('--dx', Math.round(Math.cos(angle) * distance) + 'px');
+      dot.style.setProperty('--dy', Math.round(Math.sin(angle) * distance) + 'px');
+      dot.style.setProperty('--rot', Math.round((Math.random() * 2 - 1) * 220) + 'deg');
+      host.appendChild(dot);
+      dropLater(dot, 1100);
+    }
   }
 
   function init() {

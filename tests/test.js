@@ -3370,6 +3370,216 @@ section('12e2. The exam board\'s own guidance reaches the marking prompt');
     ok('no error was raised while saving', page.errors.length === 0, JSON.stringify(page.errors));
   }
 
+section('12l. The feel layer: ripples, rolling figures and the reward for finishing');
+{
+  /*
+   * None of this is load-bearing, which is exactly why it needs tests: if a
+   * ripple or a burst quietly stops working, nothing throws and nothing looks
+   * broken — the page just goes back to feeling like a form, and nobody notices
+   * for a month.
+   *
+   * So each piece is driven for real through the DOM stand-in and the DOM it
+   * produces is inspected, rather than the file being grepped for the word
+   * "ripple".
+   */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const src = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = /<style>([\s\S]*?)<\/style>/.exec(src)[1];
+  const page = loadPage(ROOT);
+  const { document, T } = page;
+
+  ok('the page still initialises with the feel layer in place',
+    page.errors.length === 0, JSON.stringify(page.errors));
+  ok('the feel helpers are reachable from the page',
+    typeof T.spawnRipple === 'function' && typeof T.celebrate === 'function'
+    && typeof T.rollFigure === 'function');
+
+  // ---- the ripple --------------------------------------------------------
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-primary';
+  btn.disabled = false;
+  document.body.appendChild(btn);
+  T.spawnRipple(btn, 90, 18);
+  const ripples = btn.children.filter((c) => c.className === 'ripple');
+  ok('a press puts exactly one ripple inside the button', ripples.length === 1,
+    ripples.length + ' ripples');
+  const ripple = ripples[0];
+  if (ripple) {
+    /*
+     * The stand-in reports every box as 100x20, so a press at x=90 leaves 90px to
+     * the far corner and 10px to the near one. Sized from the near edge it would
+     * be 20px across and visibly fail to cover the button.
+     */
+    const size = parseFloat(ripple.style.width);
+    ok('the ripple is sized to reach the furthest corner, not the nearest',
+      size >= 180, 'ripple was ' + ripple.style.width + ' wide');
+    ok('and it is centred on the press rather than on the button',
+      ripple.style.left === '90px' && ripple.style.top === '18px',
+      ripple.style.left + ' / ' + ripple.style.top);
+    ok('the ripple is invisible to pointers and to screen readers',
+      ripple.getAttribute('aria-hidden') === 'true' && /\.ripple \{[\s\S]*?pointer-events:\s*none/.test(css));
+  }
+  ok('the ripple is clipped to the button it belongs to', (() => {
+    const bodies = [...css.matchAll(/\.btn \{([^}]*)\}/g)].map((m) => m[1]);
+    return bodies.some((b) => /overflow:\s*hidden/.test(b) && /position:\s*relative/.test(b));
+  })(), 'no .btn rule both hides overflow and anchors the ripple');
+  ok('a disabled button gets no ripple', (() => {
+    const dead = document.createElement('button');
+    dead.className = 'btn';
+    dead.disabled = true;
+    T.spawnRipple(dead, 10, 10);
+    return dead.children.filter((c) => c.className === 'ripple').length === 0;
+  })());
+  ok('one delegated listener covers buttons drawn later, instead of one each',
+    /document\.addEventListener\('pointerdown'/.test(src) && /closest\('\.btn'\)/.test(src));
+
+  // ---- reduced motion ----------------------------------------------------
+  /*
+   * A reader who has asked their system for reduced motion must get the final
+   * state immediately and no movement at all. This is checked by flipping the
+   * page's own flag, so it exercises the same branch a real reader would take.
+   */
+  T.setCalm(true);
+  ok('reduced motion: no ripple at all', (() => {
+    const calm = document.createElement('button');
+    calm.className = 'btn';
+    calm.disabled = false;
+    T.spawnRipple(calm, 10, 10);
+    return calm.children.filter((c) => c.className === 'ripple').length === 0;
+  })());
+  ok('reduced motion: no sparks either', (() => {
+    T.celebrate(100, 100, 3);
+    return T.sparkLayer().children.filter((c) => c.className === 'spark').length === 0;
+  })());
+  ok('reduced motion: the figure is simply written out in full', (() => {
+    const node = document.createElement('div');
+    T.rollFigure('calm-check', node, 'about 88 of 100 marks');
+    return node.textContent === 'about 88 of 100 marks';
+  })());
+  T.setCalm(false);
+
+  // ---- rolling figures ---------------------------------------------------
+  const fig = document.createElement('div');
+  T.rollFigure('t-roll', fig, 'about 81 of 100 marks');
+  const first = fig.textContent;
+  const firstNum = parseInt(/(\d+)/.exec(first)[1], 10);
+  ok('the figure climbs rather than appearing', firstNum < 81,
+    'it started at ' + firstNum);
+  ok('and the words around the number are preserved while it climbs',
+    /^about \d+ of 100 marks$/.test(first), first);
+  await new Promise((r) => setTimeout(r, 800));
+  ok('it settles exactly on the real text', fig.textContent === 'about 81 of 100 marks',
+    fig.textContent);
+
+  /*
+   * The reason the memory is keyed by name rather than stored on the element:
+   * renderPredicted builds a brand new node on every render, so an element-local
+   * memory would make the headline count up from zero again after every unrelated
+   * setting change, and on every poll of a running check.
+   */
+  ok('a rebuilt node with unchanged text does not roll again', (() => {
+    const rebuilt = document.createElement('div');
+    T.rollFigure('t-roll', rebuilt, 'about 81 of 100 marks');
+    return rebuilt.textContent === 'about 81 of 100 marks';
+  })(), 'the headline re-rolled from zero on a re-render');
+
+  ok('a change of wording is written straight out, with no rolling at all', (() => {
+    const node = document.createElement('div');
+    T.rollFigure('t-words', node, 'a sentence with no numbers in it');
+    return node.textContent === 'a sentence with no numbers in it';
+  })());
+
+  // ---- the celebration --------------------------------------------------
+  const layer = T.sparkLayer();
+  ok('the spark layer is inert', /#sparks \{[\s\S]*?pointer-events:\s*none/.test(css));
+  T.celebrate(120, 80, 3);
+  const sparks = layer.children.filter((c) => c.className === 'spark');
+  ok('finishing a check throws a burst', sparks.length > 0, 'no sparks were created');
+  ok('it is a burst rather than one dot', sparks.length >= 20, sparks.length + ' sparks');
+  ok('the burst starts where it was asked to',
+    sparks[0].style.left === '120px' && sparks[0].style.top === '80px',
+    sparks[0].style.left + ' / ' + sparks[0].style.top);
+  ok('every spark carries its own direction, so they fan out rather than moving as one block',
+    sparks.every((s) => /^-?\d+px$/.test(s.style.getPropertyValue('--dx'))
+      && /^-?\d+px$/.test(s.style.getPropertyValue('--dy'))
+      && /^-?\d+deg$/.test(s.style.getPropertyValue('--rot'))));
+  const distinct = new Set(sparks.map((s) => s.style.getPropertyValue('--dx') + ',' + s.style.getPropertyValue('--dy')));
+  ok('and the directions actually differ', distinct.size >= 8, distinct.size + ' distinct directions');
+  ok('a bigger moment is a bigger burst', (() => {
+    const before = layer.children.filter((c) => c.className === 'spark').length;
+    T.celebrate(10, 10, 1);
+    return layer.children.filter((c) => c.className === 'spark').length > before;
+  })());
+  ok('an unmeasurable position produces no burst rather than sparks at the origin', (() => {
+    const before = layer.children.filter((c) => c.className === 'spark').length;
+    T.celebrate(NaN, NaN, 3);
+    return layer.children.filter((c) => c.className === 'spark').length === before;
+  })());
+
+  // ---- where the celebration fires --------------------------------------
+  ok('the big burst fires on the running to finished edge only',
+    /runningNow/.test(src) && /scanWasRunning = true;/.test(src)
+    && /else if \(scanWasRunning\) \{/.test(src),
+    'the completion burst is not edge-triggered, so it would repeat on every poll');
+  ok('ticking a finding measures the box before the re-render removes it',
+    /var spot = box\.getBoundingClientRect\(\);/.test(src)
+    && /if \(box\.checked\) \{ celebrate\(spot\.left/.test(src),
+    'the tick-off burst would be positioned after the node was destroyed');
+  ok('pressing a button springs, and the spring outranks the older translateY press',
+    css.indexOf('.btn:active:not([disabled])') > css.indexOf('.btn-primary:active')
+    && css.indexOf('.btn:active:not([disabled])') > -1);
+
+  // ---- the surfaces -----------------------------------------------------
+  ok('the ambient background hangs off html, so body\'s canvas colour cannot hide it',
+    /html::before \{[\s\S]*?position:\s*fixed[\s\S]*?z-index:\s*-1/.test(css));
+  ok('the header is a real glass surface',
+    /\.topbar::before \{[\s\S]*?backdrop-filter:\s*blur\(/.test(css));
+  ok('blur is spent on the header and the wizard, never on cards',
+    (() => {
+      const blurred = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+        .filter((m) => /backdrop-filter/.test(m[2]))
+        .map((m) => m[1].trim().split('\n').pop().trim());
+      return blurred.length > 0 && blurred.every((s) => /topbar|intro/.test(s));
+    })(), 'a card was blurred, which is what makes a long report scroll badly');
+  ok('cards rise in without being left holding a transform',
+    /\.page > \.card \{[^}]*animation:\s*rise [^}]*backwards/.test(css)
+    && !/animation:\s*rise [^}]*both/.test(css));
+  ok('the ring starts empty, so it draws itself in rather than unwinding',
+    /id="ringValue"[\s\S]{0,160}stroke-dashoffset="326\.73"/.test(src));
+  ok('figures that count use tabular numerals, so a rolling number does not jitter',
+    /font-variant-numeric:\s*tabular-nums/.test(css));
+  ok('the header unpins on a phone, where pinning it would eat the screen',
+    /@media \(max-width: 700px\) \{[\s\S]{0,200}\.topbar \{ position: static/.test(css));
+
+  /*
+   * color-mix is the whole basis of the translucency, and it is a 2023 feature.
+   * On a browser without it an undeclared fallback does not degrade quietly:
+   * `border-color` falls back to currentColor (a black outline round every card)
+   * and `background` falls back to transparent (a card with no surface at all).
+   * Both are worse than the flat design this replaced, so each one must have a
+   * plain declaration immediately before it.
+   */
+  const naked = [];
+  const lines = css.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^\s*(background|border-color):\s*.*color-mix.*;\s*$/.exec(lines[i]);
+    if (!m) { continue; }
+    let j = i - 1;
+    while (j >= 0) {
+      const t = lines[j].trim();
+      if (!t || t.startsWith('/*') || t.startsWith('*') || t.startsWith('//')) { j -= 1; continue; }
+      break;
+    }
+    const prev = j >= 0 ? lines[j].trim() : '';
+    if (!prev.startsWith(m[1] + ':')) { naked.push(m[1] + ' at line ' + (i + 1) + ' (previous was "' + prev + '")'); }
+  }
+  ok('every color-mix on a surface has an older-browser fallback above it',
+    naked.length === 0, naked.join(' | '));
+
+  ok('nothing in the feel layer threw while all of that ran',
+    page.errors.length === 0, JSON.stringify(page.errors));
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();

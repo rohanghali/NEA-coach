@@ -99,8 +99,22 @@ function makeEl(id) {
     get style() {
       const self = this;
       if (!this._style) {
+        /*
+         * CSS custom properties go through setProperty()/getPropertyValue(), not
+         * through property assignment, so the proxy has to provide them or every
+         * spark in the feel layer reports a false failure.
+         */
         this._style = new Proxy({}, {
-          get: (t, k) => (k === 'display' ? self._display : (t[k] || '')),
+          get: (t, k) => {
+            if (k === 'setProperty') {
+              return (name, value) => { if (name === 'display') { self._display = value; } else { t[name] = value; } };
+            }
+            if (k === 'getPropertyValue') { return (name) => (t[name] === undefined ? '' : String(t[name])); }
+            if (k === 'removeProperty') { return (name) => { delete t[name]; }; }
+            if (k === 'cssText') { return Object.keys(t).map((n) => n + ': ' + t[n]).join('; '); }
+            if (k === 'display') { return self._display; }
+            return t[k] || '';
+          },
           set: (t, k, v) => { if (k === 'display') { self._display = v; } else { t[k] = v; } return true; },
         });
       }
@@ -230,13 +244,18 @@ function loadPage(appRoot) {
     'renderFixList', 'renderSuggestions', 'renderCoverage', 'renderComparison',
     'renderPredicted', 'renderSlides', 'renderSettings', 'renderStats', 'renderReviewed',
     'renderUploadSection', 'renderModelCostPreview', 'renderSampleNotice',
+    // The feel layer, so a test can fire a ripple or a burst and inspect the DOM
+    // it produces instead of only being able to see that the page loaded.
+    'spawnRipple', 'celebrate', 'rollFigure', 'rolledFigure', 'sparkLayer',
   ];
   const marker = '}());';
   const at = script.lastIndexOf(marker);
   if (at < 0) { throw new Error('could not find the page IIFE close'); }
   const expose = '\n  document.documentElement.__t = {'
     + names.map((n) => n + ': ' + n).join(', ')
-    + ', getStep: function () { return introStep; } };\n';
+    + ', getStep: function () { return introStep; }'
+    + ', getCalm: function () { return calmMotion; }'
+    + ', setCalm: function (v) { calmMotion = !!v; } };\n';
   script = script.slice(0, at) + expose + script.slice(at);
 
   const errors = [];
