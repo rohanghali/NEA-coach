@@ -156,7 +156,40 @@ function loadPage(appRoot) {
 
   const ids = [...new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]))];
   const els = new Map();
-  ids.forEach((id) => els.set(id, makeEl(id)));
+  /*
+   * Tag name AND attributes are read from the markup. Every element used to be a bare
+   * DIV with no attributes at all, so no test could tell a real <button type="button">,
+   * with a class and an accessible name, from a <div> wearing a click handler. "Can a
+   * keyboard reach this, and does it say what it does?" was therefore untestable, and
+   * that is the kind of fault this file exists to catch. Bare attributes such as
+   * `hidden` are deliberately skipped: they are booleans, and assigning them a string
+   * would make every one of them true.
+   */
+  const markupFor = (id) => {
+    const m = new RegExp('<(\\w+)([^>]*\\bid="' + id + '"[^>]*)>', 'i').exec(html);
+    if (!m) { return null; }
+    const attrs = {};
+    for (const a of m[2].matchAll(/([\w-]+)\s*=\s*"([^"]*)"/g)) { attrs[a[1]] = a[2]; }
+    return { tag: m[1].toUpperCase(), attrs };
+  };
+  ids.forEach((id) => {
+    const element = makeEl(id);
+    const markup = markupFor(id);
+    if (markup) {
+      element.tagName = markup.tag;
+      for (const [name, value] of Object.entries(markup.attrs)) {
+        if (name === 'class') {
+          element.className = value;
+          String(value).split(/\s+/).forEach((c) => { if (c) { element.classList.add(c); } });
+        } else if (name === 'style') {
+          element.setAttribute('style', value);
+        } else {
+          element[name] = value;
+        }
+      }
+    }
+    els.set(id, element);
+  });
 
   const store = {};
   const document = {
@@ -199,6 +232,16 @@ function loadPage(appRoot) {
       setItem(k, v) { this._d[k] = String(v); },
       removeItem(k) { delete this._d[k]; },
     },
+    /*
+     * Viewport and scroll, which the page reads for the back-to-top threshold.
+     * Recorded rather than performed: the page asks for scrollTo({top: 0, behavior: ...})
+     * and a test needs to see both the target and whether it wanted smooth or instant.
+     */
+    innerWidth: 1024,
+    innerHeight: 768,
+    pageYOffset: 0,
+    scrollCalls: [],
+    scrollTo(...args) { window.scrollCalls.push(args); },
     addEventListener() {}, removeEventListener() {},
     matchMedia() { return { matches: false, addEventListener() {} }; },
     location: { href: 'http://127.0.0.1:4173/', protocol: 'http:', hostname: '127.0.0.1', port: '4173', search: '' },
@@ -247,6 +290,7 @@ function loadPage(appRoot) {
     // The feel layer, so a test can fire a ripple or a burst and inspect the DOM
     // it produces instead of only being able to see that the page loaded.
     'spawnRipple', 'celebrate', 'rollFigure', 'rolledFigure', 'sparkLayer',
+    'renderToTop', 'wireToTop',
   ];
   const marker = '}());';
   const at = script.lastIndexOf(marker);

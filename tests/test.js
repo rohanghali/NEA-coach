@@ -3578,13 +3578,20 @@ section('12l. The feel layer: ripples, rolling figures and the reward for finish
     /html::before \{[\s\S]*?position:\s*fixed[\s\S]*?z-index:\s*-1/.test(css));
   ok('the header is a real glass surface',
     /\.topbar::before \{[\s\S]*?backdrop-filter:\s*blur\(/.test(css));
-  ok('blur is spent on the header and the wizard, never on cards',
+  ok('blur is spent on fixed chrome, never on content',
     (() => {
       const blurred = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
         .filter((m) => /backdrop-filter/.test(m[2]))
         .map((m) => m[1].trim().split('\n').pop().trim());
-      return blurred.length > 0 && blurred.every((s) => /topbar|intro/.test(s));
-    })(), 'a card was blurred, which is what makes a long report scroll badly');
+      /*
+       * Three pieces of chrome, one instance each and all of them fixed: the header bar,
+       * the wizard overlay and the back-to-top pill. A CARD is the thing this guards
+       * against — there are a dozen of them and they scroll, so blurring every one is
+       * what makes a long report stutter. Naming the three explicitly means a new
+       * blurred surface has to be argued for here rather than slipped in.
+       */
+      return blurred.length > 0 && blurred.every((s) => /topbar|intro|to-top/.test(s));
+    })(), 'a scrolling surface was blurred, which is what makes a long report stutter');
   ok('cards rise in without being left holding a transform',
     /\.page > \.card \{[^}]*animation:\s*rise [^}]*backwards/.test(css)
     && !/animation:\s*rise [^}]*both/.test(css));
@@ -3816,6 +3823,103 @@ section('12n. Your settings, key and portfolio survive an upgrade');
   ok('the data folder is not created before adoption, or a move would become a copy',
     src.indexOf('adoptPreviousState(target)') < src.indexOf('fs.mkdirSync(target, { recursive: true })'),
     'mkdir now runs before adoption, so a 500 MB portfolio would be copied instead of moved');
+}
+
+section('12o. The back-to-top button');
+{
+  /*
+   * A small feature, and exactly the shape of one that fails silently in this codebase:
+   * a control whose element was never cached is `undefined`, `on()` returns early on a
+   * null node, and the button does nothing at all with no error anywhere. The user has
+   * reported that fault five separate times, so the first checks are that it exists and
+   * that pressing it works.
+   */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  const { window } = page;
+  const css = /<style>([\s\S]*?)<\/style>/.exec(fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8'))[1];
+
+  ok('the page still loads with the button in place',
+    page.errors.length === 0, JSON.stringify(page.errors));
+  ok('the button is cached rather than left as an undefined ui.* reference',
+    !!page.ui.btnToTop, 'ui.btnToTop is ' + String(page.ui.btnToTop));
+  ok('it is a real button, so a keyboard can reach it without being told to',
+    page.ui.btnToTop.tagName === 'BUTTON', page.ui.btnToTop.tagName);
+  ok('and it is not a submit button that could ever post a form',
+    page.ui.btnToTop.getAttribute('type') === 'button');
+  ok('it says what it does', /top/i.test(String(page.ui.btnToTop.getAttribute('aria-label'))),
+    String(page.ui.btnToTop.getAttribute('aria-label')));
+  ok('the arrow is decorative and hidden from a screen reader',
+    /class="to-top-arrow"[^>]*aria-hidden="true"/.test(page.html));
+
+  // Hidden at the top, and hidden in the way that also keeps it out of the tab order.
+  window.pageYOffset = 0;
+  page.call('renderToTop');
+  ok('nothing is offered at the top of the page',
+    page.ui.btnToTop.className === 'to-top', page.ui.btnToTop.className);
+  ok('while hidden it cannot be focused, so it is not an invisible tab stop',
+    /\.to-top \{[\s\S]*?visibility:\s*hidden/.test(css)
+    && /\.to-top \{[\s\S]*?pointer-events:\s*none/.test(css),
+    'opacity alone would leave a transparent button in the tab order');
+  ok('and it becomes reachable again when it is shown',
+    /\.to-top\.is-shown \{[\s\S]*?visibility:\s*visible/.test(css)
+    && /\.to-top\.is-shown \{[\s\S]*?pointer-events:\s*auto/.test(css));
+
+  window.pageYOffset = 3000;
+  page.call('renderToTop');
+  ok('scrolling a long way down offers it',
+    /is-shown/.test(page.ui.btnToTop.className), page.ui.btnToTop.className);
+
+  window.pageYOffset = 0;
+  page.call('renderToTop');
+  ok('and arriving back at the top takes it away again',
+    page.ui.btnToTop.className === 'to-top', page.ui.btnToTop.className);
+
+  /*
+   * The threshold scales with the window rather than being a fixed pixel count, so a
+   * tall screen is not offered the button after one small scroll and a short one does
+   * not have to reach the bottom of the report.
+   */
+  window.innerHeight = 1400;
+  window.pageYOffset = 2000;
+  page.call('renderToTop');
+  ok('on a tall window, 2000px down is not yet worth a button',
+    !/is-shown/.test(page.ui.btnToTop.className), page.ui.btnToTop.className);
+  window.innerHeight = 400;
+  window.pageYOffset = 700;
+  page.call('renderToTop');
+  ok('on a short window the threshold floors rather than shrinking to nothing',
+    /is-shown/.test(page.ui.btnToTop.className), page.ui.btnToTop.className);
+  window.innerHeight = 768;
+
+  // Pressing it must actually ask the browser to go to the top.
+  window.pageYOffset = 3000;
+  page.call('renderToTop');
+  window.scrollCalls = [];
+  page.ui.btnToTop.click();
+  ok('clicking it asks the browser for the top of the page',
+    window.scrollCalls.length === 1 && !!window.scrollCalls[0][0]
+    && window.scrollCalls[0][0].top === 0, JSON.stringify(window.scrollCalls));
+  ok('smoothly, when movement is welcome',
+    window.scrollCalls[0][0].behavior === 'smooth', JSON.stringify(window.scrollCalls[0][0]));
+
+  page.T.setCalm(true);
+  window.scrollCalls = [];
+  page.ui.btnToTop.click();
+  ok('and instantly for a reader who asked for reduced motion',
+    window.scrollCalls.length === 1 && window.scrollCalls[0][0].behavior === 'auto',
+    JSON.stringify(window.scrollCalls));
+  page.T.setCalm(false);
+
+  ok('it sits above the pinned header but below the wizard overlay',
+    (() => {
+      const z = /\.to-top \{[\s\S]*?z-index:\s*(\d+)/.exec(css);
+      return !!z && Number(z[1]) > 60 && Number(z[1]) < 1000;
+    })());
+  ok('it is blurred like the rest of the chrome',
+    /\.to-top \{[\s\S]*?backdrop-filter:\s*blur\(/.test(css));
+  ok('and it stays out of the way on a phone, where the word is dropped',
+    /@media \(max-width: 700px\) \{[\s\S]{0,200}\.to-top-text \{ display: none/.test(css));
 }
 
 })().then(summary, (err) => {

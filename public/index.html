@@ -1888,6 +1888,80 @@
       opacity: 0;
     }
   }
+  /* ---------- back to the top ---------- */
+
+  /*
+   * Fixed, so it sits over the page rather than in it, and bottom-right, where it never
+   * covers the thing being read.
+   *
+   * It is hidden with `visibility` rather than with opacity or with the hidden
+   * attribute. Opacity alone would leave a fully transparent button in the tab order,
+   * which is the worst of both: invisible, and still something a keyboard user can land
+   * on. `visibility: hidden` takes it out of the tab order and out of the
+   * accessibility tree, and it can still be transitioned.
+   *
+   * The delay on visibility is what lets the fade finish before the element stops being
+   * there; without it the fade is skipped in both directions.
+   */
+  .to-top {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 70;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 16px 11px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-edge);
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08), 0 12px 28px -12px rgba(16, 24, 40, 0.4);
+    color: var(--ink-2);
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(8px) scale(0.96);
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 220ms var(--ease-spring),
+      visibility 0s linear 200ms,
+      background 150ms var(--ease-out),
+      border-color 150ms var(--ease-out);
+  }
+  .to-top.is-shown {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    transition-delay: 0s;
+  }
+  .to-top:hover {
+    background: var(--card);
+    border-color: var(--line-strong);
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  }
+  .to-top:active { transform: scale(0.94); }
+  .to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .to-top-arrow {
+    width: 9px;
+    height: 9px;
+    border-left: 2px solid currentColor;
+    border-top: 2px solid currentColor;
+    transform: rotate(45deg) translate(1px, 1px);
+  }
+  /* On a phone the word is the first thing to go, leaving a small round target. */
+  @media (max-width: 700px) {
+    .to-top { right: 12px; bottom: 12px; padding: 13px; }
+    .to-top-text { display: none; }
+  }
+
 </style>
 </head>
 <body>
@@ -2627,6 +2701,17 @@
   </footer>
 
 </div>
+
+<!--
+  Back to the top. A report is a long page and the way back is otherwise a long drag,
+  worse on a phone where the header has deliberately stopped pinning itself. It is
+  invisible and inert until the reader is far enough down that the top is no longer a
+  flick away — a control that is present at the top of the page is just furniture.
+-->
+<button type="button" class="to-top" id="btnToTop" aria-label="Back to the top">
+  <span class="to-top-arrow" aria-hidden="true"></span>
+  <span class="to-top-text">Top</span>
+</button>
 
 <script>
 (function () {
@@ -6966,7 +7051,7 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice',
+      'sampleNotice', 'btnToTop',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
@@ -7852,11 +7937,76 @@
     }
   }
 
+  /* ------------------------------------------------------------------ *
+   * Back to the top.
+   *
+   * A report is a long page. Once you are several screens down, the way back is a long
+   * drag — and it is worse on a phone, where the header has deliberately stopped
+   * pinning itself. This is the way back.
+   * ------------------------------------------------------------------ */
+
+  var toTopShown = false;
+
+  /* How far down counts as "far enough that coming back is a chore". */
+  function toTopThreshold() {
+    var height = typeof window.innerHeight === 'number' ? window.innerHeight : 800;
+    return Math.max(600, height * 1.5);
+  }
+
+  function scrollPosition() {
+    if (typeof window.pageYOffset === 'number') { return window.pageYOffset; }
+    var doc = document.documentElement;
+    return doc && typeof doc.scrollTop === 'number' ? doc.scrollTop : 0;
+  }
+
+  /*
+   * Driven by a class rather than by writing styles in the scroll handler. One passive
+   * listener that toggles a class costs nothing; one that touches layout on every
+   * scroll frame is how a long report starts to feel sticky.
+   */
+  function renderToTop() {
+    if (!ui.btnToTop) { return; }
+    var far = scrollPosition() > toTopThreshold();
+    if (far === toTopShown) { return; }
+    toTopShown = far;
+    ui.btnToTop.className = far ? 'to-top is-shown' : 'to-top';
+  }
+
+  function wireToTop() {
+    if (!ui.btnToTop) { return; }
+    window.addEventListener('scroll', renderToTop, { passive: true });
+    window.addEventListener('resize', renderToTop, false);
+
+    ui.btnToTop.addEventListener('click', function () {
+      /*
+       * Smooth where it is welcome, instant where it is not. A reader who has asked for
+       * reduced motion is asking not to be flown up a thousand lines, so they are simply
+       * put there.
+       */
+      if (typeof window.scrollTo === 'function') {
+        try {
+          window.scrollTo({ top: 0, behavior: calmMotion ? 'auto' : 'smooth' });
+        } catch (err) {
+          window.scrollTo(0, 0); // older engines take coordinates only
+        }
+      }
+      /*
+       * The button hides itself once you are back at the top, and focus left on a
+       * control that is no longer visible is focus a keyboard user cannot see. Moving it
+       * off deliberately beats leaving the browser to guess where it should go.
+       */
+      if (typeof ui.btnToTop.blur === 'function') { ui.btnToTop.blur(); }
+    }, false);
+
+    renderToTop();
+  }
+
   function init() {
     cacheElements();
     buildChips();
     wireEvents();
     wireIntro();
+    wireToTop();
     if (ui.themeSelect) { ui.themeSelect.value = currentTheme(); }
     applyFilterFolding();
     loadModelChoices();
