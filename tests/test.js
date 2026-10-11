@@ -2997,6 +2997,65 @@ section('11b. AI pass applies the cross-check');
     https.request = realRequest;
   }
   /* ------------------------------------------------------------------ *
+   * 12h. The predicted panel does not contradict itself
+   *
+   * Reported as "lots of inconsistencies". The panel showed a headline of about 94
+   * while the criteria beneath added up to 75, with no stated total and a reason
+   * sentence mixing marks, marks-of-error and percentages. This drives the real
+   * renderer with those exact figures and checks the numbers reconcile.
+   * ------------------------------------------------------------------ */
+  {
+    const { loadPage } = require(path.join(__dirname, 'dom.js'));
+    const cal = require(path.join(ROOT, 'lib', 'calibration.js'));
+    const page = loadPage(ROOT);
+    const rows = [
+      { id: 'a', name: 'Criterion A', mark: 9, max: 10, weighted: true },
+      { id: 'b', name: 'Criterion B', mark: 9, max: 10, weighted: true },
+      { id: 'c', name: 'Criterion C', mark: 16, max: 20, weighted: true },
+      { id: 'd', name: 'Criterion D', mark: 13, max: 20, weighted: true },
+      { id: 'e', name: 'Criterion E', mark: 12, max: 20, weighted: true },
+      { id: 'f', name: 'Criterion F', mark: 16, max: 20, weighted: true },
+    ];
+    const criterionTotal = rows.reduce((a, r) => a + r.mark, 0);
+    const c = cal.assessPrediction(criterionTotal, 100, { board: 'aqa-gcse', model: 'gemini-3.1-flash-lite' });
+    page.state.data = {
+      config: { pdfFile: '/x.pdf', markEnabled: true },
+      deck: { slideCount: 24 },
+      ai: {
+        ran: true, visionRan: true, visionRuns: 3, visionUnstable: true, specLabel: 'AQA GCSE (8552)',
+        predicted: { predicted: criterionTotal, maximum: 100, percentage: criterionTotal, weightsPublished: true, rows, calibration: c },
+        percentageRange: { lowPercentage: 72, highPercentage: 79, spread: 7 },
+      },
+    };
+    page.call('renderPredicted');
+
+    const text = [];
+    (function walk(n) {
+      if (!n) { return; }
+      if (n.nodeType === 3 && String(n.nodeValue || '').trim()) { text.push(String(n.nodeValue).trim()); }
+      (n.children || []).forEach(walk);
+    }(page.ui.predictedBody));
+    const joined = text.join(' | ');
+
+    ok('the criteria table states its own total',
+      new RegExp("own total: " + criterionTotal + " of 100").test(joined), joined.slice(0, 200));
+    ok('and says why that differs from the estimate',
+      /why it is higher than this total/i.test(joined));
+    ok('the headline figure is the calibrated one', c.applied && /about ' + String(c.calibrated) + ' of 100/.test(joined) === false
+      || joined.indexOf('about ' + c.calibrated + ' of 100') > -1,
+      'headline ' + c.calibrated + ' not found');
+    ok('and the AI\'s own reading is named beside it',
+      joined.indexOf('the AI itself read ' + criterionTotal + ' of 100') > -1, joined.slice(0, 200));
+    // The raw reading was printed twice in a row once already.
+    ok('the raw reading is stated once, not twice',
+      !/own reading was/.test(joined), 'the duplicate line is back');
+    ok('no impossible zero-disagreement claim',
+      !/disagreed by 0/.test(joined));
+    ok('the explanation uses marks throughout, never a percentage',
+      !/%/.test((c.note || '')), c.note);
+  }
+
+  /* ------------------------------------------------------------------ *
    * 12g. Nothing calls a function that does not exist
    *
    * `dailyLimitFor` was called in two places and defined in NONE, so

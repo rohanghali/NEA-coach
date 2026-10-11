@@ -5174,15 +5174,14 @@
       var supporting = [];
 
       /*
-       * The AI's own reading, when a correction has moved the headline. Kept because
-       * the raw figure is the evidence, and hiding it would make the adjustment look
-       * like a fudge rather than a measurement.
+       * The AI's raw reading is NOT repeated here.
+       *
+       * It was printed twice in a row: the label under the headline said "the AI
+       * itself read 75 of 100" and this said "The AI's own reading was 75% (about 75
+       * of 100 marks)" immediately below it. The label states it in marks, which is
+       * the unit the rest of the panel uses, so the duplicate is gone. The raw figure
+       * is still visible in the panel AND inside the calibration sentence below.
        */
-      if (cal && cal.applied) {
-        supporting.push(el('p', { cls: 'predicted-fact', text:
-          'The AI\u2019s own reading was ' + rangeText + ' (about ' + cal.raw + ' of '
-          + (p.maximum || 100) + ' marks).' }));
-      }
 
       // How many readings the number is based on, and how far apart they were.
       if (spread > 0) {
@@ -5218,7 +5217,7 @@
        * more useful than a confident-looking number. On a real portfolio the same deck
        * was marked 81, 80, 62 and 71 — the variation moved criteria between bands.
        */
-      if (ai.visionUnstable) {
+      if (ai.visionUnstable && spread > 0) {
         supporting.push(el('p', { cls: 'predicted-unstable', text:
           'Treat this mark with caution: the reviews disagreed by ' + spread + ' marks, which is too much to trust a single figure. '
           + 'The criteria below show which ones moved. The fix list is unaffected by this — it is built from what the AI saw, not from the mark.' }));
