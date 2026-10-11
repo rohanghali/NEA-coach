@@ -6077,6 +6077,35 @@ section('12aj. Every section is a tab');
   // class="toptab[^"]*" rather than "toptab", because the pinned Settings button carries a
   // second class for its divider.
   const buttons = [...html.matchAll(/class="toptab[^"]*"[^>]*data-tab="([a-z]+)"/g)].map((m) => m[1]);
+  /* ---- the small icons on the strip ---- */
+  /*
+   * Asked for: "small symbols/icons next to the sections ... keep it minimalistic."
+   *
+   * Colour comes from currentColor, so an icon takes the colour of its label — which is what makes the
+   * selected tab invert without the icon needing a second rule. A hardcoded colour would be invisible
+   * or wrong in one of the two themes, and wrong again on the selected tab.
+   */
+  /* Whole elements, not just the opening tags: the tags are identical by design, and the drawings
+     are what differ. */
+  const iconTags = html.match(/<svg class="tabicon"[\s\S]*?<\/svg>/g) || [];
+  ok('every section has its own icon',
+    iconTags.length === 13 && new Set(iconTags).size === 13,
+    iconTags.length + ' icons, ' + new Set(iconTags).size + ' distinct');
+  ok('and each takes its colour from the label, so it works in both themes and when selected',
+    iconTags.length === 13
+    && iconTags.every((tag) => tag.indexOf('stroke="currentColor"') >= 0 && tag.indexOf('fill="none"') >= 0),
+    'a hardcoded stroke would be wrong in one theme, and wrong again on the selected tab');
+  ok('they are one stroke weight on one grid, which is what makes them a set',
+    iconTags.every((tag) => tag.indexOf('stroke-width="1.5"') >= 0)
+    && iconTags.every((tag) => tag.indexOf('viewBox="0 0 16 16"') >= 0));
+  ok('and they are hidden from screen readers, because the label already says it',
+    iconTags.every((tag) => tag.indexOf('aria-hidden="true"') >= 0));
+  ok('the label is still a real element, not part of the picture',
+    (html.match(/class="tablabel"/g) || []).length === 13);
+  ok('the icon is held back at rest and comes up to full strength when picked',
+    /\.tabicon \{ width: 15px; height: 15px; flex: 0 0 auto; opacity: 0\.75; \}/.test(css)
+    && /\.toptab\[aria-selected="true"\] \.tabicon \{ opacity: 1; \}/.test(css));
+
   eq('there is one tab button per section, in order', buttons.join(','), SECTIONS.join(','));
 
   const panels = [...html.matchAll(/<div class="panel" id="panel([A-Za-z]+)">/g)].map((m) => m[1]);

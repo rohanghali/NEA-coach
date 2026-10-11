@@ -18,18 +18,13 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-**The line at the bottom was telling you something untrue.** It said the app *"runs entirely on
-this Mac"* — but a check sends your pages to Google to be read. The Information panel and the
-first-run wizard both say that plainly, so the footer was the one place contradicting them, and it
-is the line you read when deciding whether to trust the app with your coursework.
-
-- It now says: **"NEA Coach runs on this Mac and never changes your files — it only reads them.
-  Nothing leaves this computer except the pages a check or a question sends to Google to be read."**
-- **"your files"** rather than **"your .pptx"** — a PDF is a first-class portfolio here, and naming
-  only PowerPoint told every PDF user the sentence was about somebody else. The wizard had the same
-  problem and says "your portfolio file" now.
-- The claim that matters most is unchanged and still true: **your work is never written to**. It is
-  asserted against the parser itself in the tests, not just stated.
+- **Every section in the strip has a small line icon** beside its name — a house for Overview, a
+  checked box for Fix list, a speech bubble for Ask AI, a target for Predicted mark, a grid for
+  Coverage grid, a clock, stacked pages, a bar chart, sliders, and so on.
+- They are deliberately plain: **one stroke weight, one 16-unit grid, two or three lines each**,
+  held back slightly until you hover or pick that section.
+- Their colour comes from the label beside them, so they **invert correctly on the selected tab**
+  and work in both the light and dark themes without any special cases.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 
