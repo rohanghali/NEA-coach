@@ -12,13 +12,22 @@ The app was built across one long session and is working and tested.
 
 ## 1. What this is
 
-**NEA Coach** — a read-only reviewer for a UK A-level Design and Technology NEA
-portfolio. It reads a `.pptx` file, finds problems worth fixing, ranks them by
-priority, and reports how well the pages evidence each mark-scheme criterion.
+**NEA Coach** — a read-only reviewer for a UK Design and Technology NEA portfolio. It
+reads a `.pptx` or a PDF export, finds problems worth fixing, ranks them by priority,
+and reports how well the pages evidence each mark-scheme criterion.
 
-It was built for Rohan, who is doing the **WJEC Eduqas A-level Design and
-Technology** non-exam assessment (NEA), a portfolio of roughly 200 A3 PowerPoint
-pages. His GCSE portfolio (60 pages, AQA, scored 99/100) is used as the test case.
+**Every portfolio this project has actually been tested against is AQA GCSE.** Three
+are in the folder above: Rohan Ghali (99/100), Mithil Patel (96/100) and Arjun Patel
+(90/100), plus Jacob Cluer (89/100) whose file lives in `state/portfolio/`. All four are
+GCSE, and all four score anchors in `lib/calibration.js` are tagged `board: 'aqa-gcse'`.
+
+An earlier version of this section described Rohan as doing **WJEC Eduqas A-level**.
+That was wrong, and it propagated a false claim that the score anchors were A-level —
+see the correction in section 6d. The app **can** mark against Eduqas A-level (the
+criteria ship in `spec/`, and it is still the server default in `defaultConfig()`), but
+**no A-level portfolio has ever been through it**, so there is no A-level anchor and no
+A-level accuracy figure. Sizes quoted elsewhere as "200 pages" are a design target, not
+a file in this project.
 
 Runs entirely on his own Mac. No server, no subscription, no accounts.
 
@@ -532,11 +541,33 @@ and **two of the four were wrong**:
 After both fixes: **99 structural, 2 findings** (both genuine — body text genuinely
 drops to 10.6pt on pages 6 and 19). The sample deck and all 558 tests are unaffected.
 
-**Board note:** Arjun is **AQA GCSE**, while the existing score anchors (99/96/89) are
-**Eduqas A-level**. The 12 rules in `lib/calibration.js` are fitted per MODEL and must
-never pool anchors across boards, so Arjun is recorded as a data point but is NOT
-folded into the fit. Validating the GCSE prediction properly would need a GCSE anchor
-with a known app prediction, not just a known real mark.
+**Board note — CORRECTED. All anchors are AQA GCSE, and this file said otherwise.**
+
+An earlier version of this section claimed the 99/96/89 anchors were "Eduqas A-level"
+while Arjun was AQA GCSE, and concluded he could not be pooled with them. **That was
+wrong.** Every anchor in `lib/calibration.js` is labelled `board: 'aqa-gcse'`, every run
+in `state/calibration.json` records `board: 'aqa-gcse'`, and `state/config.json` has
+`specId: 'aqa-gcse'`. The user confirmed it: **all their portfolios are AQA GCSE**, and
+none are A-level.
+
+The mistake came from seeing an A-level specification PDF in the parent folder and the
+`eduqas-alevel` preset in the board list, and inferring the anchors were A-level from
+that instead of reading what was recorded. **Check `ANCHORS` and `calibration.json`, not
+prose.**
+
+What actually stops Arjun being folded into the fit is **format, not board**: the six
+anchors are three portfolios scored by two marking models, and the fit is per MODEL.
+Arjun has a known real mark (90) but **no recorded app prediction**, so there is nothing
+to fit him against yet. Once a marking run records one, he becomes a **fourth AQA GCSE
+anchor** and is directly comparable — same board, same qualification, same mark scheme.
+
+**The per-board filter is still correct and still worth keeping.** `assessPrediction`
+filters anchors by board AND model; it just currently has only one board to filter on.
+
+**One inconsistency worth not over-reading:** the local structural score was 99 for
+Arjun (real 90) but 63 for Jacob (real 89). Those two real marks are within a point of
+each other while their structural scores differ by 36 — a reminder that
+`presentationTidiness` measures presentation only and does not track the mark.
 
 ### The app kept running an old build after an update
 
