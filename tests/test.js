@@ -2969,6 +2969,94 @@ section('11b. AI pass applies the cross-check');
   } finally {
     https.request = realRequest;
   }
+  /* ------------------------------------------------------------------ *
+   * 12g. Nothing calls a function that does not exist
+   *
+   * `dailyLimitFor` was called in two places and defined in NONE, so
+   * loadModelChoices and renderModelCostPreview both threw. Neither was noticed
+   * because both are reached through paths that were themselves broken:
+   * ui.modelNote had never been cached, so renderModelCostPreview returned at its
+   * guard before reaching the call. A reference-count check is crude, but it is
+   * exactly the check that was missing.
+   * ------------------------------------------------------------------ */
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+    const names = ['dailyLimitFor'];
+    names.forEach((fn) => {
+      const defined = new RegExp('function\\s+' + fn + '\\s*\\(').test(src)
+        || new RegExp('(var|let|const)\\s+' + fn + '\\s*=').test(src);
+      const calls = (src.match(new RegExp('\\b' + fn + '\\s*\\(', 'g')) || []).length;
+      ok(fn + ' is defined, not just called', defined, calls + ' call site(s), no definition');
+    });
+    // And the specific control that was masked by an uncached element.
+    ok('the model dropdown note element is cached, so its renderer can run',
+      /'modelNote'/.test(src.match(/function cacheElements\(\)[\s\S]*?\];/)[0]));
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 12f. Settings save themselves
+   *
+   * Requested by the user. Settings used to be one form with one "Save advanced
+   * settings" button, so it was easy to change the model, close the panel and
+   * assume it had applied. Everything except the folder path now saves on change.
+   *
+   * This lives in the async block because the save is a promise: a synchronous
+   * assertion would run before the POST was even issued.
+   * ------------------------------------------------------------------ */
+  {
+    const { loadPage } = require(path.join(__dirname, 'dom.js'));
+    const page = loadPage(ROOT);
+    const posted = [];
+    page.window.fetch = (url, opts) => {
+      posted.push({ url: String(url), body: opts && opts.body });
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, config: {} }) });
+    };
+    page.state.data = {
+      config: { model: 'gemini-3.1-flash-lite' },
+      quota: { assumedLimit: 20, models: [{ model: 'gemini-3.8-flash', limit: 20 }] },
+    };
+    const seed = (sel, values) => { sel.options = values.map((v) => ({ value: v, text: v })); sel.value = values[0]; };
+    seed(page.ui.modelSelect, ['gemini-3.8-flash', 'gemini-3.1-flash-lite']);
+    seed(page.ui.visionModelSelect, ['gemini-3.5-flash']);
+    const configBodies = () => posted.filter((x) => x.url.includes('/api/config')).map((x) => x.body);
+    const settle = () => new Promise((r) => setTimeout(r, 30));
+
+    page.ui.modelSelect.value = 'gemini-3.8-flash';
+    page.ui.modelSelect.change();
+    await settle();
+    ok('changing the page-reading model saves it, with no button to press',
+      configBodies().some((b) => /gemini-3\.8-flash/.test(String(b))), JSON.stringify(configBodies()));
+    ok('and the page says so, because a silent auto-save looks like a dead control',
+      /Saved/.test(page.els.get('saveNote').textContent), JSON.stringify(page.els.get('saveNote').textContent));
+
+    page.ui.markToggle.checked = true;
+    page.ui.markToggle.change();
+    await settle();
+    ok('toggling Predict a mark saves it',
+      configBodies().some((b) => /markEnabled/.test(String(b))), JSON.stringify(configBodies()));
+
+    page.ui.visionModelSelect.value = 'gemini-3.5-flash';
+    page.ui.visionModelSelect.change();
+    await settle();
+    ok('changing the marking model saves it',
+      configBodies().some((b) => /visionModel/.test(String(b))), JSON.stringify(configBodies()));
+
+    /*
+     * The folder keeps an explicit button and must NOT auto-save. It is the one
+     * control that can be genuinely wrong: the server rejects a path that does not
+     * exist, and silently writing a bad one would leave the app pointing at nothing
+     * while the panel implied all was well.
+     */
+    const before = configBodies().length;
+    page.ui.deckDirInput.value = '/definitely/not/a/real/folder';
+    page.ui.deckDirInput.change();
+    await settle();
+    ok('typing a folder path does NOT auto-save',
+      configBodies().length === before, 'the folder path auto-saved');
+    ok('the folder keeps its own explicit button', !!page.ui.btnSaveSettings);
+    ok('no error was raised while saving', page.errors.length === 0, JSON.stringify(page.errors));
+  }
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();

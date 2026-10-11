@@ -1166,6 +1166,16 @@
     color: var(--muted);
     line-height: 1.5;
   }
+  /*
+   * The acknowledgement for an auto-save. Auto-saving with no feedback is
+   * indistinguishable from a control that does nothing, so every change says what
+   * happened, then clears itself.
+   */
+  .save-feedback { margin: 0 0 10px; min-height: 18px; font-size: 13.5px; font-weight: 600; }
+  .save-feedback:empty { display: none; }
+  .save-feedback.is-good { color: var(--good); }
+  .save-feedback.is-bad { color: var(--critical); }
+  .save-feedback.is-good::before { content: '\2713\00a0'; }
 
   /* ---------- first-run setup (the wizard) ----------
 
@@ -1908,6 +1918,14 @@
           <p class="settings-note">The defaults are chosen to be the best balance of accuracy and
              daily allowance. Nothing here needs changing to get a useful report.</p>
 
+          <!--
+            Every control in this group saves itself, so this line is the only
+            acknowledgement. It is a dedicated element rather than the model's own
+            note, because the cost preview writes that one and the reload after a
+            save would wipe the message before it could be read.
+          -->
+          <p class="save-feedback" id="saveNote" role="status" aria-live="polite"></p>
+
           <div class="actions-row">
             <button class="btn btn-secondary" id="btnBestMarks" type="button">Set up for the best possible marks</button>
           </div>
@@ -2030,7 +2048,16 @@
           </div>
 
           <div class="form-row">
-            <button class="btn btn-primary" id="btnSaveSettings" type="submit">Save advanced settings</button>
+            <!--
+              The folder path keeps an explicit button, and only it does. Every other
+              control in this group now saves the moment it changes. The folder is the
+              exception because it is the one that can genuinely be WRONG: the server
+              checks that the folder exists and returns a proper error if it does not,
+              and silently auto-saving a bad path would leave the app pointing at
+              nothing while the settings panel claimed all was well.
+            -->
+            <button class="btn btn-secondary" id="btnSaveSettings" type="button">Save folder</button>
+            <span class="field-hint muted small" id="deckDirNote"></span>
           </div>
 
           </form>
@@ -6014,6 +6041,34 @@
       + ' a day on this model\u2019s allowance.');
   }
 
+  /**
+   * How many requests a day this model allows.
+   *
+   * This was CALLED in two places and defined in none, so both were dead code:
+   * `loadModelChoices` threw on its first option and `renderModelCostPreview` threw
+   * as well. Neither was noticed because both are reached only through paths that
+   * were themselves broken — `ui.modelNote` had never been cached, so
+   * renderModelCostPreview returned at its guard before getting here.
+   *
+   * The server already works this figure out per model and sends it as `limit` on
+   * each quota row, so this reads it rather than inventing a number. The fallback is
+   * the server's own assumed default, kept in step deliberately.
+   */
+  var ASSUMED_DAILY_REQUESTS = 20;
+  function dailyLimitFor(model) {
+    var quota = (state.data && state.data.quota) || null;
+    var rows = (quota && quota.models) || [];
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i] && String(rows[i].model) === String(model)) {
+        var limit = Number(rows[i].limit);
+        if (isFinite(limit) && limit > 0) { return limit; }
+      }
+    }
+    var assumed = quota && Number(quota.assumedLimit);
+    if (isFinite(assumed) && assumed > 0) { return assumed; }
+    return ASSUMED_DAILY_REQUESTS;
+  }
+
   function modelListFailed() {
     setText(ui.modelNote,
       'Could not ask Google which models your key can use. Check the internet connection, then reopen Settings. ' +
@@ -6205,38 +6260,81 @@
     });
   }
 
+  /**
+   * Save one setting, the moment it changes.
+   *
+   * Settings used to be one form with one "Save advanced settings" button, which
+   * meant a student could change the model, close the panel, and reasonably assume
+   * it had applied. It had not. Auto-saving removes a whole class of "I set that
+   * and it went back" reports.
+   *
+   * The folder path deliberately does NOT come through here: it is validated by the
+   * server, so it keeps an explicit button and shows the error when the folder does
+   * not exist.
+   *
+   * @param {object} body      the config fields to save, e.g. { model: 'x' }
+   * @param {object} [opts]    { button, note, saved, banner }
+   */
+  var saveNoteTimer = null;
+
+  /** Show what just happened, then fade. Silence reads as "nothing happened". */
+  function showSaveNote(text, bad) {
+    if (!ui.saveNote) { return; }
+    setText(ui.saveNote, text);
+    ui.saveNote.className = 'save-feedback ' + (bad ? 'is-bad' : 'is-good');
+    if (saveNoteTimer) { clearTimeout(saveNoteTimer); }
+    saveNoteTimer = setTimeout(function () {
+      if (ui.saveNote) { setText(ui.saveNote, ''); ui.saveNote.className = 'save-feedback'; }
+    }, 4000);
+  }
+
+  function saveSetting(body, opts) {
+    opts = opts || {};
+    var button = opts.button || null;
+    if (button) { button.disabled = true; }
+    showSaveNote('Saving\u2026', false);
+
+    return apiPost('/api/config', body).then(function (res) {
+      if (button) { button.disabled = false; }
+      if (res && res.ok === false) {
+        throw new Error(res.message ? String(res.message) : 'That setting was not accepted.');
+      }
+      if (res && res.config && state.data) { state.data.config = res.config; }
+      state.settingsFilled = false;
+      showSaveNote(opts.saved || 'Saved.', false);
+      if (opts.banner) { setBanner('config', 'good', opts.banner, true); }
+      // Re-read the config so the group headers and dropdowns agree with the server.
+      loadState();
+      return res;
+    }).catch(function (err) {
+      if (button) { button.disabled = false; }
+      showSaveNote('Could not save that.', true);
+      setBanner('config', 'error', friendlyError(err,
+        'That setting could not be saved. Is NEA Coach still running?'), true);
+      // Put the panel back in step with what the server actually holds.
+      state.settingsFilled = false;
+      renderSettings();
+    });
+  }
+
+  /**
+   * Save the folder path.
+   *
+   * The only settings action with its own button, because it is the only one that
+   * can be wrong: a path that does not exist is rejected by the server, and the
+   * student needs to be told rather than left pointing at nothing.
+   */
   function saveSettings(event) {
     if (event && event.preventDefault) { event.preventDefault(); }
     var deckDir = ui.deckDirInput ? String(ui.deckDirInput.value).replace(/^\s+|\s+$/g, '') : '';
-    var model = ui.modelSelect ? String(ui.modelSelect.value).replace(/^\s+|\s+$/g, '') : '';
-    var specId = ui.specSelect ? String(ui.specSelect.value).replace(/^\s+|\s+$/g, '') : '';
-    var visionModel = ui.visionModelSelect ? String(ui.visionModelSelect.value).replace(/^\s+|\s+$/g, '') : '';
-    var markEnabled = !!(ui.markToggle && ui.markToggle.checked);
-    // Remembered so the banner can tell the student that their saved judgement
-    // was cleared, which is the one consequence of changing board they cannot
-    // see for themselves.
-    var specChanged = !!(state.data && state.data.config && specId && state.data.config.specId && state.data.config.specId !== specId);
-    var button = ui.btnSaveSettings;
-    if (button) { button.disabled = true; }
-
-    apiPost('/api/config', { deckDir: deckDir, model: model, specId: specId, visionModel: visionModel, markEnabled: markEnabled }).then(function (res) {
-      if (res && res.ok === false) {
-        throw new Error(res.message ? String(res.message) : 'Those settings were not accepted.');
-      }
-      if (res && res.config && state.data) { state.data.config = res.config; }
-      var changedModel = res && res.config && res.config.model && res.config.model !== model;
-      state.settingsFilled = false;
-      setBanner('config', 'good', changedModel
-        ? 'Model saved. The next check will use it, and pages already read will be re-read because the model changed.'
-        : specChanged
-          ? 'Exam board saved. The AI\u2019s previous judgement was made against the old mark scheme, so press Check now to judge your pages against the new one.'
-          : 'Settings saved. Press Check now to read the deck in the new folder.', true);
-      if (button) { button.disabled = false; }
-      renderSettings();
-    }).catch(function (err) {
-      if (button) { button.disabled = false; }
-      setBanner('config', 'error', friendlyError(err,
-        'Those settings could not be saved. Check the folder path and that the app is still running.'), true);
+    if (!deckDir) {
+      setText(ui.deckDirNote, 'Type a folder path first, or use "Add my portfolio" above instead.');
+      if (ui.deckDirNote) { ui.deckDirNote.className = 'field-hint small key-bad'; }
+      return;
+    }
+    saveSetting({ deckDir: deckDir }, {
+      button: ui.btnSaveSettings,
+      saved: 'Folder saved. Press Check now to read the deck in it.',
     });
   }
 
@@ -6477,7 +6575,8 @@
        * only from the wizard, which uses a different input. A missing entry here
        * fails silently by design, which is why the cache is now audited by a test.
        */
-      'apiKeyStatus', 'apiKeyInput', 'btnTestKey', 'btnSaveKey', 'btnForgetKey'
+      'apiKeyStatus', 'apiKeyInput', 'btnTestKey', 'btnSaveKey', 'btnForgetKey',
+      'saveNote', 'deckDirNote'
     ];
     for (var i = 0; i < ids.length; i++) { ui[ids[i]] = byId(ids[i]); }
   }
@@ -6534,17 +6633,35 @@
      */
     on(ui.thinkingToggle, 'change', function () { renderScanCostHint(); });
 
-    // Exam board and the best-marks preset save on their own, so neither is
-    // bundled into the "Save advanced settings" form.
+    // Exam board and the best-marks preset save on their own.
     on(ui.btnSaveBoard, 'click', saveBoard);
     on(ui.btnBestMarks, 'click', applyBestMarks);
 
     /*
-     * Re-price as soon as a different model is picked, so the cost of a change is
-     * visible before Save settings is pressed rather than after.
+     * Everything else in Advanced now SAVES ITSELF the moment it changes.
+     *
+     * These used to sit behind one "Save advanced settings" button, which made it
+     * easy to change the model, close the panel and assume it had applied. The
+     * price preview still updates first, so the cost of a change is visible before
+     * it is written.
      */
-    on(ui.modelSelect, 'change', function () { renderScanCostHint(); renderModelCostPreview(); });
-    on(ui.markToggle, 'change', function () { renderScanCostHint(); });
+    on(ui.modelSelect, 'change', function () {
+      renderScanCostHint();
+      renderModelCostPreview();
+      var chosen = ui.modelSelect ? String(ui.modelSelect.value) : '';
+      if (!chosen) { return; }
+      saveSetting({ model: chosen }, {
+        saved: 'Saved. The next check re-reads pages already read, because the model changed.',
+      });
+    });
+    on(ui.visionModelSelect, 'change', function () {
+      saveSetting({ visionModel: ui.visionModelSelect ? String(ui.visionModelSelect.value) : '' });
+    });
+    on(ui.markToggle, 'change', function () {
+      renderScanCostHint();
+      saveSetting({ markEnabled: !!(ui.markToggle && ui.markToggle.checked) });
+    });
+    on(ui.btnSaveSettings, 'click', saveSettings);
 
     /*
      * Changing the exam board is a real change, not a cosmetic one: the cached AI
