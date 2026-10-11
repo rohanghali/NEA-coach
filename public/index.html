@@ -1120,6 +1120,23 @@
   .filter-details > summary { list-style: none; cursor: pointer; }
   .filter-details > summary::-webkit-details-marker { display: none; }
 
+  /*
+   * These three were sitting INSIDE the phone media query, indented as though they were top
+   * level. Above 700px they therefore did not apply at all, so the "AI's own total" line lost the
+   * separator, the padding, the muted colour and the smaller size that make it read as a footnote
+   * rather than as another sentence. Only the size tweak belongs on a phone.
+   */
+  .predicted-total {
+    margin: 10px 0 2px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .predicted-total strong { color: var(--ink); }
+  .predicted-note { font-size: 13px; }
+
   @media (max-width: 700px) {
     /*
      * Everything is tighter. The page is long, and 17 blocks each carrying a full card's
@@ -1219,16 +1236,7 @@
     .predicted-figure { margin-bottom: 12px; }
     .predicted-pct { font-size: 32px; }
     .predicted-body { gap: 8px; }
-    .predicted-total {
-    margin: 10px 0 2px;
-    padding-top: 10px;
-    border-top: 1px solid var(--line);
-    font-size: 14px;
-    color: var(--ink-2);
-    line-height: 1.5;
-  }
-  .predicted-total strong { color: var(--ink); }
-  .predicted-note { font-size: 13px; }
+    .predicted-total { font-size: 13.5px; }
     .predicted-unstable { font-size: 12.5px; }
     .compare-mark { font-size: 15px; }
     .compare-list li { font-size: 13.5px; }
@@ -2174,6 +2182,13 @@
       right: 0;
       bottom: 0;
       gap: 8px;
+      /*
+       * Pinned right, as the documentation says it is. A full-bleed flex row packs to the LEFT by
+       * default, so whenever the back-to-top pill was shown without the quick Check button beside
+       * it, the pill appeared at the bottom-LEFT instead — over the start of a line of text, which
+       * is the one place it was explicitly described as never covering.
+       */
+      justify-content: flex-end;
       padding: 9px 12px calc(9px + env(safe-area-inset-bottom, 0px));
       border-top: 1px solid transparent;
       transition: background 200ms var(--ease-out), border-color 200ms var(--ease-out);
@@ -3433,7 +3448,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.41';
+  var PAGE_BUILD = '1.0.42';
 
   var state = {
     data: null,
@@ -4332,8 +4347,16 @@
     var recheck = false;
 
     // Pages changed since the last AI run. 0 means a repeat check is free.
-    var changed = data && data.deck && Object.prototype.toString.call(data.deck.changedPages) === '[object Array]'
-      ? data.deck.changedPages.length : null;
+    /*
+     * The server sends a NUMBER here, and this tested for an array — so it was null every time.
+     * `changed` was therefore never 0, the "nothing has changed, the next check is free" branch
+     * was unreachable, and the cost hint always quoted a full re-read. Accept either shape rather
+     * than assuming the one that was never sent.
+     */
+    var changedRaw = data && data.deck ? data.deck.changedPages : null;
+    var changed = null;
+    if (Object.prototype.toString.call(changedRaw) === '[object Array]') { changed = changedRaw.length; }
+    else if (typeof changedRaw === 'number') { changed = changedRaw; }
     var toRead = recheck ? pages : (changed === null ? pages : changed);
 
     if (!pages) {

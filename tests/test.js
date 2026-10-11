@@ -5467,8 +5467,15 @@ section('12ab. Cancel has to reach the expensive part');
   ok('a cancelled pass stops before spending anything', outcome && outcome.cancelled === true);
   const paid = attempted.filter((p) => /generateContent/.test(p));
   eq('and sends no page-reading request at all', paid.length, 0);
-  ok('while the free models listing is still allowed to have been tried',
-    attempted.length >= 0, 'the point is only that no generateContent call was made');
+  /*
+   * `.length >= 0` was a tautology — true of an empty array, a full one, and anything between, so
+   * it asserted nothing while counting towards the pass total. This asserts the fact that was
+   * actually intended: the free models listing WAS attempted (proving the pass reached that point)
+   * and no paid call was.
+   */
+  ok('the free models listing was reached, which is what proves the pass got that far',
+    attempted.some((p) => /models/.test(p)), JSON.stringify(attempted));
+  eq('and no page-reading request was sent', paid.length, 0);
 }
 
 section('12ac. Five high-severity findings from the whole-codebase audit');
@@ -5524,6 +5531,53 @@ section('12ac. Five high-severity findings from the whole-codebase audit');
   ok('and that folder is not the real per-user one',
     server.stateDir.indexOf(os.homedir()) !== 0 || /nea-tests-/.test(server.stateDir),
     server.stateDir);
+}
+
+section('12ad. Automatic re-checking, and the Mac installer text');
+{
+  /*
+   * Both from the second audit pass. The watcher bugs are real product faults — the app advertises
+   * automatic re-checking and quietly did not do it — and the installer bug was in the first
+   * instruction a Mac user reads.
+   */
+  const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const pkg = fs.readFileSync(path.join(ROOT, 'tools', 'package.sh'), 'utf8');
+
+  /* ---- a change that arrives during a scan must be remembered, not dropped ------- */
+  ok('a portfolio change during a running check is remembered rather than discarded',
+    /if \(scanState\.running\) \{[\s\S]{0,500}pendingRescan = true;/.test(src),
+    'the event is thrown away again, so an edit during a long check is never re-checked');
+  ok('and the remembered change is acted on when the scan finishes',
+    /const rescanQueued = pendingRescan;/.test(src) && /if \(rescanQueued\) \{/.test(src)
+    && /reason: 'auto'/.test(src));
+  ok('the re-check is deferred so two scans cannot fight over the same cache and report',
+    /setTimeout\(\(\) => \{[\s\S]{0,400}requestScan\(\{ force: false, reason: 'auto' \}\)/.test(src));
+
+  /* ---- a settings autosave must not swallow a queued change --------------------- */
+  /*
+   * Every settings autosave POSTs /api/config, whose handler restarts the watcher. That restart
+   * re-stamped watchedStamp to the CURRENT file, so a debounce armed a moment earlier by a real
+   * edit compared the file against its own post-edit stamp and decided nothing had changed.
+   */
+  ok('restarting the watcher does not re-stamp while a change is still queued',
+    /if \(!watchTimer\) \{\s*\n\s*watchedStamp = stampOf\(target\);/.test(src),
+    'a settings save within the debounce window silently cancels the re-check');
+
+  /* ---- the Mac readme is a Mac readme ------------------------------------------ */
+  ok('the Mac package does not ship the Windows first-readme',
+    !/  write_readme_first "\$target"\n  write_readme_first_mac/.test(pkg),
+    'Mac users are told to double-click a .bat that is deleted from the package');
+  const macBody = (() => {
+    const m = /write_readme_first_mac\(\) \{[\s\S]*?<<'EOF'\n([\s\S]*?)\nEOF/.exec(pkg);
+    return m ? m[1] : '';
+  })();
+  ok('and the Mac document is actually written, not appended to the Windows one',
+    /write_readme_first_mac\(\) \{[\s\S]{0,80}cat > /.test(pkg), 'it appends to the Windows text');
+  ok('it does not tell a Mac user to double-click a .bat',
+    !!macBody && !/\.bat/.test(macBody), macBody.slice(0, 120));
+  ok('and the Gatekeeper remedy carries no frozen version number',
+    !!macBody && !/NEA-Coach-mac-\d+\.\d+/.test(macBody),
+    'the xattr line named 1.0.29 for several releases, so it silently did nothing');
 }
 
 })().then(summary, (err) => {

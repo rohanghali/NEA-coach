@@ -18,26 +18,36 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-Five faults found by a full read-through of the code, all of the same shape: something that made
-a feature work was missing, so the feature existed, logged that it had done its job, and did
-nothing.
+- **Automatic re-checking actually happens now.** Two faults, both silent. If you edited a page
+  while a check was running, the change was thrown away — and a check takes minutes, so the report
+  you were looking at described the version *before* your edit with no sign anything was wrong. It
+  is remembered and re-checked when the scan finishes. And if you changed any setting within a few
+  seconds of saving your work, that cancelled the pending re-check, because saving a setting
+  restarts the file watcher and the restart mistook your edit for "nothing changed".
+- **The Mac download no longer tells you to double-click a Windows file.** The Mac package shipped
+  the Windows instructions at the top — "Double-click Start NEA Coach.bat" — for a file that is not
+  in the zip, so the first thing a Mac user read was a File-not-found.
+- **The Gatekeeper command in the Mac instructions works again.** It pointed at a folder named
+  after version 1.0.29, so anyone who copied it got an app macOS still refused to open, with no
+  error to explain why. It no longer names a version at all.
 
-- **Cancelling a check no longer throws away the pages you had already paid for.** The partial
-  cache was overwriting the good one, so the next check re-sent everything after the point you
-  cancelled at. The previous entries are carried through now.
-- **The daily allowance can finally show a percentage.** The app learns your real daily limit
-  when Google tells it — but that figure was being dropped as it was read, and then deleted by
-  the next request, so the meter could only ever show a count. It is kept.
-- **"I could not read the document" is no longer treated as a successful review.** If the model
-  reported that it could not see your pages, the app still recorded that they had been looked at
-  and reported a mark from them. It now says so instead.
-- **Two things were nearly invisible in dark mode**: the little counts on the severity buttons
-  (about 1.1:1 against the background, where 4.5:1 is the minimum) and the "what is already
-  working well" text (about 1.6:1). Both follow the theme now.
+**Smaller corrections in this version**
 
-**In v1.0.40**
+- The whole-portfolio cross-check request is now counted against your daily allowance; it was not,
+  so every completed check under-reported by one.
+- A check that falls back to a backup model now prices the run at the model that actually answered,
+  not the one that failed.
+- Switching deep thinking on now invalidates the page cache, so the setting does something.
+- The cost hint before a check can finally say a repeat check is free — the page was looking for a
+  list where the app sends a number, so it always quoted a full re-read.
+- The exported report puts mark-costing findings first; "substance" has rank 0, which the sort
+  treated as "unranked".
 
-- Colour, much less work while idle, and Cancel actually stopping the visual review.
+**In v1.0.41**
+
+- Cancel no longer discards the pages already read; the daily-allowance percentage can finally
+  work; a failed page read is no longer reported as a successful review; two dark-mode contrast
+  fixes. **The test suite no longer reads your real data folder.**
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

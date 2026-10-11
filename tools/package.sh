@@ -98,7 +98,13 @@ EOF
 # and conclude the app is broken.
 write_readme_first_mac() {
   local target="$1"
-  cat >> "$target/START HERE.txt" <<'EOF'
+  cat > "$target/START HERE.txt" <<'EOF'
+NEA Coach
+=========
+
+1. Unzip this folder somewhere you can find it, such as your Documents.
+2. Double-click "NEA Coach.app". It opens in your browser after a few seconds and
+   prints an address; keep its window open while you use the app.
 
 --------------------------------------------------------------
 
@@ -125,7 +131,11 @@ Fix it once, either way:
   b) If that does not work, open Terminal (Command-Space, type Terminal) and
      run this line, then double-click the file again:
 
-       xattr -dr com.apple.quarantine ~/Downloads/NEA-Coach-mac-1.0.29
+       xattr -dr com.apple.quarantine ~/Downloads/NEA-Coach-mac-*
+
+     The * saves you typing the version number, and means this line keeps working
+     after an update — it named version 1.0.29 for several releases, so anyone who
+     copied it was told nothing and left with an app macOS still refused to open.
 
      Change the path if you unzipped it somewhere other than Downloads.
 
@@ -256,7 +266,12 @@ build_mac() {
   say "Building for macOS..."
   rm -rf "$target"
   copy_common "$target"
-  write_readme_first "$target"
+  /*
+   * NOT write_readme_first: that is the Windows document, and calling it here put
+   * "Double-click Start NEA Coach.bat" at the top of the MAC readme — a file that is then deleted
+   * from the package two lines later, so the very first instruction a Mac user reads is a
+   * File-not-found. write_readme_first_mac writes the whole Mac document instead.
+   */
   write_readme_first_mac "$target"
   rm -f "$target/Start NEA Coach.bat"
   build_mac_app "$target"

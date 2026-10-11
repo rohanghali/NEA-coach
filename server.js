@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.41';
+const VERSION = '1.0.42';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -1705,6 +1705,25 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
      */
     const finishedAt = Date.now();
     scanState.running = false;
+    /*
+     * A change that arrived while this scan was running gets its check now. Deferred rather than
+     * dropped, so an edit made during a long check is not silently forgotten, and not started
+     * earlier because two scans at once would fight over the same cache and report.
+     */
+    const rescanQueued = pendingRescan;
+    pendingRescan = false;
+    if (rescanQueued) {
+      /*
+       * Deferred by a moment so this scan can finish writing its report and history first. Two
+       * scans overlapping would fight over the same cache file and the same saved report, which is
+       * a far worse outcome than a re-check that starts a second later.
+       */
+      setTimeout(() => {
+        if (scanState.running) { pendingRescan = true; return; }
+        log('Re-checking, because the portfolio changed while the last check was running.');
+        requestScan({ force: false, reason: 'auto' }).catch(() => {});
+      }, 1200);
+    }
     scanState.phase = 'idle';
     scanState.progress = 1;
     scanState.message = aiResult && aiResult.note
@@ -1767,6 +1786,14 @@ function requestScan(opts) {
 
 let watcher = null;
 let watchTimer = null;
+/*
+ * Set when the portfolio changes while a check is already running.
+ *
+ * The watcher used to DROP that event outright (see the callback), so a student who edited a page
+ * during a six-minute check was left looking at a report about the version before their edit, with
+ * automatic re-check advertised as on. The change is remembered and acted on when the scan ends.
+ */
+let pendingRescan = false;
 let watchedPath = null;
 /*
  * The size and mtime of the deck as of the last time we looked at it.
@@ -1830,10 +1857,22 @@ function startWatching() {
   const dir = path.dirname(target);
 
   try {
-    // Remember what the file looked like when we started watching, so the next
-    // event can be compared against it.
-    watchedStamp = stampOf(target);
-    watchStartedAt = Date.now();
+    /*
+     * Remember what the file looked like when we started watching, so the next event can be
+     * compared against it — but NOT while an event is still queued.
+     *
+     * Every settings autosave POSTs /api/config, and that handler restarts the watcher
+     * unconditionally. Re-stamping here advances the stamp to whatever the file looks like NOW, so
+     * a debounce armed a moment earlier by a real portfolio edit would then compare the file
+     * against its own post-edit stamp, conclude "the portfolio has not actually changed", and drop
+     * the event. The student saves a page, touches any dropdown within four seconds, and the
+     * automatic re-check silently never happens. Leaving the stamp alone lets the queued timer
+     * still see the difference it was armed for.
+     */
+    if (!watchTimer) {
+      watchedStamp = stampOf(target);
+      watchStartedAt = Date.now();
+    }
 
     watcher = fs.watch(dir, { persistent: true }, (eventType, filename) => {
       if (!filename) return;
@@ -1852,14 +1891,28 @@ function startWatching() {
       if (watchTimer) clearTimeout(watchTimer);
       // Debounce: PowerPoint touches files several times while saving.
       watchTimer = setTimeout(() => {
-        if (scanState.running) return;
         /*
          * Final check that the file actually differs from the last one we read.
          * This is what stops a page reload, or a sync client touching the file,
          * from spending the student's money on a scan of unchanged work.
+         *
+         * Done BEFORE the running check below, because it is the cheap test and because a change
+         * that arrives mid-scan still has to be recognised as a change.
          */
         if (!deckChangedSinceStamp(target)) {
           log('File event ignored — the portfolio has not actually changed.');
+          return;
+        }
+        if (scanState.running) {
+          /*
+           * Remembered, not dropped. This used to be `if (scanState.running) return;`, which
+           * threw away the only notification of the student's save: performScan had already
+           * recorded the version it read, and nothing re-checked the file when it finished. A
+           * 60-page check takes minutes, and PowerPoint saves as several events, so every one of
+           * them was discarded the same way and the report stayed describing the pre-edit file.
+           */
+          pendingRescan = true;
+          log('The portfolio changed while a check was running — it will be re-checked when this one finishes.');
           return;
         }
         log('Change detected — starting an automatic scan.');
@@ -2324,8 +2377,14 @@ function exportHtml(report, opts = {}) {
     presentation: 'Presentation — quick wins',
     obvious: 'Mechanical tidy-ups',
   };
+  /*
+   * `TIER_ORDER[tier] || 1` was wrong for "substance", whose rank is 0 — falsy — so substance
+   * findings were ranked as presentation and the exported "What to do, in order" list did not put
+   * the mark-costing items first, which is the entire point of ordering it.
+   */
+  const tierRank = (t) => (Object.prototype.hasOwnProperty.call(TIER_ORDER, t) ? TIER_ORDER[t] : 1);
   const ordered = findings.slice().sort((a, b) => {
-    const t = (TIER_ORDER[a.tier] || 1) - (TIER_ORDER[b.tier] || 1);
+    const t = tierRank(a.tier) - tierRank(b.tier);
     if (t) return t;
     const sev = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
     return (sev[a.severity] || 9) - (sev[b.severity] || 9);
