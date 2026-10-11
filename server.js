@@ -244,7 +244,13 @@ function noteRequest(model) {
   writeQuota(quota);
 }
 
-const VERSION = '1.0.0';
+/*
+ * Shown in the footer and returned by /api/health. It said '1.0.0' through three
+ * releases, so it was actively misleading when a user reported a problem — the
+ * first thing worth knowing is which build they are on. Kept in step with the
+ * release tag in tools/release.sh.
+ */
+const VERSION = '1.0.4';
 const DEFAULT_PORT = 4173;
 
 /*
