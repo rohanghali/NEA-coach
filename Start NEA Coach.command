@@ -169,7 +169,34 @@ fi
 # ---------------------------------------------------------------- 3. already running?
 if command -v curl >/dev/null 2>&1; then
   if curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then
-    ok "NEA Coach is already running."
+    # Something IS answering. The important question is whether it is THIS copy.
+    #
+    # Downloads unzip into a new folder when the old one still exists, so a student
+    # who updates can easily end up with two copies. The older one keeps the port,
+    # this launcher sees a healthy server, opens the browser and exits - and the
+    # student then reports that the new version's fixes "do not work" while looking
+    # at the old build. That happened twice before this check existed.
+    HEALTH="$(curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/api/health" 2>/dev/null || true)"
+    RUNNING_VERSION="$(printf '%s' "$HEALTH" \
+      | "$NODE_BIN" -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).version||""))}catch(e){}})' 2>/dev/null || true)"
+    OUR_VERSION="$("$NODE_BIN" -e 'const m=/const VERSION = .([0-9.]+)./.exec(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(m?m[1]:"")' "$APP_DIR/server.js" 2>/dev/null || true)"
+
+    if [ -n "$RUNNING_VERSION" ] && [ -n "$OUR_VERSION" ] && [ "$RUNNING_VERSION" != "$OUR_VERSION" ]; then
+      say ""
+      bad "A DIFFERENT copy of NEA Coach is already running (version ${RUNNING_VERSION})."
+      say "     ${DIM}The copy in this folder is version ${OUR_VERSION}.${RESET}"
+      say ""
+      say "  Your browser would open the OLD version, so the improvements in this"
+      say "  one would not appear. Close the other NEA Coach window first:"
+      say "     ${DIM}find the black 'NEA Coach server' window and close it,${RESET}"
+      say "     ${DIM}then run this launcher again.${RESET}"
+      say ""
+      read -r -p "  Press Return to open the OLD version anyway. " _ || true
+      open "http://127.0.0.1:${PORT}" 2>/dev/null || true
+      exit 1
+    fi
+
+    ok "NEA Coach is already running${RUNNING_VERSION:+ (version $RUNNING_VERSION)}."
     say ""
     open "http://127.0.0.1:${PORT}" 2>/dev/null || true
     say "  Opening your browser. This window can be closed."

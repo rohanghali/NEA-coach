@@ -104,7 +104,35 @@ REM behaves the same on every Windows version without assuming extra tools.
 REM Exit code 0 means a NEA Coach server is already answering on the port.
 "%NODE_BIN%" -e "const h=require('http');const r=h.get({host:'127.0.0.1',port:process.argv[1],path:'/api/health',timeout:1500},s=>process.exit(s.statusCode===200?0:1));r.on('error',()=>process.exit(1));r.on('timeout',()=>{r.destroy();process.exit(1);});" "%PORT%" >nul 2>nul
 if errorlevel 1 goto :not_running
-echo   NEA Coach is already running.
+
+REM --------------------------------------------------------- which copy is it?
+REM A server IS answering, but it may not be THIS copy. Unzipping a new version
+REM beside the old one leaves two folders, and the old server keeps the port - so
+REM the browser opens the OLD build and the new version's fixes appear not to
+REM work. Compare the version the server reports against this folder's version.
+set "RUNVER="
+for /f "delims=" %%v in ('"%NODE_BIN%" -e "const h=require('http');const r=h.get({host:'127.0.0.1',port:process.argv[1],path:'/api/health',timeout:1500},s=>{let d='';s.on('data',c=>d+=c);s.on('end',()=>{try{process.stdout.write(String(JSON.parse(d).version||''))}catch(e){}});});r.on('error',()=>{});" "%PORT%"') do set "RUNVER=%%v"
+set "OURVER="
+for /f "delims=" %%v in ('"%NODE_BIN%" -e "const m=/const VERSION = .([0-9.]+)./.exec(require('fs').readFileSync(process.argv[1],'utf8'));process.stdout.write(m?m[1]:'')" "%~dp0server.js"') do set "OURVER=%%v"
+
+if not defined RUNVER goto :open_running
+if not defined OURVER goto :open_running
+if "%RUNVER%"=="%OURVER%" goto :open_running
+
+echo.
+echo   A DIFFERENT copy of NEA Coach is already running (version %RUNVER%).
+echo   The copy in this folder is version %OURVER%.
+echo.
+echo   Your browser would open the OLD version, so the improvements in this
+echo   one would not appear. Close the other NEA Coach window first:
+echo      find the black "NEA Coach server" window and close it,
+echo      then run this file again.
+echo.
+pause
+goto :finish
+
+:open_running
+echo   NEA Coach is already running (version %RUNVER%).
 echo.
 echo   Opening http://127.0.0.1:%PORT% in your browser.
 echo   This window can be closed.
