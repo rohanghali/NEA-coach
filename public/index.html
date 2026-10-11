@@ -124,14 +124,69 @@
 
   /* ---------- cards ---------- */
 
+  /*
+   * The page used to be completely flat: separation came from 1px borders alone,
+   * with no shadow anywhere. That reads as unfinished rather than minimal — a
+   * card that sits ON the page needs to look like it. Two very soft shadows do
+   * the job without turning it into a 2010s dashboard: one tight edge, one wide
+   * ambient. They are low-alpha so they are invisible as shadows and only
+   * register as depth.
+   */
   .card {
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 16px;
     margin-bottom: 14px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   }
   .card-title { font-size: 15px; margin: 0; letter-spacing: 0.01em; text-transform: uppercase; color: var(--muted); }
+
+  /*
+   * Type scale.
+   *
+   * Headings were all roughly the same weight and only slightly different in
+   * size, so nothing led the eye down the page. Tightening the letter-spacing as
+   * size goes up (large text needs less) and fixing a clearer size and weight
+   * step is the cheapest way to make a long page feel designed.
+   */
+  h1, h2, h3, h4 { color: var(--ink); }
+  h2 { letter-spacing: -0.015em; }
+  h3 { letter-spacing: -0.01em; }
+  .sub {
+    font-size: 12.5px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 20px 0 8px;
+  }
+  /* The first heading in a card or group should not push the content down. */
+  .card > .sub:first-child,
+  .details-body > .sub:first-child,
+  .group-body > .sub:first-child { margin-top: 0; }
+
+  /* Visible keyboard focus everywhere. The app is usable without a mouse, and a
+     browser default outline that some elements suppress is worse than a clear one. */
+  a:focus-visible,
+  button:focus-visible,
+  summary:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Respect a reduced-motion preference: the small transitions are decoration. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 
   /* ---------- banners ---------- */
 
@@ -275,15 +330,36 @@
     -webkit-appearance: none;
     appearance: none;
     text-align: center;
+    transition: background 130ms ease, border-color 130ms ease, box-shadow 130ms ease, transform 60ms ease;
   }
   .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn-primary:active { background: var(--accent-dark); }
+  .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-secondary:hover { background: var(--accent-soft); border-color: var(--accent); }
+  .btn-quiet:hover { background: var(--accent-soft); }
   .btn-lg { font-size: 17px; padding: 14px 24px; min-height: 52px; }
   .btn-secondary { background: var(--card); border-color: var(--line-strong); color: var(--ink); }
   .btn-quiet { background: transparent; border-color: transparent; color: var(--accent); padding: 8px 10px; min-height: 40px; font-size: 14px; }
   .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
-  .btn:focus-visible { outline: 3px solid #b2ccff; outline-offset: 2px; }
-  input:focus, select:focus, textarea:focus, summary:focus { outline: 2px solid #b2ccff; outline-offset: 1px; }
+  .btn[disabled]:hover { background: var(--accent); border-color: var(--accent); }
+  .btn-secondary[disabled]:hover, .btn-quiet[disabled]:hover { background: var(--card); border-color: var(--line-strong); }
+
+  /*
+   * The one action that matters.
+   *
+   * Check now competes with Export, Re-check everything, and seventeen sections of
+   * report. Giving the primary control real weight — a touch more presence, and a
+   * shadow tinted with its own colour rather than the page neutral — is what makes
+   * a first-time user know where to start.
+   */
+  .btn-primary.btn-lg {
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.28), 0 6px 16px rgba(37, 99, 235, 0.22);
+  }
+  .btn-primary.btn-lg:hover {
+    box-shadow: 0 1px 2px rgba(29, 78, 216, 0.3), 0 8px 22px rgba(37, 99, 235, 0.28);
+  }
+  /* A disabled primary keeps its shape but loses the glow, so "busy" reads clearly. */
+  .btn-primary.btn-lg[disabled] { box-shadow: none; }
 
   .spinner {
     display: inline-block;
@@ -903,7 +979,6 @@
 
   /* ---------- settings ---------- */
 
-  .sub { font-size: 14px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 10px; }
   .facts { margin: 0 0 22px; }
   .fact { display: flex; flex-wrap: wrap; padding: 9px 0; border-bottom: 1px solid var(--line); }
   .fact-key { flex: 0 0 210px; font-size: 14px; color: var(--muted); }
@@ -1416,7 +1491,28 @@
   :root[data-theme="dark"] .ring-track { stroke: #242932; }
   :root[data-theme="dark"] .bar { background: #242932; }
 
+  /*
+   * Depth on a dark background.
+   *
+   * The same shadow is close to invisible against near-black, so the cards go
+   * flat again and lose the layering the light theme now has. Dark surfaces read
+   * as deeper with a stronger, broader shadow AND a slightly lifted card colour;
+   * a faint light top edge is not used because it fights the flat aesthetic.
+   */
+  :root[data-theme="dark"] .card {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.38);
+  }
+  :root[data-theme="dark"] .btn-primary.btn-lg {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(37, 99, 235, 0.34);
+  }
+
   @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .card {
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.38);
+    }
+    :root:not([data-theme="light"]) .btn-primary.btn-lg {
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(37, 99, 235, 0.34);
+    }
     :root:not([data-theme="light"]) .banner-error { color: #ffb4ab; }
     :root:not([data-theme="light"]) .banner-warn { color: #ffd0a3; }
     :root:not([data-theme="light"]) .banner-good { color: #86efac; }
