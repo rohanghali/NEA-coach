@@ -3276,8 +3276,8 @@
         <p>About a minute of setup. Three things to decide, and you can skip any of them.</p>
         <div class="intro-note" id="introWelcomeBack" hidden></div>
         <ul>
-          <li><strong>Your work stays yours.</strong> Your PowerPoint file is never changed, and
-              nothing leaves this computer except the pages a check sends to Google.</li>
+          <li><strong>Your work stays yours.</strong> Your portfolio file is never changed, and
+              nothing leaves this computer except the pages a check or a question sends to Google to be read.</li>
           <li><strong>The structural checks are free</strong> and work with no account at all.</li>
         </ul>
       </section>
@@ -4188,7 +4188,21 @@
 
   </div>
   <footer class="footer">
-    <p>NEA Coach runs entirely on this Mac. It reads your .pptx but never writes to it.</p>
+    <!--
+      Three claims, and each one is here for a reason.
+
+      NOT "runs entirely on this Mac": a check sends the pages to Google to be read, which the
+      Information panel and the first-run wizard both say plainly. A footer that contradicts them is
+      worse than no footer, because it is the line a student reads when deciding whether to trust the
+      app with their coursework.
+
+      "your files" rather than "your .pptx": a PDF is a first-class portfolio here, and naming only
+      PowerPoint told every PDF user the sentence was about somebody else.
+
+      And the one that matters most is kept exactly as it was: it never writes to your work.
+    -->
+    <p>NEA Coach runs on this Mac and never changes your files — it only reads them. Nothing leaves
+      this computer except the pages a check or a question sends to Google to be read.</p>
     <p class="muted small">Version <span id="appVersion">1.0.0</span><span id="footerDeck"></span></p>
   </footer>
 
@@ -4570,7 +4584,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.68';
+  var PAGE_BUILD = '1.0.69';
 
   var state = {
     data: null,

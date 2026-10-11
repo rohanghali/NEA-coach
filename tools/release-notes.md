@@ -18,28 +18,18 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **A SPaG section**, in the strip beside Fix list. It gathers the spelling and wording findings and
-  separates them into **Spelling** and **British or American**.
+**The line at the bottom was telling you something untrue.** It said the app *"runs entirely on
+this Mac"* — but a check sends your pages to Google to be read. The Information panel and the
+first-run wizard both say that plainly, so the footer was the one place contradicting them, and it
+is the line you read when deciding whether to trust the app with your coursework.
 
-  It also tells you what it does **not** do, before it tells you anything else: the free checks look
-  for a fixed list of **63 common misspellings** and a set of British/American pairs. They are not a
-  spell-checker, cannot find a word that is not on that list, and **do not read grammar or
-  punctuation at all**. When nothing is found it says *"that is a good sign, not a guarantee"* rather
-  than all-clear.
-
-  **For your portfolio it genuinely found nothing** — I checked: none of the 63 words appear anywhere
-  in your writing, and your spelling does not switch between British and American forms. Try the **Ask
-  AI to read it** button at the bottom for the grammar and punctuation half, which no free check looks
-  at.
-
-- **An "Open Claude" button**, beside "Open ChatGPT". The file is plain text with the rules in it, so
-  either can use it — and you may well have one and not the other.
-
-- **The section now explains why sending it to an assistant is worth doing**, which is the question
-  that stops people trying it: the file holds **every page in your own words**, so the assistant can
-  point at page 34 rather than give advice that would fit anybody’s coursework; you can ask it **as
-  many questions as you like**; and it **does not use any of your daily allowance**, which is for
-  checking rather than for asking.
+- It now says: **"NEA Coach runs on this Mac and never changes your files — it only reads them.
+  Nothing leaves this computer except the pages a check or a question sends to Google to be read."**
+- **"your files"** rather than **"your .pptx"** — a PDF is a first-class portfolio here, and naming
+  only PowerPoint told every PDF user the sentence was about somebody else. The wizard had the same
+  problem and says "your portfolio file" now.
+- The claim that matters most is unchanged and still true: **your work is never written to**. It is
+  asserted against the parser itself in the tests, not just stated.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

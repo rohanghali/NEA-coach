@@ -6983,6 +6983,52 @@ section('12ap. Asking about the work');
     'no package.json, no node_modules, and nothing requires one');
 }
 
+section('12aq. What the app says about itself is true');
+{
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const pptx = fs.readFileSync(path.join(ROOT, 'lib', 'pptx.js'), 'utf8');
+
+  /*
+   * Reported: the line at the bottom needed updating. It read "NEA Coach runs entirely on this Mac.
+   * It reads your .pptx but never writes to it." — and both halves had gone wrong.
+   *
+   * NOT ENTIRELY ON THIS MAC: a check sends the pages to Google to be read. The Information panel and
+   * the first-run wizard both say so plainly, so the footer was the one place contradicting them —
+   * and it is the line a student reads when deciding whether to trust the app with their coursework.
+   *
+   * NOT "your .pptx": a PDF is a first-class portfolio here, so naming only PowerPoint told every PDF
+   * user the sentence was about somebody else.
+   */
+  /*
+   * Asserted against the page WITHOUT its comments. The comment explaining this change quotes the old
+   * sentence, so a plain search finds the very words it is describing — which has now caught me twice.
+   */
+  const noComments = html.replace(/<!--[\s\S]*?-->/g, '');
+  ok('nothing claims the app runs entirely on this Mac',
+    !/runs entirely on this Mac/i.test(noComments),
+    'a check sends the pages to Google, and the other two places say so');
+  ok('the footer covers both formats, not just PowerPoint',
+    /runs on this Mac and never changes your files/.test(html) && !/reads your \.pptx but never writes/.test(html));
+  ok('and it keeps the claim that actually matters: the work is never written to',
+    /never changes your files — it only reads them/.test(html)
+    && !/writeFile|createWriteStream|appendFile/.test(pptx),
+    'the read-only promise is real and is checked against the parser');
+
+  /*
+   * And all three places that describe privacy must say the same thing. Two of them already did; the
+   * footer was the odd one out, which is exactly how a document drifts.
+   */
+  const claim = /except the pages[\s]+a check or a question sends to Google[\s]+to be read/g;
+  ok('the footer and the wizard word it identically',
+    (html.match(claim) || []).length === 2,
+    'found ' + (html.match(claim) || []).length + ' of the same sentence');
+  ok('and the Information panel agrees that pages go to Google',
+    /Nothing is uploaded except the pages[\s]+Google is asked to read/.test(html));
+  ok('no place still promises the work never leaves the machine at all',
+    !/nothing leaves this (computer|Mac)\b(?! except)/i.test(html));
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();
