@@ -681,6 +681,40 @@ removing one of several rules for the same class still passes.
 
 ---
 
+## 6g. The release script's two traps — fixed in v1.0.22
+
+Both fired on the same release, and both were silent.
+
+**It shipped stale packages.** `release.sh` built the zips only when `dist/` was
+empty, so releasing v1.0.22 while v1.0.21's zips were still sitting there uploaded
+**v1.0.21 to the v1.0.22 release**. Nothing failed; the log looked clean. The only
+hint was a `0 MB` line that was itself a bug — integer division of a 343 KB file.
+This is the nastiest shape of bug in this project, because the launcher compares its
+own `VERSION` against the server it starts: a wrong-but-consistent package reports
+**no mismatch**, so the student silently gets the old build while the version-named
+folders appear to be doing their job.
+
+Now the packages are always rebuilt, and after building, the folder name *inside*
+each zip (`NEA-Coach-mac-1.0.22/`) is asserted against the tag being released. A
+stale package cannot be uploaded at all — `release.sh` exits with
+`REFUSING TO RELEASE`.
+
+**It shipped empty notes.** The release body was a `BODY='...'` single-quoted shell
+string, and the notes are prose: they contained an apostrophe (`the AI's own
+reading`) and backticks. The apostrophe closed the string early, the remainder was
+executed as shell (`own: command not found`), and under `set -u` `BODY` ended up
+unset — a release with a body of **zero characters**. The notes now live in
+**`tools/release-notes.md`**, which no amount of punctuation can break.
+
+**The general lesson, and it is the same one as section 6c:** every failure in this
+area has been *a package or a report that was merely older than the thing that
+described it*, with nothing to compare them. Wherever this project has a version
+string, something must assert that the artefact matches it. Check the release body
+length and the asset sizes on the GitHub API after releasing; a `0` body and an
+unchanged asset size are the only evidence you will get.
+
+---
+
 ## 7. Still to do
 
 ### Already built, waiting on a Gemini API key
