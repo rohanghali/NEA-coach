@@ -30,6 +30,36 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
+/*
+ * SVG elements are not HTML ones, and this stub pretending otherwise hid a real bug.
+ *
+ * SVGElement.className is a read-only SVGAnimatedString: `svg.className = 'x'` throws a
+ * TypeError in a browser. The stub accepted any assignment, so a ring flare that assigned
+ * className to an <svg> passed the entire suite and then blanked half the page in Chrome —
+ * the exception killed the rest of renderAll, so only the elements drawn before it appeared.
+ *
+ * A stub more forgiving than the thing it stands in for is worse than no stub, so SVG elements
+ * refuse className here in the same way. Use setAttribute('class', ...) for them.
+ */
+const SVG_TAGS = new Set(['svg', 'circle', 'path', 'rect', 'g', 'line', 'polygon', 'polyline',
+  'ellipse', 'text', 'tspan', 'defs', 'use', 'clippath', 'lineargradient', 'stop']);
+
+/** Give an element its real tag, and make an SVG one behave like an SVG one. */
+function applyTag(element, tag) {
+  const name = String(tag).toUpperCase();
+  element.tagName = name;
+  if (!SVG_TAGS.has(name.toLowerCase())) { return element; }
+  element.isSvg = true;
+  Object.defineProperty(element, 'className', {
+    configurable: true,
+    get() { return element.getAttribute('class') || ''; },
+    set() {
+      throw new TypeError('Cannot set property className of #<SVGElement> which has only a getter');
+    },
+  });
+  return element;
+}
+
 /** Build one fake element. */
 function makeEl(id) {
   const handlers = {};
@@ -205,10 +235,13 @@ function loadPage(appRoot) {
     const element = makeEl(id);
     const markup = markupFor(id);
     if (markup) {
-      element.tagName = markup.tag;
+      applyTag(element, markup.tag);
       for (const [name, value] of Object.entries(markup.attrs)) {
         if (name === 'class') {
-          element.className = value;
+          // SVG refuses the assignment, exactly as a browser does, so it goes through the
+          // attribute like the real thing would have to.
+          if (element.isSvg) { element.setAttribute('class', value); }
+          else { element.className = value; }
           String(value).split(/\s+/).forEach((c) => { if (c) { element.classList.add(c); } });
         } else if (name === 'style') {
           element.setAttribute('style', value);
@@ -233,7 +266,7 @@ function loadPage(appRoot) {
     getElementById(id) { return els.get(id) || null; },
     querySelector(sel) { return sel === '.intro-card' ? makeEl('card') : null; },
     querySelectorAll() { return []; },
-    createElement(tag) { const e = makeEl(''); e.tagName = String(tag).toUpperCase(); return e; },
+    createElement(tag) { return applyTag(makeEl(''), tag); },
     createTextNode(t) { const e = makeEl(''); e.nodeValue = t; e.textContent = t; e.nodeType = 3; return e; },
     createComment() { return makeEl(''); },
     createDocumentFragment() { return makeEl('frag'); },

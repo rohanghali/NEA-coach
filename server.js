@@ -410,7 +410,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.38';
+const VERSION = '1.0.39';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -2629,6 +2629,18 @@ function buildStateResponse() {
   const publicCfg = publicConfig(cfg, readingSample);
   const previousReport = readJsonSafe(PREVIOUS_REPORT_PATH, null);
   return Object.assign({}, report, {
+    /*
+     * The RUNNING app's version, overriding the report's.
+     *
+     * A report carries the version that PRODUCED it, which is a different thing and often an
+     * older one: every upgrade leaves the previous version's report on disk until the next scan.
+     * Without this override, a 1.0.38 app was telling its own page "the app behind this page is
+     * 1.0.36" purely because 1.0.36 was what last wrote the report — and the version guard then
+     * warned every user to restart over nothing. A guard that cries wolf is worse than none, so
+     * the report's own version is kept separately as reportVersion.
+     */
+    version: VERSION,
+    reportVersion: report.version,
     /*
      * Today's allowance, derived live rather than trusted from the saved report.
      * A report written before this existed would otherwise leave the meter blank,

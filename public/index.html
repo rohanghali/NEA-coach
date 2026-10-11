@@ -3375,7 +3375,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.38';
+  var PAGE_BUILD = '1.0.39';
 
   var state = {
     data: null,
@@ -3879,9 +3879,22 @@
            * Restart the animation. A class that is already present does nothing, so it is
            * removed and the layout read back to force the browser to notice.
            */
-          ui.ring.className = 'ring';
+          /*
+           * setAttribute, NOT .className.
+           *
+           * #ring is an <svg>, and SVGElement.className is a read-only SVGAnimatedString —
+           * assigning a string to it throws. This threw on every render after the first, and
+           * the exception aborted the whole of renderAll from this point down, so the page
+           * drew only the elements before it and stopped. The "something went wrong" banner
+           * that appeared was never cleared either, so it stayed for good.
+           *
+           * The test suite could not see it: the DOM stub accepted any assignment. It no longer
+           * does — see tests/dom.js — because a stub that is more forgiving than a browser is
+           * worse than no stub at all.
+           */
+          ui.ring.setAttribute('class', 'ring');
           if (ui.ring.offsetWidth !== undefined) { void ui.ring.offsetWidth; }
-          ui.ring.className = 'ring is-pop';
+          ui.ring.setAttribute('class', 'ring is-pop');
           /*
            * Cleared once it has played. Leaving the class on would be harmless to look at —
            * the animation has finished — but it makes the state impossible to read, and a
@@ -3889,7 +3902,7 @@
            */
           if (ringPopTimer) { window.clearTimeout(ringPopTimer); }
           ringPopTimer = window.setTimeout(function () {
-            if (ui.ring) { ui.ring.className = 'ring'; }
+            if (ui.ring) { ui.ring.setAttribute('class', 'ring'); }
           }, 1300);
         }
         lastRingCount = totalIssues;
@@ -7243,6 +7256,12 @@
       renderSlides();
       renderSettings();
       renderBanners();
+      /*
+       * A successful render clears the failure notice. Without this the banner was a one-way
+       * switch: once anything threw — even something transient — it stayed on screen for the
+       * rest of the session, telling the student the page was broken long after it was fine.
+       */
+      clearBanner('render');
     } catch (err) {
       setBanner('render', 'error', 'Something went wrong while drawing the page. Press Check now, or reload this page.', true);
       if (window.console && window.console.error) { window.console.error(err); }

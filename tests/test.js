@@ -5351,6 +5351,25 @@ section('12aa. The page and the app must be the same version');
 
   page.call('checkVersionMatch', { version: serverVersion });
   eq('and reporting it again with matching versions clears it', bannerText(), '');
+
+  /*
+   * The state must report the version of the app that is RUNNING, not the version that wrote the
+   * report on disk.
+   *
+   * A report carries the version that produced it, and after an upgrade that is the PREVIOUS
+   * version until the next scan. Without an explicit override the state inherited the report's,
+   * so a 1.0.38 app told its own page "the app behind this is 1.0.36" — and the guard above then
+   * warned every user to restart over nothing. A guard that cries wolf is worse than no guard.
+   */
+  ok('the state reports the running version, overriding the report\u2019s',
+    /Object\.assign\(\{\}, report, \{[\s\S]{0,900}version: VERSION,/.test(srv),
+    'the state would inherit the version that wrote the report');
+  ok('and keeps the report\u2019s own version separately, for when that is the useful number',
+    /reportVersion: report\.version,/.test(srv));
+  ok('the stale-state branch reports the running version too',
+    /stateStale: true,[\s\S]{0,200}version: VERSION,/.test(srv) || /version: VERSION,[\s\S]{0,200}stateStale: true,/.test(srv));
+  ok('and the page compares its build against THAT, not against the report\u2019s',
+    /checkVersionMatch\(data\);/.test(html) && /theirs !== PAGE_BUILD/.test(html));
 }
 
 })().then(summary, (err) => {

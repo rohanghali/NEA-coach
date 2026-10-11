@@ -18,23 +18,21 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The app now tells you if its page and its brain are different versions.** That happens in one
-  specific way: unzipping a newer copy on top of one that is still running. The running copy
-  keeps its old code in memory while every page it hands out is read from the new files on disk,
-  so half of it is new and half is old — some things work and some do not, and nothing on screen
-  says why. It is now stated plainly, with what to do about it.
-- **Starting the app when its port is busy no longer looks like a crash.** If NEA Coach is
-  already running it says so and opens that copy. If something else has the port, it quietly
-  moves to the next free one and remembers it. Before this, both cases printed one line and
-  closed the window.
+- **Fixed the page stopping halfway through drawing itself.** One line set a class on the score
+  ring, which is an SVG element — and an SVG element refuses that, so it threw and took everything
+  below it down with it. The parts drawn before it appeared, the rest stayed blank, and a
+  "something went wrong" notice stayed on screen for the rest of the session. **This is almost
+  certainly what you saw as the app not working.**
+- **That notice now clears itself** once a page draws successfully, instead of staying for good.
+- **The update notice from v1.0.38 no longer gives a false alarm.** It compared the page against
+  the version that wrote the *report* on disk, which after an upgrade is the previous version
+  until the next check is run — so it warned about a mismatch that was not there. It compares
+  against the running app now, and the report's own version is kept separately.
+- Nothing about the marking, the checks or the report has changed.
 
-**If you are updating: quit NEA Coach completely first** — close its window, or press Control-C
-in it — and then open the new copy. Updating on top of a running copy is the one way to end up
-with two versions running at once, which is what this release is about.
+**In v1.0.38**
 
-**In v1.0.37**
-
-- The port fix above.
+- The port fix: a busy port no longer closes the window.
 
 **In v1.0.36**
 
