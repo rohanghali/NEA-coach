@@ -53,14 +53,21 @@ chmod 600 "$AUTH_FILE"
 printf 'header = "Authorization: Bearer %s"\nheader = "Accept: application/vnd.github+json"\n' "$TOKEN" > "$AUTH_FILE"
 unset TOKEN
 
-# --- the package --------------------------------------------------------------------
-ZIP="dist/NEA-Coach-windows.zip"
-if [ ! -f "$ZIP" ]; then
-  say "No package found. Building it first..."
-  ./tools/package.sh windows || exit 1
+# --- the packages -------------------------------------------------------------------
+# BOTH platforms ship with every release. Shipping only the Windows zip meant a Mac
+# user had no launcher to double-click and nothing to download, which is exactly the
+# question this answers.
+ASSETS=(dist/NEA-Coach-windows.zip dist/NEA-Coach-mac.zip)
+MISSING=0
+for z in "${ASSETS[@]}"; do [ -f "$z" ] || MISSING=1; done
+if [ "$MISSING" = "1" ]; then
+  say "Packages not built. Building for both platforms first..."
+  ./tools/package.sh both || exit 1
 fi
-SIZE_MB=$(( $(wc -c < "$ZIP") / 1048576 ))
-say "Package: $ZIP (${SIZE_MB} MB)"
+for z in "${ASSETS[@]}"; do
+  [ -f "$z" ] || { say "Package $z is still missing after building."; exit 1; }
+  say "Package: $z ($(( $(wc -c < "$z") / 1048576 )) MB)"
+done
 
 # --- check the tag is free ----------------------------------------------------------
 RESP_FILE="$(mktemp)"
@@ -76,11 +83,14 @@ BODY='Reviews a D&T NEA portfolio and tells you what to fix, in order of what is
 
 **To use it:**
 
-1. Download `NEA-Coach-windows.zip` below and unzip it.
-2. Double-click `Start NEA Coach.bat`. **Nothing needs installing** — Node.js is inside the download.
-3. Get a free Google API key (no card needed) — the app explains it, and `SETUP-AI.md` is in the folder.
+**Windows** — download `NEA-Coach-windows.zip`, unzip it, double-click `Start NEA Coach.bat`.
 
-On a Mac, the repo itself runs as-is: double-click `Start NEA Coach.command`.
+**Mac** — download `NEA-Coach-mac.zip`, unzip it, double-click `Start NEA Coach.command`.
+(The first run downloads Node.js automatically; after that it opens instantly.)
+
+Nothing needs installing by hand, and no bank card is needed.
+
+Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the folder.
 
 It never modifies your original PowerPoint, and nothing leaves your computer except the pages a check sends to Google.'
 
@@ -104,24 +114,28 @@ fi
 RELEASE_ID=$("${APP_DIR}/runtime/node" -e '
   const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
   process.stdout.write(String(j.id));' "$RESP_FILE")
-say "Release created (id $RELEASE_ID). Uploading the package..."
+say "Release created (id $RELEASE_ID). Uploading the packages..."
 
-# --- upload the zip -----------------------------------------------------------------
-CODE=$(curl -s -o "$RESP_FILE" -w '%{http_code}' --max-time 900 \
-  --config "$AUTH_FILE" -X POST \
-  -H "Content-Type: application/zip" \
-  --data-binary "@$ZIP" \
-  "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=NEA-Coach-windows.zip")
+# --- upload every zip ---------------------------------------------------------------
+for ZIP in "${ASSETS[@]}"; do
+  NAME="$(basename "$ZIP")"
+  say "Uploading $NAME..."
+  CODE=$(curl -s -o "$RESP_FILE" -w '%{http_code}' --max-time 900 \
+    --config "$AUTH_FILE" -X POST \
+    -H "Content-Type: application/zip" \
+    --data-binary "@$ZIP" \
+    "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$NAME")
 
-if [ "$CODE" = "201" ]; then
-  say "Uploaded."
-else
-  say "Upload failed (HTTP $CODE). The release exists but has no file attached."
-  "${APP_DIR}/runtime/node" -e '
-    try { const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
-      if (j.message) console.log("  " + j.message); } catch (e) {}' "$RESP_FILE"
-  exit 1
-fi
+  if [ "$CODE" = "201" ]; then
+    say "  Uploaded $NAME."
+  else
+    say "  Upload failed for $NAME (HTTP $CODE)."
+    "${APP_DIR}/runtime/node" -e '
+      try { const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+        if (j.message) console.log("  " + j.message); } catch (e) {}' "$RESP_FILE"
+    exit 1
+  fi
+done
 
 echo
 say "Done. The download link to share is:"
