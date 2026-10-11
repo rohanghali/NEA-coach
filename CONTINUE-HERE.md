@@ -248,7 +248,7 @@ There IS a test suite now. Run it first, always:
 
 ```bash
 cd NEA-Coach
-node tests/test.js      # 500 assertions, no dependencies
+node tests/test.js      # 547 assertions, no dependencies
 ```
 
 It covers the bugs that actually happened: table extraction, disabled image
@@ -867,6 +867,38 @@ A NOTE ON CLEANUP: restoring the config after testing deleted the PDF that the
 config pointed at, leaving `pdfFile` dangling and the next scan silently text-only.
 Copying the file back fixed it. **Never delete a file under `state/portfolio/` that
 `config.json` references** — check `pdfFile` and `deckFile` first.
+
+### Published: github.com/rohanghali/NEA-coach
+
+Live, public, with a working download. **The shareable link is
+<https://github.com/rohanghali/NEA-coach/releases/latest>** — that always points at the
+newest release, so it can be given out once and left alone.
+
+`tools/release.sh <version>` does the whole publish: builds the package if needed, creates
+the release and uploads the zip. It reads the token from the macOS keychain, where the first
+`git push` stored it, and passes it to curl through a config file rather than on the command
+line — a token in argv is visible to anything that can list processes.
+
+**The README had been destroyed and this is the important lesson.** It had been replaced at
+some point with the four-paragraph repository blurb written for the student, so the GitHub
+page had **no install instructions, no download link and no troubleshooting** — 7 lines
+where there had been 639. It was recoverable only because the full file was in the first
+commit's history. Restored and brought up to date: the Releases download first, Windows
+needing no install, GCSE as well as A-level, the daily allowance instead of money, and the
+advice to switch to a Flash-Lite marking model **removed** — that advice was actively wrong,
+because that model was measured compressing a 99/96/89 set to 81/80/66.
+
+**A user-visible bug found while chasing a failing test.** A scan that fails, or runs
+without an API key, still writes a report with `predicted: 0, maximum: 0,
+weightsKnown: false` and a row for every criterion. The predicted-mark guard only checked
+for rows, so it let that through and the card would have shown **"0 / 0" marks — a grade of
+zero on a portfolio nobody had assessed.** The server already flagged it with
+`weightsKnown`; the UI now honours it. Fixed in **v1.0.1**; v1.0.0 has the bug.
+
+**A note on the test that surfaced it:** it asserted the stored report always contains a
+percentage, which made it depend on the last scan having succeeded rather than on the
+snapshot code it was meant to exercise. Rewritten to assert the real invariant — counts
+always, a mark only when there was one.
 
 ### The allowance meter shows a percentage again
 
