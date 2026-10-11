@@ -122,34 +122,18 @@ REM Exit code 0 means a NEA Coach server is already answering on the port.
 "%NODE_BIN%" -e "const h=require('http');const r=h.get({host:'127.0.0.1',port:process.argv[1],path:'/api/health',timeout:1500},s=>process.exit(s.statusCode===200?0:1));r.on('error',()=>process.exit(1));r.on('timeout',()=>{r.destroy();process.exit(1);});" "%PORT%" >nul 2>nul
 if errorlevel 1 goto :not_running
 
-REM --------------------------------------------------------- which copy is it?
-REM A server IS answering, but it may not be THIS copy. Unzipping a new version
-REM beside the old one leaves two folders, and the old server keeps the port - so
-REM the browser opens the OLD build and the new version's fixes appear not to
-REM work. Compare the version the server reports against this folder's version.
-set "RUNVER="
-for /f "delims=" %%v in ('"%NODE_BIN%" -e "const h=require('http');const r=h.get({host:'127.0.0.1',port:process.argv[1],path:'/api/health',timeout:1500},s=>{let d='';s.on('data',c=>d+=c);s.on('end',()=>{try{process.stdout.write(String(JSON.parse(d).version||''))}catch(e){}});});r.on('error',()=>{});" "%PORT%"') do set "RUNVER=%%v"
-set "OURVER="
-for /f "delims=" %%v in ('"%NODE_BIN%" -e "const m=/const VERSION = .([0-9.]+)./.exec(require('fs').readFileSync(process.argv[1],'utf8'));process.stdout.write(m?m[1]:'')" "%~dp0server.js"') do set "OURVER=%%v"
-
-if not defined RUNVER goto :open_running
-if not defined OURVER goto :open_running
-if "%RUNVER%"=="%OURVER%" goto :open_running
-
-echo.
-echo   A DIFFERENT copy of NEA Coach is already running (version %RUNVER%).
-echo   The copy in this folder is version %OURVER%.
-echo.
-echo   Your browser would open the OLD version, so the improvements in this
-echo   one would not appear. Close the other NEA Coach window first:
-echo      find the black "NEA Coach server" window and close it,
-echo      then run this file again.
-echo.
-pause
-goto :finish
+REM Which copy is running used to be decided HERE, by two `for /f` blocks that ran
+REM node to read both versions. cmd strips the outer quotes off the command inside a
+REM `for /f` when the path in it contains a space - and
+REM "C:Program Files
+odejs
+ode.exe" always does - so the check never ran,
+REM RUNVER stayed undefined, and this script opened the OLD copy without a word.
+REM The server compares the versions itself now, from a request it was making
+REM anyway, and explains what it found in its own window.
 
 :open_running
-echo   NEA Coach is already running (version %RUNVER%).
+echo   NEA Coach is already running.
 echo.
 echo   Opening http://127.0.0.1:%PORT% in your browser.
 echo   This window can be closed.
@@ -165,41 +149,15 @@ echo   KEEP THIS WINDOW OPEN while you use NEA Coach. The server runs inside
 echo   it, so closing the window stops the app. Press Control-C to stop it.
 echo.
 
-REM Start the server in a window of its own, then WAIT until it actually answers
-REM before opening the browser. Opening the browser first and hoping it is slower
-REM than the server is a race, and on a slow PC or after a reboot the browser wins
-REM and shows "refused to connect". Polling the health endpoint removes the race.
+REM The server opens the browser ITSELF, once it is genuinely listening, at whichever
+REM port it actually got. This script cannot know that port: when its usual one is
+REM busy the server steps to the next free one and remembers it. Polling the assumed
+REM port here is what printed "did not start within 30 seconds" while the app was
+REM running perfectly well on the port next door.
+REM
+REM If nothing opens, read the last lines of the "NEA Coach server" window - the
+REM reason is printed there.
 start "NEA Coach server" "%NODE_BIN%" "%~dp0server.js"
-
-REM Poll /api/health until it answers 200. 60 half-second tries is 30 seconds,
-REM which is far longer than the server needs, so reaching the end means the
-REM server genuinely failed rather than merely being slow.
-set "TRIES=0"
-:wait_for_server
-if %TRIES% GEQ 60 goto :never_started
-"%NODE_BIN%" -e "const h=require('http');const r=h.get({host:'127.0.0.1',port:process.argv[1],path:'/api/health',timeout:1200},s=>process.exit(s.statusCode===200?0:1));r.on('error',()=>process.exit(1));r.on('timeout',()=>{r.destroy();process.exit(1);});" "%PORT%" >nul 2>nul
-if not errorlevel 1 goto :open_browser
-set /a TRIES+=1
->nul ping -n 2 127.0.0.1
-goto :wait_for_server
-
-:open_browser
-echo   Ready. Opening http://127.0.0.1:%PORT%
-echo.
-REM The empty "" is the window title. Without it, "start" treats the quoted URL
-REM as the title and opens nothing, which looks exactly like a broken app.
-start "" "http://127.0.0.1:%PORT%"
-goto :finish
-
-:never_started
-echo.
-echo   NEA Coach did not start within 30 seconds.
-echo.
-echo   A second window titled "NEA Coach server" was opened for it. The reason
-echo   is printed in THAT window - read the last few lines there. Common causes:
-echo     - something else is already using port %PORT%
-echo     - Node.js is damaged or was removed
-echo.
 goto :finish
 
 :stopped_badly

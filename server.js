@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.43';
+const VERSION = '1.0.44';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -468,14 +468,25 @@ function probeExisting(port, cb) {
     res.on('end', () => {
       try {
         const j = JSON.parse(body);
-        done(!!(j && j.ok === true && typeof j.version === 'string' && j.scan));
+        /*
+         * The running copy's own version, not just "something is there".
+         *
+         * A launcher used to work this out for itself, by running node twice from a batch
+         * `for /f` to compare versions. cmd strips the outer quotes off that command when the
+         * path contains a space — and "C:\Program Files\nodejs\node.exe" always does — so the
+         * check never ran, RUNVER stayed undefined, and the launcher opened the OLD copy without a
+         * word of warning. The server can answer this itself, from a request it was making anyway.
+         */
+        done((j && j.ok === true && typeof j.version === 'string' && j.scan)
+          ? { version: j.version, running: !!(j.scan && j.scan.running) }
+          : null);
       } catch (err) {
-        done(false);
+        done(null);
       }
     });
   });
-  req.on('timeout', () => { req.destroy(); done(false); });
-  req.on('error', () => done(false));
+  req.on('timeout', () => { req.destroy(); done(null); });
+  req.on('error', () => done(null));
   req.end();
 }
 
@@ -3569,11 +3580,27 @@ function start() {
      * Coach, this launch has nothing to do and the useful thing is to open the copy that is
      * already there. If it is anything else, step to the next free port and say so.
      */
-    probeExisting(port, (isUs) => {
-      if (isUs) {
+    probeExisting(port, (running) => {
+      if (running) {
         const url = `http://127.0.0.1:${port}`;
         console.log('');
-        console.log('  NEA Coach is already running.');
+        if (running.version && running.version !== VERSION) {
+          /*
+           * A DIFFERENT copy is on the port. Worth saying loudly: every version asks for the same
+           * saved port, so this is exactly what an upgrade looks like when the old copy is still
+           * running, and opening the old one silently is how a student concludes the new version
+           * "did not work".
+           */
+          console.log('  NEA Coach is already running — but it is a DIFFERENT version.');
+          console.log(`    already running: ${running.version}`);
+          console.log(`    this folder:     ${VERSION}`);
+          console.log('');
+          console.log('  Two copies cannot share a port, so the one already running is being opened.');
+          console.log('  To use THIS copy instead, quit the running one first — close its window,');
+          console.log('  or press Control-C in it — and start this again.');
+        } else {
+          console.log('  NEA Coach is already running.');
+        }
         console.log(`  Opening it: ${url}`);
         console.log('');
         console.log('  Two copies cannot share a port, and the one already open is the one to use,');
@@ -3631,6 +3658,19 @@ function start() {
     console.log('');
     console.log('   Leave this window open. Press Control-C to quit.');
     console.log('');
+
+    /*
+     * The browser is opened HERE, by the process that knows which port it actually got.
+     *
+     * Both launchers used to do this, polling a port they had assumed was 4173. When that port
+     * was busy the server stepped to the next free one and saved it — so the launcher waited on
+     * the wrong port, printed "did not start within 30 seconds" while the app was running fine,
+     * and never opened anything. The server cannot get this wrong about itself, and it works the
+     * same on both platforms because it is the same code.
+     *
+     * NEA_COACH_NO_OPEN=1 suppresses it, which is what scripts and tests use.
+     */
+    openInBrowser(macUrl);
 
     startWatching();
   }

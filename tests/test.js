@@ -5262,11 +5262,19 @@ section('12z. Starting when the port is already taken');
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ ok: true, version: '1.0.36', scan: { running: false } }));
   });
-  eq('a second copy is recognised as NEA Coach', await probe(server.address().port), true);
+  /*
+   * The probe now answers with WHICH version is running, because the launchers used to work that
+   * out for themselves with a batch `for /f` that cmd silently broke on a path containing a space
+   * ("C:\\Program Files\\nodejs\\node.exe") — so the check never ran and the launcher opened the old
+   * copy without a word. The server can answer it from a request it was making anyway.
+   */
+  const ours = await probe(server.address().port);
+  eq('a second copy is recognised, and says which version it is', ours && ours.version, '1.0.36');
+  eq('and whether it is busy', ours && ours.running, false);
   await close(server);
 
   server = await listen((req, res) => { res.end('hello, not nea coach'); });
-  eq('some other program on the port is NOT mistaken for it', await probe(server.address().port), false);
+  eq('some other program on the port is NOT mistaken for it', await probe(server.address().port), null);
   await close(server);
 
   /*
@@ -5275,12 +5283,12 @@ section('12z. Starting when the port is already taken');
    */
   server = await listen(() => { /* accepts, never answers */ });
   const started = Date.now();
-  eq('a port that accepts but never answers is not NEA Coach', await probe(server.address().port), false);
+  eq('a port that accepts but never answers is not NEA Coach', await probe(server.address().port), null);
   const waited = Date.now() - started;
   ok('and it gives up quickly rather than hanging the launch', waited < 4000, waited + 'ms');
   await close(server);
 
-  eq('a closed port is not NEA Coach', await probe(9), false);
+  eq('a closed port is not NEA Coach', await probe(9), null);
 
   ok('finding our own copy exits CLEANLY, because nothing has gone wrong',
     /NEA Coach is already running\.[\s\S]{0,700}process\.exit\(0\)/.test(src),
@@ -5635,6 +5643,63 @@ section('12ae. The packaging and release tools');
   ok('an upload failure deletes the incomplete release rather than leaving it',
     /X DELETE[\s\S]{0,200}releases\/\$RELEASE_ID/.test(rel),
     'a public release missing one of its two downloads is served by the /latest link');
+}
+
+section('12af. The launchers no longer guess the port');
+{
+  /*
+   * Both launchers duplicated knowledge the server already had: which port is in use, which
+   * version is running there, and when to open the browser. The server is the only thing that
+   * knows what port it actually got — it steps aside when its usual one is busy and saves the
+   * new one — so a launcher polling the assumed port waited on nothing, printed "did not start
+   * within 30 seconds" while the app ran fine next door, and never opened anything.
+   *
+   * The version check was worse on Windows: it was written with `for /f`, and cmd strips the
+   * outer quotes off a `for /f` command when the path inside contains a space. "C:\Program
+   * Files\nodejs\node.exe" always does, so the check never ran and the launcher opened the OLD
+   * copy without a word. On the Mac the same check worked, which is how a duplicated rule ends
+   * up disagreeing with itself.
+   */
+  const bat = fs.readFileSync(path.join(ROOT, 'Start NEA Coach.bat'), 'utf8');
+  const cmd = fs.readFileSync(path.join(ROOT, 'Start NEA Coach.command'), 'utf8');
+  const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+
+  // Only lines that actually RUN matter; the comments explaining the removal mention for /f.
+  const batCode = bat.split(/\r?\n/).filter((l) => !/^\s*REM\b/i.test(l)).join('\n');
+  ok('the batch version check is gone from the code, not just the comments',
+    !/for \/f/.test(batCode), 'cmd silently breaks it on a path with a space');
+
+  ok('the launcher starts the server and stops, instead of polling a port it assumed',
+    /start "NEA Coach server"[\s\S]{0,200}?goto :finish/.test(bat),
+    'it waits on 4173 while the server may be on the port next door');
+  ok('and it no longer opens the browser itself',
+    (bat.match(/start "" "http/g) || []).length <= 1,
+    'two things opening the browser is a race, and the launcher can pick the wrong port');
+  ok('every batch label it jumps to exists',
+    (() => {
+      const labels = new Set([...batCode.matchAll(/^:([A-Za-z_]\w*)/gm)].map((m) => m[1]));
+      const gotos = [...new Set([...batCode.matchAll(/\bgoto :?([A-Za-z_]\w*)/g)].map((m) => m[1]))];
+      return gotos.every((g) => labels.has(g));
+    })(), 'a goto with no label ends the script silently');
+
+  ok('the Mac launcher no longer forces a port on the server',
+    !/NEA_COACH_PORT="\$PORT"/.test(cmd),
+    'it overrides the port the server saved when it had to step aside');
+  ok('and it no longer opens the browser either',
+    (cmd.match(/^\s*open "http/gm) || []).length === 0);
+  ok('and it no longer compares versions itself',
+    !/RUNNING_VERSION/.test(cmd), 'that rule belongs in one place');
+
+  /* ---- and the server does all of it, where it can be tested ------------------- */
+  ok('the server opens the browser itself, once it is listening',
+    /function onListening\(\)[\s\S]*?openInBrowser\(macUrl\);/.test(srv),
+    'nothing opens the browser at the port the server actually got');
+  ok('and that can be turned off for scripts and tests',
+    /NEA_COACH_NO_OPEN === "1"/.test(srv));
+  ok('the running copy reports WHICH version it is, not merely that one exists',
+    /version: j\.version, running: !!\(j\.scan && j\.scan\.running\)/.test(srv));
+  ok('and a different version is called out rather than opened silently',
+    /but it is a DIFFERENT version/.test(srv));
 }
 
 })().then(summary, (err) => {
