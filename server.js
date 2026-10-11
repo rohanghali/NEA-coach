@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.65';
+const VERSION = '1.0.66';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -2698,6 +2698,321 @@ function appendHistory(snapshot) {
   writeJsonSafe(HISTORY_PATH, { scans: trimmed });
 }
 
+/* ------------------------------------------------------------------ *
+ * Asking about the work
+ * ------------------------------------------------------------------ */
+
+/**
+ * Re-read the student's own document, on demand.
+ *
+ * Deliberately NOT stored in the saved report. The report is handed to the browser wholesale by
+ * buildStateResponse, so putting every page's text in it would send the whole portfolio down the wire
+ * on every poll — the exact thing that function's own comment says it avoids. Reading it again takes a
+ * second or two, which is nothing next to the round trip to the model.
+ *
+ * It also means the text is the CURRENT text, so a question is answered about the file as it is now.
+ */
+function loadDeckForAnswer() {
+  /* cfg is a local inside loadConfig(), so a module-level helper has to ask for it. */
+  const cfg = loadConfig();
+  const found = findDeck(cfg);
+  if (!found || found.error || !found.filePath) {
+    return { deck: null, error: (found && found.error) || 'No portfolio is chosen yet.' };
+  }
+  try {
+    const fromPdf = found.kind === 'pdf' || /\.pdf$/i.test(found.filePath);
+    const deck = fromPdf
+      ? pdfdeck.deckFromPdf(fs.readFileSync(found.filePath), { fileName: path.basename(found.filePath) }).deck
+      : parsePresentation(found.filePath);
+    return { deck, error: null };
+  } catch (err) {
+    return { deck: null, error: 'Could not read your portfolio: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+/**
+ * What the last completed check found — BOTH lists of findings, merged.
+ *
+ * The free checks file theirs under local.findings and the AI review files its own under
+ * ai.findings, and the fix list on the page shows the two merged. Reading only local.findings here
+ * meant answering from 3 of the 31 things the student can actually see on screen — the 28 the AI
+ * found were invisible to every question and missing from the briefing pack entirely.
+ *
+ * The de-duplication and the ordering match the page's own allFindings(), so what is answered about
+ * is what is shown.
+ */
+function reportFindings() {
+  const report = lastReport || readJsonSafe(LAST_REPORT_PATH, null);
+  if (!report) {
+    return { report: null, findings: [], suggestions: [], criteria: [], coverage: [], strengths: [] };
+  }
+  const local = report.local || {};
+  const ai = report.ai || {};
+  const localList = Array.isArray(local.findings) ? local.findings : [];
+  const aiList = Array.isArray(ai.findings) ? ai.findings : [];
+
+  const seen = Object.create(null);
+  const findings = [];
+  for (const f of localList.concat(aiList)) {
+    if (!f) { continue; }
+    const id = f.id || (String(f.rule) + '|' + (f.slide == null ? 'deck' : f.slide));
+    if (seen[id]) { continue; }
+    seen[id] = true;
+    findings.push(f);
+  }
+  /* Most serious first, so "what should I fix first" is answered from the top of the list. */
+  const rank = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  findings.sort((a, b) => {
+    const ra = rank[String(a.severity || 'info')] == null ? 9 : rank[String(a.severity || 'info')];
+    const rb = rank[String(b.severity || 'info')] == null ? 9 : rank[String(b.severity || 'info')];
+    if (ra !== rb) { return ra - rb; }
+    return (Number(b.priority) || 0) - (Number(a.priority) || 0);
+  });
+
+  return {
+    report,
+    findings,
+    suggestions: Array.isArray(ai.suggestions) ? ai.suggestions : [],
+    criteria: Array.isArray(ai.criteria) ? ai.criteria : [],
+    coverage: Array.isArray(ai.coverage) ? ai.coverage : [],
+    strengths: Array.isArray(ai.strengths) ? ai.strengths : [],
+  };
+}
+
+/** A page's words, flattened and capped, with the page number in front of it. */
+function pageTextForAnswer(slides, numbers, perPage) {
+  const want = Array.isArray(numbers) ? numbers.slice(0, 6) : [];
+  const out = [];
+  for (const n of want) {
+    const slide = slides.filter((x) => x.index === Number(n))[0];
+    if (!slide) { continue; }
+    const body = String(slide.text || '').replace(/\s+/g, ' ').trim().slice(0, perPage || 1400);
+    out.push('--- PAGE ' + slide.index
+      + (slide.title ? ' — "' + String(slide.title).slice(0, 80) + '"' : '')
+      + ' (' + (slide.wordCount || 0) + ' words) ---\n'
+      + (body || '(no text on this page — it may be images only)'));
+  }
+  return out.join('\n\n');
+}
+
+/** A one-line index of every page, so the model can talk about pages it was not handed. */
+function pageIndexForAnswer(slides) {
+  return slides.map((x) => 'p' + x.index + (x.title ? ' "' + String(x.title).slice(0, 60) + '"' : '')
+    + ' (' + (x.wordCount || 0) + 'w, ' + (x.imageCount || 0) + ' img)').join('; ');
+}
+
+/**
+ * The material a question is answered from.
+ *
+ * Bounded on purpose. Sending the entire portfolio with every question would be a large request for
+ * every tap, on an allowance measured in requests per day — so the scope decides what travels: the
+ * pages a finding points at, the page asked about, or an outline plus the findings for a general
+ * question. The page index always goes, so the model can refer to pages it was not given the text of.
+ */
+function askContext(deck, scope) {
+  const cfg = loadConfig();
+  const slides = (deck && deck.slides) || [];
+  const { findings, suggestions, criteria, report } = reportFindings();
+  const type = (scope && scope.type) || 'deck';
+  const head = [];
+  const board = (ai.specPreset(cfg.specId) || {}).label || cfg.specId || '';
+
+  head.push('PORTFOLIO: ' + (deck.fileName || 'their work') + ', ' + slides.length + ' pages.');
+  if (board) { head.push('QUALIFICATION: ' + board + '.'); }
+  if (criteria.length) {
+    head.push('MARK SCHEME CRITERIA: ' + criteria.map((c) => (c.name || c.label || c.id)
+      + (c.max != null ? ' (out of ' + c.max + ')' : '')).join('; ') + '.');
+  }
+  head.push('PAGE INDEX: ' + pageIndexForAnswer(slides));
+  head.push('');
+
+  let about = '';
+  let body = '';
+
+  if (type === 'finding' && scope.id != null) {
+    const f = findings.filter((x, i) => String(x.id || i) === String(scope.id) || String(i) === String(scope.id))[0];
+    if (f) {
+      about = 'a finding the app raised: "' + String(f.title || '').slice(0, 120) + '"';
+      body = [
+        'THE FINDING THEY ARE ASKING ABOUT:',
+        '- ' + (f.severity ? '[' + String(f.severity).toUpperCase() + '] ' : '') + String(f.title || ''),
+        f.why ? '- Why it matters: ' + String(f.why).slice(0, 600) : '',
+        f.fix ? '- What the app suggests: ' + String(f.fix).slice(0, 600) : '',
+        f.evidence ? '- Evidence: ' + String(f.evidence).slice(0, 600) : '',
+        f.slides && f.slides.length ? '- Pages: ' + f.slides.join(', ') : '',
+        '',
+        'THE ACTUAL TEXT OF THOSE PAGES:',
+        pageTextForAnswer(slides, f.slides, 1400) || '(the app could not read text from those pages)',
+      ].filter(Boolean).join('\n');
+    }
+  } else if (type === 'suggestion' && scope.id != null) {
+    const g = suggestions.filter((x, i) => String(x.id || i) === String(scope.id) || String(i) === String(scope.id))[0];
+    if (g) {
+      about = 'something the app suggested adding: "' + String(g.title || '').slice(0, 120) + '"';
+      body = [
+        'THE SUGGESTION THEY ARE ASKING ABOUT:',
+        '- ' + String(g.title || ''),
+        g.why ? '- Why: ' + String(g.why).slice(0, 600) : '',
+        g.fix ? '- What the app suggests: ' + String(g.fix).slice(0, 600) : '',
+        g.slides && g.slides.length ? '- Pages it relates to: ' + g.slides.join(', ') : '',
+        '',
+        'THE TEXT OF THOSE PAGES:',
+        pageTextForAnswer(slides, g.slides, 1200) || '(nothing readable)',
+      ].filter(Boolean).join('\n');
+    }
+  } else if (type === 'criterion' && (scope.id != null || scope.name)) {
+    /*
+     * A criterion of the mark scheme. The most useful material for this is not the pages alone but
+     * what the mark scheme itself asks for — the description, the evidence it wants and the mistakes
+     * that are commonly made — because "what is missing for this criterion" is a question about the
+     * standard, not only about the work.
+     */
+    const wanted = scope.id != null ? String(scope.id) : '';
+    const wantedName = scope.name ? String(scope.name) : '';
+    const spec = criteria.filter((c) => (wanted && String(c.id) === wanted)
+      || (wantedName && String(c.name) === wantedName))[0]
+      || coverage.filter((c) => (wanted && String(c.id) === wanted)
+        || (wantedName && String(c.name) === wantedName))[0];
+    if (spec) {
+      about = 'the mark scheme criterion "' + String(spec.name || wantedName).slice(0, 100) + '"';
+      const pages = Array.isArray(spec.slides) ? spec.slides : [];
+      body = [
+        'THE CRITERION THEY ARE ASKING ABOUT:',
+        '- Name: ' + String(spec.name || ''),
+        spec.weight != null ? '- Worth: ' + spec.weight + ' marks' : '',
+        spec.description ? '- What it asks for: ' + String(spec.description).slice(0, 900) : '',
+        spec.evidence ? '- Evidence the examiner wants: ' + String(spec.evidence).slice(0, 900) : '',
+        spec.commonShortfalls ? '- Common mistakes: ' + String(spec.commonShortfalls).slice(0, 900) : '',
+        spec.status ? '- How the app rated it: ' + String(spec.status) : '',
+        spec.coveragePercent != null ? '- Coverage the app measured: ' + spec.coveragePercent + '%' : '',
+        spec.comment ? '- The app\'s comment: ' + String(spec.comment).slice(0, 700) : '',
+        pages.length ? '- Pages the app linked to it: ' + pages.join(', ') : '- No pages were linked to it.',
+        '',
+        'THE TEXT OF THOSE PAGES:',
+        pageTextForAnswer(slides, pages, 1400) || '(nothing readable)',
+      ].filter(Boolean).join('\n');
+    }
+  } else if (type === 'page' && scope.page != null) {
+    const n = Number(scope.page);
+    about = 'page ' + n + ' of their portfolio';
+    const onThisPage = findings.filter((f) => (f.slides || []).indexOf(n) >= 0);
+    body = [
+      'THE TEXT OF PAGE ' + n + ':',
+      pageTextForAnswer(slides, [n], 2600) || '(no text on that page)',
+      '',
+      onThisPage.length
+        ? 'WHAT THE APP NOTICED ON THAT PAGE:\n' + onThisPage.map((f) => '- [' + String(f.severity || '').toUpperCase() + '] ' + String(f.title || '')).join('\n')
+        : 'The app raised nothing on that page.',
+    ].join('\n');
+  }
+
+  if (!body) {
+    /* A general question: the outline plus everything the app has already worked out. */
+    about = 'their portfolio as a whole';
+    body = [
+      'WHAT THE APP FOUND (highest priority first):',
+      findings.length
+        ? findings.slice(0, 40).map((f) => '- [' + String(f.severity || '').toUpperCase() + '] '
+          + String(f.title || '') + (f.slides && f.slides.length ? ' (pages ' + f.slides.join(', ') + ')' : '')).join('\n')
+        : 'Nothing was raised.',
+      '',
+      'WHAT THE APP THINKS IS ALREADY GOOD (never suggest these):',
+      strengths.slice(0, 20).map((x) => '- ' + String(x)).join('\n') || '- (none recorded)',
+      '',
+      'IDEAS THE APP SUGGESTED ADDING:',
+      suggestions.slice(0, 20).map((x) => '- ' + String(x.title || '')).join('\n') || '- (none)',
+      '',
+      'TEXT OF THE FIRST FEW PAGES, so you can see how they actually write:',
+      pageTextForAnswer(slides, slides.slice(0, 3).map((x) => x.index), 1200) || '(nothing readable)',
+    ].join('\n');
+  }
+
+  return { text: head.join('\n') + body, about };
+}
+
+/**
+ * Everything an outside AI needs to answer questions about this portfolio.
+ *
+ * This is the answer to a real problem: exporting the report and pasting it into ChatGPT does not
+ * work, because the report holds findings and page numbers but not the student's actual writing — so
+ * the AI can only offer generic advice. This carries the words on every page as well, which is what
+ * makes "what is weak about page 34?" answerable.
+ */
+function buildBriefingPack(deck) {
+  const cfg = loadConfig();
+  const slides = (deck && deck.slides) || [];
+  const { findings, suggestions, criteria, report, strengths } = reportFindings();
+  const board = (ai.specPreset(cfg.specId) || {}).label || '';
+
+  const lines = [];
+  lines.push('# NEA Coach — briefing for an AI assistant');
+  lines.push('');
+  lines.push('You are helping a UK GCSE Design and Technology student with their NEA coursework. This');
+  lines.push('file is their real portfolio: every page, in their own words, plus what an automated check');
+  lines.push('has already found. Answer from this material.');
+  lines.push('');
+  lines.push('## How to answer');
+  lines.push('');
+  lines.push('- Answer **only** from the material below. If something is not in it, say so plainly.');
+  lines.push('- **Never give a mark, a grade or a band.** The app gives a predicted mark and a second');
+  lines.push('  number would disagree with it. Talk about what to improve, not about scores.');
+  lines.push('- **Never suggest work that is already present** — read "Already good" below first.');
+  lines.push('- Point at **page numbers** wherever you can.');
+  lines.push('- Be concise and concrete. UK English.');
+  lines.push('');
+  lines.push('## The work');
+  lines.push('');
+  lines.push('- File: ' + (deck.fileName || '(unknown)'));
+  lines.push('- Pages: ' + slides.length);
+  if (board) { lines.push('- Qualification: ' + board); }
+  if (report && report.generatedAt) { lines.push('- Last checked: ' + String(report.generatedAt).slice(0, 10)); }
+  lines.push('- Note: this file carries the TEXT of every page. It cannot carry the pictures, so you');
+  lines.push('  cannot see their sketches or photographs — ask them to describe one if it matters.');
+  lines.push('');
+  if (criteria.length) {
+    lines.push('## What they are marked against');
+    lines.push('');
+    for (const c of criteria) {
+      lines.push('- ' + (c.name || c.label || c.id) + (c.max != null ? ' — out of ' + c.max : ''));
+    }
+    lines.push('');
+  }
+  if (findings.length) {
+    lines.push('## What the check found (highest priority first)');
+    lines.push('');
+    for (const f of findings.slice(0, 60)) {
+      lines.push('- **[' + String(f.severity || '').toUpperCase() + '] ' + String(f.title || '') + '**'
+        + (f.slides && f.slides.length ? ' — pages ' + f.slides.join(', ') : ''));
+      if (f.why) { lines.push('  - Why it matters: ' + String(f.why).slice(0, 400)); }
+      if (f.fix) { lines.push('  - Suggested fix: ' + String(f.fix).slice(0, 400)); }
+    }
+    lines.push('');
+  }
+  if (strengths.length) {
+    lines.push('## Already good — do not suggest these');
+    lines.push('');
+    for (const x of strengths.slice(0, 30)) { lines.push('- ' + String(x)); }
+    lines.push('');
+  }
+  if (suggestions.length) {
+    lines.push('## Things the check suggested adding');
+    lines.push('');
+    for (const g of suggestions.slice(0, 30)) { lines.push('- ' + String(g.title || '')); }
+    lines.push('');
+  }
+  lines.push('## Every page');
+  lines.push('');
+  for (const s of slides) {
+    lines.push('### Page ' + s.index + (s.title ? ' — ' + String(s.title).slice(0, 100) : ''));
+    lines.push('*' + (s.wordCount || 0) + ' words, ' + (s.imageCount || 0) + ' image(s)*');
+    lines.push('');
+    const body = String(s.text || '').trim();
+    lines.push(body ? body.slice(0, 8000) : '*(no text on this page — images only)*');
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
 function buildStateResponse() {
   const cfg = loadConfig();
 
@@ -3119,6 +3434,78 @@ async function handle(req, res) {
   // ---- API
   if (p === '/api/state' && req.method === 'GET') {
     return sendJson(res, 200, buildStateResponse());
+  }
+
+  /*
+   * A question about the student's own work.
+   *
+   * It costs the same as any other request against the daily allowance, so the count is written to the
+   * quota file exactly as a scan's is — the meter on the page must not under-report because the
+   * request went through a different door.
+   */
+  if (p === '/api/ask' && req.method === 'POST') {
+    const body = await readBody(req);
+    const question = String((body && body.question) || '').trim().slice(0, 600);
+    if (!question) {
+      return sendJson(res, 400, { ok: false, error: 'Type a question first.' });
+    }
+    if (!cfg.apiKey) {
+      return sendJson(res, 400, { ok: false, error: 'No API key is set, so nothing can be asked yet. Add one in Settings.' });
+    }
+    if (scanState.running) {
+      return sendJson(res, 409, { ok: false, error: 'A check is running. Ask again when it has finished, so the two do not compete for your allowance.' });
+    }
+    const loaded = loadDeckForAnswer();
+    if (!loaded.deck) {
+      return sendJson(res, 400, { ok: false, error: loaded.error });
+    }
+    const ctx = askContext(loaded.deck, body && body.scope);
+    const sent = [];
+    let answer;
+    try {
+      answer = await ai.askAbout({
+        apiKey: cfg.apiKey,
+        model: cfg.model,
+        question,
+        context: ctx.text,
+        about: ctx.about,
+        board: (ai.specPreset(cfg.specId) || {}).label || '',
+        onRequest: (which) => {
+          const m = which || cfg.model;
+          sent.push(m);
+          noteRequest(m);
+        },
+      });
+    } catch (err) {
+      return sendJson(res, 500, { ok: false, error: 'That did not work: ' + (err && err.message ? err.message : err) });
+    }
+    return sendJson(res, 200, {
+      ok: !!answer.ok,
+      answer: answer.answer || '',
+      reason: answer.reason || null,
+      about: ctx.about,
+      requests: sent.length,
+      model: answer.model || cfg.model,
+    });
+  }
+
+  /*
+   * The whole portfolio as one text file, to hand to any AI assistant.
+   *
+   * The report a student can already export holds findings and page numbers but not their actual
+   * writing, so an outside AI can only give generic advice. This carries every page's words.
+   */
+  if (p === '/api/briefing' && req.method === 'GET') {
+    const loaded = loadDeckForAnswer();
+    if (!loaded.deck) {
+      return sendJson(res, 400, { ok: false, error: loaded.error });
+    }
+    const text = buildBriefingPack(loaded.deck);
+    res.writeHead(200, {
+      'Content-Type': 'text/markdown; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    return res.end(text);
   }
 
   if (p === '/api/progress' && req.method === 'GET') {

@@ -6071,7 +6071,7 @@ section('12aj. Every section is a tab');
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
 
-  const SECTIONS = ['overview', 'fixlist', 'suggest', 'predicted', 'coverage', 'since',
+  const SECTIONS = ['overview', 'fixlist', 'suggest', 'ask', 'predicted', 'coverage', 'since',
     // Statistics AFTER Past checks, as asked.
     'slides', 'history', 'stats', 'info', 'settings'];
   // class="toptab[^"]*" rather than "toptab", because the pinned Settings button carries a
@@ -6081,7 +6081,7 @@ section('12aj. Every section is a tab');
 
   const panels = [...html.matchAll(/<div class="panel" id="panel([A-Za-z]+)">/g)].map((m) => m[1]);
   eq('and the panels they wrap are the expected ones', panels.join(','),
-    'Overview,Settings,Since,Predicted,Fixlist,Slides,Info,History,Stats,Cost,Connect');
+    'Overview,Settings,Since,Predicted,Fixlist,Ask,Slides,Info,History,Stats,Cost,Connect');
 
   ok('every tab points at a panel that exists, and only the ones it needs',
     /panels: \['Fixlist'\], inner: 'fix'/.test(html)
@@ -6093,7 +6093,7 @@ section('12aj. Every section is a tab');
   ok('the page is a flex column, which is what makes the order settable at all',
     /\.page \{ display: flex; flex-direction: column; \}/.test(css));
   const orders = [...css.matchAll(/#panel([A-Za-z]+) \{ order: (\d+); \}/g)].map((m) => [m[1], Number(m[2])]);
-  eq('every panel has an order', orders.length, 11);
+  eq('every panel has an order', orders.length, 12);
   const sorted = orders.slice().sort((a, b) => a[1] - b[1]).map((x) => x[0]).join(',');
   /*
    * "Use it on your phone" first, then the information card, then the allowance meter. The
@@ -6715,7 +6715,7 @@ section('12an. Settings that are shown must be settings that are saved');
    * The panels are panelOverview, panelSettings... and every tab pointed at panel-overview.
    */
   const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]);
-  const wanted = ['overview', 'fixlist', 'suggest', 'predicted', 'coverage', 'since', 'slides',
+  const wanted = ['overview', 'fixlist', 'suggest', 'ask', 'predicted', 'coverage', 'since', 'slides',
     'history', 'stats', 'info', 'settings'].map((x) => 'panel' + x.charAt(0).toUpperCase() + x.slice(1));
   ok('every tab controls a panel that exists',
     wanted.every((id) => controls.includes(id)) && !controls.some((c) => /^panel-/.test(c)),
@@ -6773,6 +6773,125 @@ section('12ao. One drawing, and every target it has to reach');
   for (const target of ['favicon.ico', 'icon-180.png', 'NEA Coach.ico', 'NEA Coach.icns']) {
     ok('tools/make-icons.js writes ' + target, icons.indexOf(target) >= 0);
   }
+}
+
+section('12ap. Asking about the work');
+{
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const aiSrc = fs.readFileSync(path.join(ROOT, 'lib', 'ai.js'), 'utf8');
+
+  /* ---- the section exists ---- */
+  ok('there is an Ask AI section in the strip',
+    /data-tab="ask"/.test(html) && /id="panelAsk"/.test(html)
+    && /\{ id: 'ask', panels: \['Ask'\] \}/.test(html));
+
+  /* ---- prefilled questions ---- */
+  const chips = (/var ASK_CHIPS = \[([\s\S]*?)\];/.exec(html) || [])[1] || '';
+  const chipCount = (chips.match(/^\s*'/gm) || []).length;
+  ok('it offers prefilled questions to tap', chipCount >= 5, 'found ' + chipCount);
+  ok('and they ask for something specific, not "improve my portfolio"',
+    /Which pages are weakest/.test(chips) && /turn description into analysis/.test(chips));
+
+  /* ---- the headline rule: cost is visible BEFORE spending ---- */
+  /*
+   * A question costs a request from the same daily allowance a check uses. The app's own rule is that
+   * cost is visible before it is spent, so the button on a card only OPENS the section — it never
+   * sends — and the section says what a question costs.
+   */
+  ok('an "Ask" button on a card does not spend anything by itself',
+    /function askMiniButton/.test(html)
+    && /askMiniButton[\s\S]{0,700}openAsk\(question, scope, about\)/.test(html)
+    && !/askMiniButton[\s\S]{0,700}apiPost/.test(html),
+    'a stray tap on a card must not quietly use up part of the day');
+  ok('and the section says what a question costs before it is asked',
+    /function askCostText\(\)/.test(html) && /dailyLimitFor\(model\)/.test(html)
+    && /One request/.test(html));
+
+  /* ---- where it can be asked from ---- */
+  const places = (html.match(/askMiniButton\(/g) || []).length;
+  ok('and it can be asked from anywhere it might occur to you',
+    places >= 6, 'found ' + places + ' call sites (1 definition + the places it is offered)');
+  for (const [what, needle] of [
+    ['a finding', "{ type: 'finding', id: finding.id }"],
+    ['a suggestion', "{ type: 'suggestion', id: s.id }"],
+    ['a page', "{ type: 'page', page: row.number }"],
+    ['a criterion', "{ type: 'criterion', id: row.id"],
+    ['the whole portfolio', "{ type: 'deck' }"],
+  ]) {
+    ok('it can be asked about ' + what, html.indexOf(needle) >= 0, needle);
+  }
+
+  /* ---- the answer is grounded in the real pages ---- */
+  /*
+   * A chat that answers from a summary invents things, and an invented claim about someone's
+   * coursework is the worst failure this app has. The context carries the ACTUAL page text.
+   */
+  ok('the question is answered from the actual text of the pages',
+    /function askContext/.test(server) && /function pageTextForAnswer/.test(server)
+    && /pageTextForAnswer\(slides, f\.slides/.test(server));
+  ok('and the model is told to say when the answer is not in that material',
+    /If the answer is not in that material, say so plainly/.test(aiSrc));
+  ok('and never to give a mark of its own',
+    /Never give a mark, a grade or a band/.test(aiSrc),
+    'a second number would disagree with the predicted mark within a day');
+  ok('and never to suggest work that is already there',
+    /Never suggest work that is already present/.test(aiSrc));
+
+  /* ---- BOTH lists of findings ---- */
+  /*
+   * The free checks file their findings under local.findings and the AI files its own under
+   * ai.findings, and the page merges them. Reading only the first meant answering from 3 of the 31
+   * things the student can see — the 28 the AI found were invisible to every question.
+   */
+  ok('both lists of findings are read, not just the free ones',
+    /localList\.concat\(aiList\)/.test(server),
+    'local.findings and ai.findings are different lists and the page shows them merged');
+  ok('and the duplicates between them are dropped the same way the page does',
+    /const id = f\.id \|\| /.test(server));
+
+  /* ---- the briefing file ---- */
+  ok('there is a briefing file carrying every page for an outside assistant',
+    /\/api\/briefing/.test(server) && /function buildBriefingPack/.test(server));
+  ok('it carries the words of every page, which is the whole point',
+    /String\(s\.text \|\| ''\)\.trim\(\)/.test(server) && /## Every page/.test(server));
+  ok('and it tells the receiving AI the same rules this app holds itself to',
+    /Never give a mark, a grade or a band/.test(server) && /page numbers/.test(server));
+  ok('the copy button opens the assistant BEFORE awaiting, or the popup is blocked',
+    /window\.open\('https:\/\/chatgpt\.com\/', '_blank'\)/.test(html)
+    && html.indexOf("window.open('https://chatgpt.com/'") < html.indexOf('fetchBriefing().then'),
+    'a window opened after an await is blocked by every browser');
+
+  /* ---- and it works on a phone, where the clipboard does not ---- */
+  /*
+   * navigator.clipboard needs a secure context, and the whole point of this app is that a phone
+   * reaches it over http://192.168.x.x, which is not one. Without the fallback the button would fail
+   * silently on the device it was asked for.
+   */
+  ok('when the clipboard is unavailable the text is put somewhere selectable',
+    /function showBriefingFallback/.test(html) && /askFallbackText/.test(html)
+    && /navigator\.clipboard/.test(html));
+  ok('and there is a download for anyone who would rather have the file',
+    /function downloadBriefing/.test(html) && /createObjectURL/.test(html));
+
+  /* ---- cost accounting ---- */
+  ok('a question is counted against the allowance like any other request',
+    /noteRequest\(m\)/.test(server) && /\/api\/ask/.test(server)
+    && /onRequest: \(which\) => \{[\s\S]{0,200}noteRequest/.test(server),
+    'the meter must not under-report because the request went through a different door');
+  ok('and it refuses while a check is running, so the two do not compete',
+    /A check is running\. Ask again when it has finished/.test(server));
+
+  /* ---- still no dependencies ---- */
+  /*
+   * The project ships with no package.json and no build step, and an AI feature is exactly the kind of
+   * thing that quietly adds both. Asserted as the real property rather than a pattern over prose.
+   */
+  ok('and none of it added a dependency',
+    !fs.existsSync(path.join(ROOT, 'package.json'))
+    && !fs.existsSync(path.join(ROOT, 'node_modules'))
+    && !/node_modules/.test(server + aiSrc),
+    'no package.json, no node_modules, and nothing requires one');
 }
 
 })().then(summary, (err) => {

@@ -1098,6 +1098,125 @@
   .empty p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
   .empty .btn { margin-top: 4px; }
 
+  /* ---------- Ask AI ---------- */
+
+  .ask-lede { margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: var(--ink-2); max-width: 64ch; }
+
+  /* The prefilled questions. Pills, because they are one tap and then gone. */
+  .ask-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .ask-chip {
+    padding: 8px 13px;
+    background: var(--accent-soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--accent-dark);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: left;
+    cursor: pointer;
+  }
+  .ask-chip:hover { background: var(--accent); border-color: var(--accent); color: var(--card); }
+
+  /* What the next question will be about, when it came from an "Ask" button on a finding. */
+  .ask-about {
+    margin: 0 0 13px;
+    padding: 9px 13px;
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .ask-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 14.5px;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  .ask-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+  .ask-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 11px 0 0; }
+  .ask-actions .ask-cost { flex: 1 1 auto; }
+
+  .ask-answer {
+    margin: 16px 0 0;
+    padding: 14px 15px;
+    background: var(--fill-soft);
+    border-radius: var(--radius-sm);
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--ink-2);
+    /* The reply may contain line breaks; keep them rather than reflowing into a wall. */
+    white-space: pre-wrap;
+  }
+  .ask-answer.is-bad { background: var(--medium-soft); }
+  .ask-answer .ask-answer-head {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .ask-export {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--line);
+  }
+  .ask-export .muted { flex: 1 1 220px; }
+
+  .ask-fallback { margin-top: 12px; }
+  .ask-fallback textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    color: var(--ink-2);
+    font-family: inherit;
+    font-size: 12.5px;
+  }
+
+  /*
+   * The "Ask" affordance that sits on a finding, a page row or a criterion. Deliberately the smallest
+   * thing on the card: it is an offer, not a call to action, and there is one on almost every row.
+   */
+  .ask-mini {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    background: none;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 650;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .ask-mini:hover { background: var(--accent); border-color: var(--accent); color: var(--card); }
+  .ask-inline { margin: 0 0 12px; }
+
   /* ---------- the section tabs ---------- */
 
   /*
@@ -1123,6 +1242,7 @@
 
   #panelOverview { order: 10; }
   #panelFixlist { order: 20; }
+  #panelAsk { order: 25; }
   #panelPredicted { order: 30; }
   #panelSince { order: 40; }
   #panelSlides { order: 50; }
@@ -3208,6 +3328,7 @@
     <div class="toptabs-scroll" id="topTabsScroll">
       <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panelFixlist" data-tab="fixlist" type="button">Fix list</button>
       <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panelSuggest" data-tab="suggest" type="button">Things to add</button>
+      <button class="toptab" id="topTab-ask" role="tab" aria-selected="false" aria-controls="panelAsk" data-tab="ask" type="button">Ask AI</button>
       <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panelPredicted" data-tab="predicted" type="button">Predicted mark</button>
       <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panelCoverage" data-tab="coverage" type="button">Coverage grid</button>
       <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panelSince" data-tab="since" type="button">Since your last check</button>
@@ -3296,6 +3417,7 @@
     <div id="sampleNotice"></div>
     <!-- What a check would do, from the current settings rather than from the last report. -->
     <div class="check-plan" id="checkPlan"></div>
+    <div class="ask-inline" id="askInline"></div>
     <div class="actions-row">
       <button class="btn btn-primary btn-lg" id="btnCheck" type="button">
         <span class="spinner" id="checkSpinner" style="display:none"></span><span id="btnCheckLabel">Check now</span>
@@ -3729,7 +3851,55 @@
   </section>
 
   </div>
-  <div class="panel" id="panelSlides">
+  <!--
+  Ask AI.
+
+  A question the student types, answered from the ACTUAL TEXT of the pages it is about. That is the
+  whole design: a chat that answers from a summary of the findings invents things, and an invented
+  claim about someone's coursework is the worst thing this app could do. The scope decides what
+  travels with the question — a finding's pages, one page, or an outline of the deck.
+-->
+<div class="panel" id="panelAsk">
+  <section class="card" aria-labelledby="askHeading">
+    <h2 class="card-title" id="askHeading">Ask about your work</h2>
+    <p class="ask-lede" id="askLede">
+      Ask anything about your portfolio. The assistant is given the words on the pages your question is
+      about, so it can point at page numbers instead of giving generic advice. It never gives a mark —
+      the predicted mark is the app's own.
+    </p>
+
+    <div class="ask-chips" id="askChips"></div>
+
+    <div class="ask-about" id="askAbout" hidden></div>
+
+    <!-- The placeholder is the visible label; this names the field for a screen reader. -->
+    <textarea class="ask-input" id="askInput" rows="2" aria-label="Your question"
+      placeholder="For example: why is the analysis on page 12 weak, and what would make it better?"></textarea>
+
+    <div class="ask-actions">
+      <button class="btn btn-primary" id="btnAsk" type="button">Ask</button>
+      <span class="ask-cost muted small" id="askCost"></span>
+    </div>
+
+    <div class="ask-answer" id="askAnswer" hidden></div>
+
+    <div class="ask-export">
+      <button class="btn btn-secondary btn-sm" id="btnBriefing" type="button">Copy all of it for ChatGPT</button>
+      <button class="btn btn-quiet btn-sm" id="btnBriefingDownload" type="button">Download it instead</button>
+      <span class="muted small" id="askExportNote">Every page in your own words, so an outside assistant knows what it is talking about.</span>
+    </div>
+    <!--
+      The clipboard needs a secure context, and http://192.168.x.x on a phone is not one — so the text
+      is put in a box you can select from when the copy cannot be done for you.
+    -->
+    <div class="ask-fallback" id="askFallback" hidden>
+      <p class="muted small" id="askFallbackNote">Copy this, then paste it into your AI assistant.</p>
+      <textarea id="askFallbackText" readonly rows="7" spellcheck="false"></textarea>
+    </div>
+  </section>
+</div>
+
+<div class="panel" id="panelSlides">
   <details class="card details-card" id="slidesDetails" open>
     <summary>
       <span class="summary-title">Slides</span>
@@ -4018,6 +4188,7 @@
     { id: 'overview', panels: ['Overview'] },
     { id: 'fixlist', panels: ['Fixlist'], inner: 'fix' },
     { id: 'suggest', panels: ['Fixlist'], inner: 'suggest' },
+    { id: 'ask', panels: ['Ask'] },
     { id: 'predicted', panels: ['Predicted'] },
     { id: 'coverage', panels: ['Fixlist'], inner: 'coverage' },
     { id: 'since', panels: ['Since'] },
@@ -4281,7 +4452,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.65';
+  var PAGE_BUILD = '1.0.66';
 
   var state = {
     data: null,
@@ -5555,6 +5726,256 @@
    * the AI review is switched on at all — and it says plainly when something is off rather than
    * leaving them to find out from the report afterwards.
    */
+  /* ------------------------------------------------------------------ *
+   * Ask AI
+   * ------------------------------------------------------------------ */
+
+  /*
+   * The questions worth one tap.
+   *
+   * Every one of these costs a request from the same daily allowance a check uses, so they are
+   * deliberately the questions that a general answer cannot answer well: each one needs the student's
+   * actual pages, which is exactly what the app sends.
+   */
+  var ASK_CHIPS = [
+    'What should I fix first, and why?',
+    'Which pages are weakest, and what exactly is missing?',
+    'How do I turn description into analysis?',
+    'Is my evidence strong enough, and where is it thin?',
+    'What would improve this most for the time it takes?',
+    'What is the biggest thing a moderator would notice?'
+  ];
+
+  /**
+   * What a question costs, said before it is asked.
+   *
+   * The app's own rule is that cost is visible before spending. A question is a request like any
+   * other and comes out of the same daily allowance, so it says how much of the day is left.
+   */
+  function askCostText() {
+    var data = state.data || {};
+    var cfg = data.config || {};
+    if (!cfg.apiKeySet) { return 'A key is needed first — add one in Settings.'; }
+    var quota = data.quota || state.quota || null;
+    var model = cfg.model || '';
+    var used = quota && quota.models && model ? Number(quota.models[model]) : null;
+    var limit = dailyLimitFor(model);
+    if (used != null && isFinite(used) && limit) {
+      var left = Math.max(0, limit - used);
+      return 'One request. About ' + plural(left, 'request') + ' of today\'s ' + limit + ' left.';
+    }
+    return 'One request from today\'s allowance.';
+  }
+
+  /**
+   * The smallest possible "ask about this" affordance.
+   *
+   * It does NOT send anything. It opens the Ask section with the question ready and the right pages
+   * attached, and the student presses Ask — so the cost is on screen before anything is spent, and a
+   * stray tap on a card cannot quietly use up part of the day.
+   */
+  function askMiniButton(question, scope, about, label) {
+    var b = el('button', { cls: 'ask-mini', attrs: { type: 'button' }, text: label || 'Ask' });
+    b.addEventListener('click', function (event) {
+      if (event && event.stopPropagation) { event.stopPropagation(); }
+      openAsk(question, scope, about);
+    });
+    return b;
+  }
+
+  /** Show the Ask section, ready to send, with whatever the button already knows. */
+  function openAsk(question, scope, about) {
+    state.askScope = scope || { type: 'deck' };
+    state.askAbout = about || '';
+    state.askResult = null;
+    setTopTab('ask', true);
+    if (ui.askInput) { ui.askInput.value = question || ''; }
+    renderAsk();
+    if (ui.askInput && ui.askInput.focus) {
+      setTimeout(function () { try { ui.askInput.focus(); } catch (err) { /* no worse off */ } }, 80);
+    }
+  }
+
+  function renderAsk() {
+    /*
+     * The invitation on the Overview card, beside "if you check now". It is the one that is not about
+     * a particular finding, so it asks the broadest useful question.
+     */
+    if (ui.askInline) {
+      if (!state.askInlineBuilt) {
+        state.askInlineBuilt = true;
+        ui.askInline.appendChild(askMiniButton(
+          'What should I work on first, and why?',
+          { type: 'deck' },
+          'your whole portfolio',
+          'Ask about my work'
+        ));
+      }
+    }
+
+    /* The chips are static, so they are built once rather than on every render. */
+    if (ui.askChips && !state.askChipsBuilt) {
+      state.askChipsBuilt = true;
+      for (var i = 0; i < ASK_CHIPS.length; i++) {
+        (function (q) {
+          var b = el('button', { cls: 'ask-chip', attrs: { type: 'button' }, text: q });
+          b.addEventListener('click', function () { openAsk(q, { type: 'deck' }, 'your whole portfolio'); });
+          ui.askChips.appendChild(b);
+        })(ASK_CHIPS[i]);
+      }
+    }
+
+    if (ui.askAbout) {
+      if (state.askAbout) {
+        setText(ui.askAbout, 'About: ' + state.askAbout);
+        show(ui.askAbout, true);
+      } else {
+        show(ui.askAbout, false);
+      }
+    }
+
+    if (ui.askCost) { setText(ui.askCost, state.asking ? 'Asking…' : askCostText()); }
+    if (ui.btnAsk) {
+      ui.btnAsk.disabled = !!state.asking;
+      setText(ui.btnAsk, state.asking ? 'Asking…' : 'Ask');
+    }
+
+    if (!ui.askAnswer) { return; }
+    clearNode(ui.askAnswer);
+    var r = state.askResult;
+    if (!r) { show(ui.askAnswer, false); return; }
+    ui.askAnswer.className = 'ask-answer' + (r.ok ? '' : ' is-bad');
+    ui.askAnswer.appendChild(el('span', {
+      cls: 'ask-answer-head',
+      text: r.ok ? ('About ' + (r.about || 'your work')) : 'That did not work',
+    }));
+    ui.askAnswer.appendChild(el('div', {
+      text: r.ok ? String(r.answer || '') : String(r.error || r.reason || 'Something went wrong.'),
+    }));
+    show(ui.askAnswer, true);
+  }
+
+  /** Send the question. One request against the allowance, counted by the server. */
+  function askQuestion() {
+    if (state.asking) { return; }
+    var question = ui.askInput ? String(ui.askInput.value || '').trim() : '';
+    if (!question) {
+      state.askResult = { ok: false, error: 'Type a question first.' };
+      renderAsk();
+      return;
+    }
+    state.asking = true;
+    state.askResult = null;
+    renderAsk();
+    apiPost('/api/ask', { question: question, scope: state.askScope || { type: 'deck' } })
+      .then(function (res) {
+        state.asking = false;
+        state.askResult = res && typeof res === 'object'
+          ? res
+          : { ok: false, error: 'The app did not understand the reply.' };
+        renderAsk();
+        /* The allowance has moved, so the meter is refreshed rather than left stale. */
+        loadState();
+      })
+      .catch(function (err) {
+        state.asking = false;
+        state.askResult = { ok: false, error: friendlyError(err, 'Could not reach the app.') };
+        renderAsk();
+      });
+  }
+
+  /** The whole portfolio as one file, for an assistant outside the app. */
+  function fetchBriefing() {
+    return window.fetch('/api/briefing', { headers: { 'Accept': 'text/markdown', 'X-NEA-Coach': '1' } })
+      .then(function (res) {
+        if (!res.ok) { throw new Error('The app could not build the file.'); }
+        return res.text();
+      });
+  }
+
+  /** Show the text so it can be selected by hand, for a browser that will not copy for us. */
+  function showBriefingFallback(text) {
+    if (!ui.askFallback || !ui.askFallbackText) { return; }
+    ui.askFallbackText.value = text;
+    show(ui.askFallback, true);
+    try { ui.askFallbackText.focus(); ui.askFallbackText.select(); } catch (err) { /* fine */ }
+  }
+
+  /**
+   * Copy everything, and open ChatGPT.
+   *
+   * The window is opened FIRST, synchronously, because a popup opened after an await is blocked by
+   * every browser. The clipboard is the part that may not work: it needs a secure context, and the
+   * whole point of this app is that a phone reaches it over http://192.168.x.x, which is not one. So
+   * when the copy cannot be done, the text is put in a box to select from instead of failing silently.
+   */
+  function copyBriefing() {
+    if (state.briefingBusy) { return; }
+    state.briefingBusy = true;
+    try { window.open('https://chatgpt.com/', '_blank'); } catch (err) { /* a blocked popup is fine */ }
+    if (ui.btnBriefing) { setText(ui.btnBriefing, 'Building…'); }
+
+    fetchBriefing().then(function (text) {
+      state.briefingBusy = false;
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy all of it for ChatGPT'); }
+      var clip = window.navigator && window.navigator.clipboard;
+      if (clip && clip.writeText) {
+        clip.writeText(text).then(function () {
+          if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copied — now paste it in'); }
+          setBanner('ask', 'good', 'Copied. Paste it into the ChatGPT tab with Ctrl+V (or Cmd+V). '
+            + 'Then ask it anything about your work.', true);
+        }).catch(function () { showBriefingFallback(text); });
+      } else {
+        showBriefingFallback(text);
+      }
+    }).catch(function (err) {
+      state.briefingBusy = false;
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy all of it for ChatGPT'); }
+      setBanner('ask', 'warn', friendlyError(err, 'The app could not build that file.'), true);
+    });
+  }
+
+  /** The same file, as a download, for anyone who would rather keep it. */
+  function downloadBriefing() {
+    if (state.briefingBusy) { return; }
+    state.briefingBusy = true;
+    if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Building…'); }
+    fetchBriefing().then(function (text) {
+      state.briefingBusy = false;
+      if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Download it instead'); }
+      var blob = new window.Blob([text], { type: 'text/markdown' });
+      var url = window.URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'NEA-Coach-briefing.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { window.URL.revokeObjectURL(url); }, 4000);
+      setBanner('ask', 'good', 'Saved as NEA-Coach-briefing.md. Upload or paste it into any AI assistant.', true);
+    }).catch(function (err) {
+      state.briefingBusy = false;
+      if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Download it instead'); }
+      setBanner('ask', 'warn', friendlyError(err, 'The app could not build that file.'), true);
+    });
+  }
+
+  function wireAsk() {
+    on(ui.btnAsk, 'click', function () { askQuestion(); });
+    on(ui.btnBriefing, 'click', function () { copyBriefing(); });
+    on(ui.btnBriefingDownload, 'click', function () { downloadBriefing(); });
+    /*
+     * Ctrl/Cmd+Enter sends. A question often runs to a line or two, and a plain Enter should make a
+     * new line rather than spend a request.
+     */
+    on(ui.askInput, 'keydown', function (event) {
+      if (event && (event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        if (event.preventDefault) { event.preventDefault(); }
+        askQuestion();
+      }
+    });
+  }
+
   function renderCheckPlan() {
     var host = ui.checkPlan;
     if (!host) { return; }
@@ -6289,7 +6710,15 @@
       el('span', { cls: 'pill pill-' + finding.severity, text: SEVERITY_LABEL[finding.severity] }),
       pageRefNode(finding, true),
       el('span', { cls: 'tag ' + (finding.source === 'ai' ? 'tag-ai' : 'tag-free'), text: finding.source === 'ai' ? 'AI' : 'Free check' }),
-      el('span', { cls: 'tag tag-effort', text: EFFORT_LABEL[finding.effort] })
+      el('span', { cls: 'tag tag-effort', text: EFFORT_LABEL[finding.effort] }),
+      /*
+       * The smallest thing on the card, and the only control here that spends anything — which is
+       * exactly why it does not spend it here. It opens the Ask section with this finding and its
+       * pages attached, and the student presses Ask.
+       */
+      askMiniButton('What exactly should I do about this, and what would it look like on the page?',
+        { type: 'finding', id: finding.id },
+        'a finding: ' + String(finding.title || '').slice(0, 90))
     ]);
 
     card.appendChild(el('div', { cls: 'finding-top' }, [idRow, doneLabel]));
@@ -6727,7 +7156,10 @@
     var top = el('div', { cls: 'finding-top' }, [
       el('span', { cls: 'rank', text: String(rank) }),
       el('span', { cls: 'pill kind-add', text: 'Add this' }),
-      el('span', { cls: 'pill ' + effortClass(s.effort), text: effortChipText(s.effort) })
+      el('span', { cls: 'pill ' + effortClass(s.effort), text: effortChipText(s.effort) }),
+      askMiniButton('How would I actually add this, and what should it contain?',
+        { type: 'suggestion', id: s.id },
+        'a suggestion: ' + String(s.title || '').slice(0, 90))
     ]);
     kids.push(top);
 
@@ -6991,7 +7423,11 @@
     var kids = [
       el('div', { cls: 'cov-top' }, [
         el('h3', { cls: 'cov-name', text: row.name }),
-        el('span', { cls: 'cov-weight', text: weightText })
+        el('span', { cls: 'cov-weight', text: weightText }),
+          askMiniButton('What is missing for this criterion, and where should it go?',
+            /* Both, because the id and the name come from different parts of the report. */
+            { type: 'criterion', id: row.id, name: row.name },
+            'the criterion "' + String(row.name || '').slice(0, 80) + '"')
       ]),
       mid
     ];
@@ -7823,7 +8259,11 @@
         el('td', { cls: 'num', text: row.images === null ? '—' : formatNumber(row.images) }),
         el('td', { cls: 'num', text: row.notes === null ? '—' : formatNumber(row.notes) }),
         el('td', { cls: 'cell-changed' }, [changedCell(row)]),
-        el('td', {}, [dotRow(row.findings)])
+        el('td', {}, [
+            dotRow(row.findings),
+            askMiniButton('What is weak on this page, and what would make it stronger?',
+              { type: 'page', page: row.number }, 'page ' + row.number)
+          ])
       ]);
       frag.appendChild(tr);
     }
@@ -8570,6 +9010,7 @@
       renderControls();
       renderTabs();
       renderFixList();
+      renderAsk();
       renderCoverage();
       renderSlides();
       renderSettings();
@@ -9111,7 +9552,9 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'checkPlan', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
+      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'checkPlan',
+      'askChips', 'askAbout', 'askInput', 'askCost', 'btnAsk', 'askAnswer', 'askInline',
+      'btnBriefing', 'btnBriefingDownload', 'askFallback', 'askFallbackText', 'askExportNote', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
@@ -10196,6 +10639,7 @@
     wireAurora();
     wireVisibility();
     wireTopTabs();
+    wireAsk();
     if (ui.themeSelect) { ui.themeSelect.value = currentTheme(); }
     applyFilterFolding();
     loadModelChoices();
