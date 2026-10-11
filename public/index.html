@@ -140,7 +140,9 @@
     margin-bottom: 14px;
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   }
-  .card-title { font-size: 15px; margin: 0; letter-spacing: 0.01em; text-transform: uppercase; color: var(--muted); }
+  .card-title { font-size: 13px; margin: 0 0 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  /* A heading directly inside a summary is part of the row, not a block above it. */
+  .details-card > summary .card-title { margin: 0; }
 
   /*
    * Type scale.
@@ -1648,7 +1650,13 @@
   </section>
 
   <section class="card" aria-labelledby="statusHeading">
-    <h2 class="sr-only" id="statusHeading">Portfolio health</h2>
+    <!--
+      These two cards carried screen-reader-only headings, so sighted users saw a
+      ring and a row of buttons with no title at all and the page read as a stack
+      of unlabelled boxes. The heading is now visible; the id is unchanged so the
+      existing aria-labelledby still points at it.
+    -->
+    <h2 class="card-title" id="statusHeading">Your report</h2>
     <div class="status-top">
       <div class="ring-wrap">
         <svg class="ring" viewBox="0 0 120 120" role="img" aria-labelledby="ringTitle">
@@ -1681,7 +1689,7 @@
 
 
   <section class="card" aria-labelledby="actionsHeading">
-    <h2 class="sr-only" id="actionsHeading">Checks</h2>
+    <h2 class="card-title" id="actionsHeading">Run a check</h2>
     <!-- Filled by renderSampleNotice() only while the bundled sample is being read. -->
     <div id="sampleNotice"></div>
     <div class="actions-row">
@@ -2013,7 +2021,7 @@
   <section aria-label="Summary" id="tiles"></section>
 
   <section class="card" aria-labelledby="filterHeading">
-    <h2 class="sr-only" id="filterHeading">Filters</h2>
+    <h2 class="card-title" id="filterHeading">Filter the fix list</h2>
     <!--
       On a phone these controls fold away behind a summary, because they are not
       what a student wants to see first. Wide screens force them open and hide
