@@ -553,6 +553,61 @@ The launcher's port check and the folder names are both involved, and neither wa
 
 ---
 
+## 6c. Launching, and the stale-server trap — fixed in v1.0.7
+
+**The problem that cost three rounds of "your fix does not work".** Every download
+unzips into a NEW folder (`NEA-Coach-mac 2`, `... 3`), because the previous folder
+still exists. The old server keeps port 4173. The new launcher asks `/api/health`,
+gets a healthy answer, opens the browser and exits — so the student stares at the
+OLD build while being told it is the new one. `curl -s http://127.0.0.1:4173/api/health`
+reported `1.0.4` while the newest folder on disk was `1.0.5`.
+
+**Both launchers now compare versions.** They read the version the running server
+reports from `/api/health` and the version in their own `server.js`, and when the two
+disagree they:
+
+- say which version is running and which one this folder is,
+- tell the user to close the other `NEA Coach server` window,
+- and **do not open the browser** — the failure mode was "it silently opened the wrong
+  app", so quietly opening it anyway would defeat the point.
+
+The Windows launcher does this with `for /f` around a Node one-liner, since it already
+uses the bundled `node.exe` for the port check and assumes no curl or PowerShell.
+
+**Still worth knowing:** the check only helps once the NEW launcher is the one being
+run. If a user updates and launches the old folder, nothing can warn them.
+
+---
+
+## 6d. Visual pass — done in v1.0.7 (Phase 3, previously not started)
+
+1. **Depth.** The UI had **no `box-shadow` anywhere**; separation came from 1px
+   borders alone, which reads as unfinished rather than minimal. Cards now carry two
+   very soft shadows (a tight edge plus a wide ambient). The same alpha is invisible
+   on dark backgrounds, so both dark paths — `[data-theme="dark"]` and the
+   `prefers-color-scheme` media query — set a stronger shadow explicitly. Both were
+   needed; a rule in one does not cover the other.
+2. **One primary action.** `Check now` competes with Export, Re-check everything and
+   seventeen sections. It now has a shadow tinted with its own accent rather than the
+   page neutral, so the first thing to click is obvious. Disabled state drops the glow.
+3. **Type scale.** `.sub` was defined **twice** — the later one silently won, so the
+   first was dead code. Consolidated to one small-caps label style, with a
+   `:first-child` rule so the first heading in a card does not push content down.
+4. **Visible card titles.** The status, Checks and Filters cards had
+   `sr-only` headings, so a sighted user saw a ring, a row of buttons and a chip bar
+   with **no title at all**. Six cards now show a title; the ids were kept so every
+   `aria-labelledby` still resolves.
+5. **Keyboard focus.** Replaced a mix of accent and pale-blue outlines with one
+   `:focus-visible` ring on every interactive element, plus a `prefers-reduced-motion`
+   guard.
+
+**Checked, not assumed:** `--muted` on the card fill is **4.97:1**, so small grey text
+passes WCAG AA. CSS braces balance, and no duplicate selectors were introduced — the
+36 the scanner reports are base rules deliberately restated inside the dark-mode and
+`max-width: 700px` blocks.
+
+---
+
 ## 7. Still to do
 
 ### Already built, waiting on a Gemini API key
