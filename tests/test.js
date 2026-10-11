@@ -1449,7 +1449,24 @@ section('12. Scoring calibration');
   // The raw figure must survive, so the adjustment is auditable.
   const r1 = cal.assessPrediction(83, 100, { board: 'aqa-gcse', model: 'gemini-3.5-flash' });
   ok('the raw AI figure is kept alongside the corrected one', r1.raw === 83 && r1.calibrated === 89);
-  ok('and the adjustment is explained in words', /shown higher here/.test(r1.note || ''));
+  ok('and the adjustment is explained in words', /adjusted up to/.test(r1.note || ''));
+
+  /*
+   * The note must state one unit throughout.
+   *
+   * It used to read "it read 16 to 23 marks low ... Those portfolios scored between
+   * 66 and 81 on the app" - the AI's reading in marks, its error in marks, and the
+   * anchors' scores in PERCENT, all in one sentence. Printed above a table that
+   * totalled 75, that is the "lots of inconsistencies" a student reported. Nothing
+   * in the note may be expressed as a percentage.
+   */
+  ok('the explanation names the paper total so "marks" has a denominator',
+    /out of 100/.test(r1.note || ''), r1.note);
+  ok('the explanation contains no percentages, so its units cannot be confused',
+    !/%|percent/i.test(r1.note || ''), r1.note);
+  ok('and it names both the AI reading and the corrected figure',
+    new RegExp('as ' + r1.raw + ' out of').test(r1.note || '')
+    && new RegExp('adjusted up to ' + r1.calibrated).test(r1.note || ''), r1.note);
 
   // It must actually reach the report and the UI.
   ok('the report carries the calibration', /predicted: Object\.assign\(\{\}, predicted, \{ calibration \}\)/.test(serverSrc));
@@ -2499,6 +2516,7 @@ section('11i. Phone layout keeps up with the desktop');
     // The setup button moved into the top bar; its wrapper needs a phone rule too.
     'topbar-actions',
     'btn-sm',
+    'predicted-total',
   ];
   const missing = mustAdapt.filter((cls) => !mobile.includes('.' + cls));
   ok('every element that needs a phone rule has one', missing.length === 0,

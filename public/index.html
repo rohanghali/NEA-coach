@@ -1088,7 +1088,16 @@
     .predicted-figure { margin-bottom: 12px; }
     .predicted-pct { font-size: 32px; }
     .predicted-body { gap: 8px; }
-    .predicted-note { font-size: 13px; }
+    .predicted-total {
+    margin: 10px 0 2px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .predicted-total strong { color: var(--ink); }
+  .predicted-note { font-size: 13px; }
     .predicted-unstable { font-size: 12.5px; }
     .compare-mark { font-size: 15px; }
     .compare-list li { font-size: 13.5px; }
@@ -5197,7 +5206,7 @@
          * than prefixed — the prefix duplicated it verbatim.
          */
         supporting.push(el('div', { cls: 'predicted-calibrated' }, [
-          el('strong', { text: 'Why this is higher than the AI said. ' }),
+          el('strong', { text: 'Why the estimate is higher than the AI\u2019s own reading. ' }),
           el('span', { text: cal.note })
         ]));
       } else if (cal && cal.note) {
@@ -5224,10 +5233,20 @@
       var big = el('div', { cls: 'predicted-top' }, [
         el('div', { cls: 'predicted-figure' }, [
           el('div', { cls: 'predicted-pct', text: headline }),
+          /*
+           * What the big number IS.
+           *
+           * This line used to read "best estimate (75% as the AI read it)" directly
+           * under a headline of "about 94 of 100 marks". A reader sees 94, then 75,
+           * then a table of criteria adding up to 75, and concludes the panel
+           * contradicts itself. It did not, but it read as if it did. The label now
+           * says plainly which number is the app's estimate and which is the AI's raw
+           * reading, and the arithmetic that links them.
+           */
           el('div', {
             cls: 'predicted-marks',
             text: (cal && cal.applied)
-              ? 'best estimate (' + p.percentage + '% as the AI read it)'
+              ? 'the app\u2019s estimate \u2014 the AI itself read ' + cal.raw + ' of ' + (p.maximum || 100)
               : ((p.weightsPublished && typeof p.predicted === 'number' && typeof p.maximum === 'number')
                 ? 'about ' + p.predicted + ' of ' + p.maximum + ' marks'
                 : 'sharing the marks equally between criteria')
@@ -5261,6 +5280,33 @@
         list.appendChild(el('div', { cls: 'predicted-row' }, bits));
       }
       kids.push(list);
+
+      /*
+       * The criteria above add up to the AI's own reading, NOT to the headline when
+       * a correction has been applied. Without a stated total the reader adds them
+       * up, gets 75 while the headline says 94, and concludes the report contradicts
+       * itself. The total is a fact about what this table shows, so it is printed
+       * rather than left to be inferred.
+       */
+      var markTotal = 0;
+      var maxTotal = 0;
+      var allKnown = rows.length > 0;
+      for (var t = 0; t < rows.length; t++) {
+        if (typeof rows[t].mark === 'number' && typeof rows[t].max === 'number') {
+          markTotal += rows[t].mark;
+          maxTotal += rows[t].max;
+        } else {
+          allKnown = false;
+        }
+      }
+      if (allKnown && maxTotal > 0) {
+        kids.push(el('p', { cls: 'predicted-total' }, [
+          el('strong', { text: 'The AI\u2019s own total: ' + markTotal + ' of ' + maxTotal + '.' }),
+          el('span', { text: (cal && cal.applied)
+            ? ' The estimate above adds the measured correction for the app\u2019s known under-read, which is why it is higher than this total.'
+            : '' })
+        ]));
+      }
     }
 
     if (p.weightsPublished === false) {
