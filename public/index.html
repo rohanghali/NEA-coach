@@ -4036,24 +4036,40 @@
    * guessed at.
    */
   function renderPreservingScroll(anchorEl, work) {
-    if (!anchorEl || !anchorEl.getBoundingClientRect) {
+    /*
+     * Anchor on the LIST CONTAINER, not on the button that was clicked.
+     *
+     * Anchoring on the button is why "Show mechanical checks" still jumped to the
+     * top. That button sits at the END of the group it expands, so when the group
+     * grows the button is deliberately pushed further down the page - and "keep the
+     * button still" then scrolls the reader down to follow it, or, when the clamp
+     * and the correction disagree, leaves them at the top.
+     *
+     * The container holds everything and does not move when its contents change, so
+     * holding THAT still holds the whole list still, whatever appears inside it.
+     * Falls back to the caller's element when there is no container.
+     */
+    var container = ui.fixList;
+    var anchor = (container && container.getBoundingClientRect) ? container : anchorEl;
+    if (!anchor || !anchor.getBoundingClientRect) {
       work();
       return;
     }
-    var before = anchorEl.getBoundingClientRect().top;
-    // Mark it so it can be found again in the rebuilt list.
+    var before = anchor.getBoundingClientRect().top;
+    // Mark it so it can be found again after the rebuild.
     var mark = 'keep-' + (state.scrollMark = (state.scrollMark || 0) + 1);
-    anchorEl.setAttribute('data-keep-scroll', mark);
+    anchor.setAttribute('data-keep-scroll', mark);
 
     work();
 
     /*
-     * After re-rendering the button may legitimately be gone — expanding the last
-     * group removes the button. Fall back to whatever is nearest the same place, and
-     * if nothing is found, do nothing at all rather than jump somewhere arbitrary.
+     * `ui.fixList` survives the re-render, so this finds the same node rather than
+     * depending on the button still existing. A button that has served its purpose
+     * is removed, and the old version gave up in that case - leaving the reader
+     * wherever the browser had clamped them, which is the top.
      */
     var after = document.querySelector('[data-keep-scroll="' + mark + '"]');
-    anchorEl.removeAttribute('data-keep-scroll');
+    anchor.removeAttribute('data-keep-scroll');
     if (!after || !after.getBoundingClientRect) { return; }
     var delta = after.getBoundingClientRect().top - before;
     if (delta) { window.scrollBy(0, delta); }

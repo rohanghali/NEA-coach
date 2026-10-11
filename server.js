@@ -1878,7 +1878,12 @@ function exportHtml(report, opts = {}) {
   const r = report || {};
   const deck = r.deck || {};
   const ai = r.ai || {};
-  const stats = r.stats || {};
+  /*
+   * The stats live on the DECK. Reading `r.stats` here meant the exported file
+   * carried no portfolio statistics at all, and it is the same mistake the state
+   * endpoint made - see the note there. `r.stats` is kept as a fallback.
+   */
+  const stats = deck.stats || r.stats || {};
   const pred = ai.predicted || null;
   const findings = (r.combined && r.combined.findings) || [];
   const local = (r.local && r.local.findings) || [];
@@ -2219,8 +2224,14 @@ function buildStateResponse() {
      * Portfolio statistics, for the Stats card. A small summary — the page text they
      * are derived from never leaves the server, because sending every page's text on
      * every poll would be megabytes.
+     *
+     * It lives on the DECK, not at the top of the report: `buildStats` is stored as
+     * `deck.stats`, and this read `report.stats`, which has never existed. So it was
+     * null for every scan, renderStats hid its card because it had nothing to draw,
+     * and the Stats section silently vanished from the app. The `report.stats`
+     * fallback covers an older report that might have put it there.
      */
-    stats: report.stats || null,
+    stats: (report.deck && report.deck.stats) || report.stats || null,
     /*
      * What changed since the check before this one. Null when there is no earlier
      * report to compare against, which the UI treats as "nothing to compare yet"

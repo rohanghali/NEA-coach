@@ -3128,6 +3128,77 @@ section('11b. AI pass applies the cross-check');
       /'modelNote'/.test(src.match(/function cacheElements\(\)[\s\S]*?\];/)[0]));
   }
 
+section('12j. Portfolio statistics actually appear, on screen and in the export');
+{
+  /*
+   * Reported: "the stats page seems to have gone. it should show that in the
+   * exported thing too".
+   *
+   * It had gone, on screen AND in the export, from the same mistake made in two
+   * places. `buildStats` is stored as `deck.stats`, and both the state endpoint and
+   * exportHtml read `report.stats`, which has never existed. So the value was
+   * always null, renderStats hid the card because it had nothing to draw, and the
+   * exported file carried no statistics at all.
+   */
+  const server = require(path.join(ROOT, 'server.js'));
+
+  // A report shaped exactly like the real one: stats nested under the deck.
+  const report = {
+    ok: true, generatedAt: new Date().toISOString(),
+    deck: {
+      fileName: 'My Portfolio.pdf', filePath: '/tmp/x.pdf', slideCount: 24,
+      stats: { words: 13113, pages: 24, images: 37, typingHours: 5.5, typingWpm: 40, readingMinutes: 87, topWords: [], balance: [] },
+    },
+    local: { score: 55, bySeverity: {}, findings: [] },
+    ai: null, combined: { findings: [] }, config: {}, scan: {},
+  };
+
+  const html = server.exportHtml(report, {});
+  ok('the export carries the word count from deck.stats',
+    /13,113|13113/.test(html), 'word count missing from the export');
+  ok('the export carries the page count', />24</.test(html), 'page count missing');
+  ok('the export has the statistics tiles', /words<\/div>/.test(html) && /pages<\/div>/.test(html));
+
+  // And it must NOT depend on a top-level stats key, which is what it used to read.
+  const withoutDeckStats = Object.assign({}, report, { deck: { fileName: 'x', stats: undefined } });
+  const empty = server.exportHtml(withoutDeckStats, {});
+  ok('with no stats the export simply omits them rather than failing',
+    !/words<\/div>/.test(empty));
+
+  // The state endpoint must publish them too, or the on-screen card stays hidden.
+  const stateSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  ok('the state endpoint reads stats from the deck, with a fallback',
+    /stats: \(report\.deck && report\.deck\.stats\) \|\| report\.stats \|\| null/.test(stateSrc),
+    'state endpoint still reads report.stats');
+  ok('and the export does the same',
+    /const stats = deck\.stats \|\| r\.stats \|\| \{\}/.test(stateSrc),
+    'exportHtml still reads r.stats');
+}
+
+section('12k. Expanding the mechanical checks does not jump to the top');
+{
+  /*
+   * Reported: "when you click on show mechanical checks the ap scrolls to the
+   * top".
+   *
+   * renderPreservingScroll() anchored on the BUTTON that was clicked. That button
+   * sits at the END of the group it expands, so growing the group pushes it down -
+   * "keep the button still" then drags the reader down after it, and when the
+   * button is removed entirely (it has served its purpose) there was nothing to
+   * find and the reader was left wherever the browser had clamped them: the top.
+   *
+   * It now anchors on the list container, which does not move when its contents do.
+   */
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const fn = page.slice(page.indexOf('function renderPreservingScroll'), page.indexOf('function jumpToPage'));
+  ok('the scroll keeper anchors on the list container',
+    /var container = ui\.fixList/.test(fn), 'still anchoring on the clicked button');
+  ok('and falls back to the caller element when there is no container',
+    /container && container\.getBoundingClientRect\) \? container : anchorEl/.test(fn));
+  ok('the mechanical-checks button still uses it',
+    /renderPreservingScroll\(e && e\.currentTarget, function \(\) \{[\s\S]{0,120}state\.showObvious = true/.test(page));
+}
+
 section('12i. Setting the board in the walkthrough updates the Settings dropdown');
 {
   /*
