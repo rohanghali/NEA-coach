@@ -6065,15 +6065,23 @@ section('12aj. Every section is a tab');
    * after the scroll container closes. That is the actual property, and it does not care how many
    * arrows or comments sit in between.
    */
-  ok('Settings sits outside the scroller, at the end',
+  /*
+   * Overview and Settings bookend the strip, OUTSIDE the part that scrolls.
+   *
+   * Both are the two you need without hunting: Overview is where you land and where Check now
+   * lives, Settings is what you reach for when something is wrong. Nine in between still scroll.
+   */
+  ok('Overview and Settings both sit outside the scroller, one at each end',
     (() => {
       const scrollStart = html.indexOf('id="topTabsScroll"');
       const scrollEnd = scrollStart < 0 ? -1 : html.indexOf('</div>', scrollStart);
+      const overview = html.indexOf('data-tab="overview"');
       const settings = html.indexOf('data-tab="settings"');
-      const firstTab = html.indexOf('data-tab="overview"');
-      return scrollStart > 0 && scrollEnd > scrollStart && settings > scrollEnd && firstTab > scrollStart && firstTab < scrollEnd;
+      return scrollStart > 0 && scrollEnd > scrollStart
+        && overview > 0 && overview < scrollStart
+        && settings > scrollEnd;
     })(),
-    'inside the scroller it would be exactly as hard to reach as everything else');
+    'inside the scroller either of them is exactly as hard to reach as everything else');
   ok('there are arrows, because an invisible scroller is a strip with missing tabs',
     /id="topTabsPrev"/.test(html) && /id="topTabsNext"/.test(html)
     && /function nudgeTabs\(direction\)/.test(html));
@@ -6098,6 +6106,40 @@ section('12aj. Every section is a tab');
     /\.panel > \.details-card > summary \{[\s\S]{0,160}pointer-events: none/.test(css));
   ok('with the body forced visible, so a stray click cannot leave a section looking empty',
     /\.panel > \.details-card > \.details-body \{ display: block !important; \}/.test(css));
+
+  /*
+   * ---- three things reported after using it --------------------------------------
+   */
+  /*
+   * "on the fix list it has all three sections including the coverage grid and worth adding ...
+   * thats what it has on my phone". Exactly right, and only on a phone: the phone block forced the
+   * OLD inner strip back on, and it comes after the rule that hides it, so on a narrow screen Fix
+   * list, Worth adding and Coverage grid all reappeared inside the Fix list section — a second copy
+   * of three sections that are already tabs.
+   */
+  const phoneBlocks = (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n');
+  ok('the old inner strip stays hidden on a phone too',
+    /\.tabs \{ display: none; \}/.test(phoneBlocks) && !/\.tabs \{ display: flex; \}/.test(html),
+    'the phone rule that re-showed it made three sections appear inside the Fix list');
+
+  /*
+   * "check now is always an available button no matter what section you are in"
+   */
+  ok('there is a Check now in the header, visible from every section',
+    /id="btnCheckTop"/.test(html) && /on\(ui\.btnCheckTop, 'click'/.test(html));
+  ok('and it mirrors the main button rather than deciding anything for itself',
+    /if \(ui\.btnCheckTop\) \{[\s\S]{0,160}ui\.btnCheckTop\.disabled = ui\.btnCheck \? ui\.btnCheck\.disabled/.test(html),
+    'two buttons that can disagree about whether a check is possible is worse than one');
+  /*
+   * The floating shortcut used to test only whether the button had scrolled past the top. A hidden
+   * element measures zero, so in every other section it decided the button was still on screen and
+   * never appeared — which is precisely where it is most needed.
+   */
+  ok('the floating shortcut also appears whenever Overview is closed',
+    /getElementById\('panelOverview'\)[\s\S]{0,300}var gone = !overviewOpen/.test(html),
+    'a hidden button measures zero, so "still visible" was the wrong answer in every other section');
+  ok('and it is re-checked when the section changes',
+    /renderTabArrows\(\);[\s\S]{0,200}renderDock\(\);/.test(html));
 
   ok('the open tab is scrolled into view, since the strip is one scrolling row',
     /strip\.scrollLeft = Math\.max\(0, offset/.test(html),

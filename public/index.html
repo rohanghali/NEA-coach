@@ -1189,7 +1189,14 @@
   .toptabs-arrow:hover:not([disabled]) { background: var(--accent); color: var(--card); }
   .toptabs-arrow[disabled] { opacity: 0.35; cursor: default; }
 
-  /* Settings sits outside the scroller, at the end, with a divider to mark it apart. */
+  /* Overview at the start and Settings at the end, both outside the scroller, each marked apart
+     from the nine that scroll between them. */
+  .toptab-start {
+    flex: 0 0 auto;
+    border-right: 1px solid var(--line);
+    margin-right: 2px;
+    padding-right: 14px;
+  }
   .toptab-end {
     flex: 0 0 auto;
     border-left: 1px solid var(--line);
@@ -1629,13 +1636,20 @@
      */
     .topbar { display: block; }
     .app-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+    /*
+     * Two buttons and the read-only badge will not fit across a phone. The buttons share the row
+     * and the badge takes the next one — it is reassurance, not an action, so it can wait a line.
+     * Adding "Check now" here pushed it off the right-hand edge, where it was simply cut off.
+     */
     .topbar-actions {
       flex-direction: row;
+      flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
       gap: 8px;
       margin-top: 8px;
     }
+    .topbar-actions .btn-sm { flex: 0 0 auto; }
+    .badge-readonly { flex: 1 1 100%; }
     .topbar-actions .btn-sm { width: auto; }
     .btn-sm { min-height: 34px; padding: 6px 12px; font-size: 13px; }
     .badge-readonly { margin-top: 0; font-size: 10.5px; padding: 4px 8px; }
@@ -1651,9 +1665,16 @@
     .filter-details:not([open]) .filter-inner { display: none; }
     .filter-details > summary { margin-bottom: 4px; }
 
-    /* Tabs: three tabs must fit on a 428px screen without wrapping oddly. */
-    .tabs { display: flex; }
-    .tab { flex: 1 1 auto; padding: 10px 6px; font-size: 13.5px; white-space: nowrap; }
+    /*
+     * The old inner strip stays hidden on a phone too.
+     *
+     * This block used to force it back on — "three tabs must fit on a 428px screen" — and it
+     * comes AFTER the rule that hides it, so on a phone the Fix list section reappeared with
+     * Fix list, Worth adding and Coverage grid all listed inside it. Those are three separate
+     * sections in the strip at the top now; a second copy of them inside one of them is exactly
+     * the confusion the tabs were meant to remove.
+     */
+    .tabs { display: none; }
 
     /* Cards and headings: tighter, so more fits above the fold. */
     .card { padding: 14px 13px; }
@@ -2954,6 +2975,14 @@
       quiet button so it never competes with Check now.
     -->
     <div class="topbar-actions">
+      <!--
+        Run a check from anywhere.
+
+        The main one lives in Overview, so reaching it from the Slides tab meant going back to
+        Overview first. This mirrors that button exactly — same words, same enabled state, same
+        function — rather than deciding anything for itself.
+      -->
+      <button class="btn btn-primary btn-sm" id="btnCheckTop" type="button">Check now</button>
       <button class="btn btn-secondary btn-sm" id="btnShowSetup" type="button">Start setup</button>
       <div class="badge-readonly">Read-only — your PowerPoint is never changed</div>
     </div>
@@ -2974,13 +3003,15 @@
 -->
 <nav class="toptabs" id="topTabs" role="tablist" aria-label="Sections">
   <!--
-    Eleven sections do not fit across a window, so the strip scrolls. Three things make that
-    discoverable rather than mysterious: a scrollbar (on a wide screen), arrow buttons, and a
-    fade at each end. A strip that scrolls invisibly looks like a strip with missing tabs.
+    Overview and Settings sit OUTSIDE the scrolling middle, one at each end.
+
+    Overview because it is where you land and where "Check now" lives, and Settings because it
+    is what you reach for when something is wrong. Both were reachable only by scrolling the
+    strip, which is the worst time to have to hunt for them. The nine in between scroll.
   -->
+  <button class="toptab toptab-start" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview" type="button">Overview</button>
   <button class="toptabs-arrow" id="topTabsPrev" type="button" aria-label="Scroll the tabs left">&#8249;</button>
   <div class="toptabs-scroll" id="topTabsScroll">
-    <button class="toptab" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview" type="button">Overview</button>
     <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panel-fixlist" data-tab="fixlist" type="button">Fix list</button>
     <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panel-suggest" data-tab="suggest" type="button">Things to add</button>
     <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panel-predicted" data-tab="predicted" type="button">Predicted mark</button>
@@ -2992,11 +3023,6 @@
     <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panel-info" data-tab="info" type="button">Information</button>
   </div>
   <button class="toptabs-arrow" id="topTabsNext" type="button" aria-label="Scroll the tabs right">&#8250;</button>
-  <!--
-    Settings is OUTSIDE the scrolling strip, pinned to the end, so it is reachable whatever
-    the strip is showing. It is the one section you need when something is wrong — which is
-    exactly when hunting for it across a scroll is least welcome.
-  -->
   <button class="toptab toptab-end" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" type="button">Settings</button>
 </nav>
 
@@ -4031,7 +4057,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.53';
+  var PAGE_BUILD = '1.0.54';
 
   var state = {
     data: null,
@@ -4699,6 +4725,11 @@
     if (ui.btnQuickCheck) {
       ui.btnQuickCheck.disabled = ui.btnCheck ? ui.btnCheck.disabled : busy;
       setText(ui.btnQuickCheck, busy ? 'Checking…' : (ready ? 'Check now' : 'Add a portfolio first'));
+    }
+    /* The one in the header, which every section can see. Same three states, same words. */
+    if (ui.btnCheckTop) {
+      ui.btnCheckTop.disabled = ui.btnCheck ? ui.btnCheck.disabled : busy;
+      setText(ui.btnCheckTop, busy ? 'Checking…' : (ready ? 'Check now' : 'Add a portfolio first'));
     }
     renderPortfolioNotice();
   }
@@ -5544,6 +5575,8 @@
     }
 
     renderTabArrows();
+    /* The shortcut depends on whether the Overview section is open, so it is re-checked here. */
+    if (typeof renderDock === 'function') { renderDock(); }
 
     if (!quiet) {
       try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (err) { window.scrollTo(0, 0); }
@@ -8601,7 +8634,7 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'topTabsScroll', 'topTabsPrev', 'topTabsNext',
+      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'topTabsScroll', 'topTabsPrev', 'topTabsNext',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
@@ -8632,6 +8665,7 @@
   function wireEvents() {
     on(ui.btnCheck, 'click', function () { startScan(false); });
     on(ui.btnQuickCheck, 'click', function () { startScan(false); });
+    on(ui.btnCheckTop, 'click', function () { startScan(false); });
     on(ui.btnRecheck, 'click', function () { startScan(true); });
     on(ui.btnCancel, 'click', function () { cancelScan(); });
 
@@ -9541,7 +9575,15 @@
   function renderDock() {
     if (!ui.btnQuickCheck || !ui.btnCheck) { return; }
     var box = typeof ui.btnCheck.getBoundingClientRect === 'function' ? ui.btnCheck.getBoundingClientRect() : null;
-    var gone = !!box && box.bottom < 0;
+    /*
+     * "Gone" means there is no Check button on screen — which is true whenever the Overview
+     * section is closed, not only when the button has scrolled past the top. A hidden element
+     * measures zero, so the old test said "still visible" in every other section and the shortcut
+     * never appeared there.
+     */
+    var overview = document.getElementById('panelOverview');
+    var overviewOpen = !!(overview && String(overview.className).indexOf('is-active') >= 0);
+    var gone = !overviewOpen || (!!box && box.bottom < 0);
     if (gone === quickShown) { return; }
     quickShown = gone;
     ui.btnQuickCheck.className = gone ? 'btn btn-primary is-shown' : 'btn btn-primary';

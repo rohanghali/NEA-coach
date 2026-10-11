@@ -18,14 +18,21 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **A new icon.** It was a white page with a blue tick on it — the generic "checked file" glyph,
-  which says nothing about what this is. It is now **flowing bands** in the same blue: the drapes
-  that move behind the app, so the icon and the app are recognisably one thing.
-- It is **drawn differently at different sizes**, on purpose. Three bands read as a wave at 512px
-  and as a blue smudge with a pale streak at 32, so anything up to 48px gets **two thicker bands**
-  instead. Both still read as the same mark.
-- The browser tab, the phone home screen, the Desktop shortcut and the Mac app all pick it up, since
-  they are all generated from this one drawing.
+- **Fixed: the Fix list was showing Things to add and the Coverage grid inside it, on a phone.** A
+  phone-only rule brought the *old* tab strip back on screen, and it came after the rule that hides
+  it — so on a narrow screen the three sections appeared a second time inside one of them. Three
+  sections that are already tabs, listed again inside a fourth, which is exactly the confusion the
+  tabs were meant to remove. Desktop was never affected.
+- **Check now is available from every section.** There is now one in the header, so you no longer
+  have to go back to Overview to run a check. It mirrors the real button exactly — same words, same
+  enabled state, same job. On a phone the floating button along the bottom now also appears in
+  every section; it used to wait until the Overview button had scrolled past the top, and a hidden
+  button measures as *still on screen*, so it never showed up in the sections where you most wanted
+  it.
+- **Overview is pinned at the start of the strip**, as Settings is at the end. Those two are the
+  ones you need without hunting; the nine in between scroll.
+- The header now **wraps onto two lines on a phone** — the new button pushed the read-only badge off
+  the right-hand edge.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 
