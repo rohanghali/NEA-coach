@@ -800,6 +800,42 @@ one you got. Do not mistake the fallback for success.
 
 ---
 
+## 6i. The smallest allowed font: 12pt to 10pt — changed in v1.0.24
+
+`THRESHOLDS.minFontPt` in `lib/checks.js`, at the student's request. Captions and
+annotations at 11pt were being reported as faults, and a rule that argues with work a
+teacher has already accepted is a rule that gets ignored.
+
+**What it was costing.** On the real portfolio this app is calibrated against — the one
+awarded 90/100 — the saved report's *only two* local findings were both
+`text-too-small`, on two pages set at 10.6pt. Both are now gone. It is a good reminder
+of where this app's noise was coming from: not the AI, and not the mark, but a
+threshold that was set by intuition and never checked against work that scored well.
+
+**Two things had to move with it, and both would have gone wrong silently:**
+
+- **The severity split.** It read `minSize <= 10 ? 'high' : 'medium'` against a 12pt
+  threshold — a 2pt margin. Lowering the threshold to 10 made that condition *always
+  true*, so every finding would have become "high" and the scale would have quietly
+  disappeared. It now reads `minSize <= THRESHOLDS.minFontPt - 2`, tied to the
+  threshold, and section 3b asserts the boundary either side of it.
+- **The "why" text.** It explained that "text below about 14pt becomes a strain" while
+  the rule only fired under 12pt. It now describes the size that actually triggers it.
+  The *fix* still asks for `minBodyFontPt` (14pt), which is a recommendation, not
+  the limit.
+
+**The bundled sample no longer demonstrates this rule.** Its planted flaw is an 11pt
+page, which is now acceptable. Section 3 of the tests asserts that as a deliberate zero
+rather than deleting the line, so if the threshold moves back the answer key says so
+instead of failing somewhere unrelated — and **section 3b is now this rule's only real
+coverage**, built from synthetic decks at 7, 8, 9.5, 10, 10.5, 11, 12, 14 and 18pt.
+
+**Do not "fix" the sample.** The agreement says never write the `.pptx`, so the fixture
+cannot be re-cut to restore the flaw. If you want this rule demonstrated again, change
+the threshold, not the sample.
+
+---
+
 ## 7. Still to do
 
 ### Already built, waiting on a Gemini API key

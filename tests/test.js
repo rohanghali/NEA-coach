@@ -156,11 +156,55 @@ section('3. Sample deck answer key');
     eq('missing-title fires on 4, 13, 21', sorted('missing-title'), [4, 13, 21]);
     eq('uncaptioned-image fires on 6, 7', sorted('uncaptioned-image'), [6, 7]);
     eq('near-empty-page fires on 16, 17', sorted('near-empty-page'), [16, 17]);
-    eq('text-too-small fires on 18', sorted('text-too-small'), [18]);
+    /*
+     * Asserted as a deliberate ZERO rather than deleted. The sample's smallest text is
+     * 11pt on page 18, and the rule now starts at 10pt, so the sample is clean here —
+     * and if the threshold ever moves back, this line says so instead of the answer key
+     * failing somewhere unrelated.
+     */
+    eq('text-too-small no longer fires on the sample (its smallest text is 11pt)',
+      sorted('text-too-small'), []);
     ok('uncaptioned-image does NOT fire on 14 (caption sits beside the image)',
       sorted('uncaptioned-image').indexOf(14) < 0);
     eq('no check throws', res.errors, []);
   }
+}
+
+section('3b. The smallest allowed font is 10pt');
+{
+  /*
+   * Lowered from 12pt at the student's request. This is now the ONLY coverage the rule
+   * has, because the sample's planted flaw sits at 11pt and is intentionally clean.
+   *
+   * The boundary is asserted from the size outwards rather than from the constant, so
+   * this section still means something if the constant moves again.
+   */
+  const deckAt = (pt) => ({
+    slideWidthPt: 595, slideHeightPt: 842, slideCount: 1,
+    slides: [{
+      index: 1, images: [], shapes: [],
+      textShapes: [{ isTitle: false, kind: 'body', paragraphs: [{ text: 'a b c', sizePt: pt }] }],
+    }],
+  });
+  const run = (pt) => runLocalChecks(deckAt(pt));
+  const at = (pt) => run(pt).findings.filter((f) => f.rule === 'text-too-small');
+
+  eq('10pt exactly is allowed, so the limit is inclusive', at(10).length, 0);
+  eq('and so is everything above it',
+    [10.5, 11, 12, 14, 18].map((p) => at(p).length), [0, 0, 0, 0, 0]);
+  eq('9.5pt is not allowed', at(9.5).length, 1);
+  eq('the finding names the real size rather than the limit',
+    at(9.5)[0].title, 'Body text drops to 9.5pt');
+  ok('and the evidence states the limit that was broken',
+    /below 10pt/.test(at(9.5)[0].evidence), at(9.5)[0].evidence);
+  eq('9.5pt reads as a medium, being close to the limit', at(9.5)[0].severity, 'medium');
+  eq('8pt is where it becomes a high, two points under', at(8)[0].severity, 'high');
+  eq('so 7pt is still a high', at(7)[0].severity, 'high');
+  ok('the advice still asks for real body text rather than the bare minimum',
+    /at least 14pt/.test(at(9.5)[0].fix), at(9.5)[0].fix);
+  eq('nothing throws on a minimal deck', run(9.5).errors, []);
+  ok('the threshold itself is 10, not merely the behaviour',
+    /minFontPt: 10,/.test(fs.readFileSync(path.join(ROOT, 'lib', 'checks.js'), 'utf8')));
 }
 
 /* ------------------------------------------------------------------ *

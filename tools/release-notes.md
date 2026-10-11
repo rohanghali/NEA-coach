@@ -18,39 +18,27 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The app now looks the way it works.** A slow tint drifts behind the page, cards are
-  translucent with a lit top edge, and the header is a glass bar that stays with you —
-  so Check now is reachable from anywhere in a long report instead of only from the
-  very top.
-- **Buttons answer back.** Every button springs under your finger and a ripple spreads
-  from exactly where you pressed. That matters more than it sounds: a check is a
-  network call, and a button that does nothing visible for two seconds feels broken.
-- **The numbers roll up.** The predicted mark and the count on the ring climb into
-  place instead of appearing.
-- **Ticking off a finding pays you back**, with a small burst of colour where the tick
-  was. A finished check gets a bigger one.
-- The ring draws itself in from empty, the progress bar sweeps, and the panels rise
-  into place as the page loads.
-- All of the above is switched off if you have asked your system for reduced motion.
+- **The smallest font the app will complain about is now 10pt, down from 12pt.**
+  Captions and annotations set at 11pt were being reported as faults, and on one real
+  portfolio that was awarded 90/100 the *only* two mechanical complaints the app made
+  were two pages set at 10.6pt. Both are gone. Text below 10pt is still flagged, and
+  is still called a serious problem at 8pt and below.
 
-**Carried over from the last few versions**
+**In the previous version (v1.0.23)**
 
-- Settings save themselves. Change the model, the marking model or Predict a mark and
-  it is applied immediately, with a "Saved" confirmation — no Save button to forget.
-  The folder path keeps its own button, because that is the one that can be wrong.
-- Choosing your exam board during the setup walkthrough updates the board dropdown.
-- The predicted mark no longer inflates itself above what the AI actually read. On one
-  portfolio it showed 98 against a real mark of 90, when the AI's own reading of 81 had
-  been closer. The adjustment is applied only when the app's measured error is tight
-  enough for it to be worth applying.
-- Marking uses the wording the exam board itself uses for each criterion, including what
-  AQA says is typically missing at each level, taken from its candidate record form.
-- The criteria table states its own total, so it can no longer appear to contradict the
-  headline above it.
-- Downloads unzip into a versioned folder, and the launcher tells you if an older copy
-  is still running behind the one you just opened.
-- Fewer false alarms: a genuinely good portfolio is no longer told its cover page is too
-  empty, and near-identical font sizes no longer count as different headings.
+- **Nothing is reviewed until you have chosen a portfolio.** Pressing Check now with
+  nothing added used to search the folder above the app — which, because the app
+  unzips into Downloads, meant it silently reviewed whatever PowerPoint it found most
+  recently there and wrote a full report about it. It now says
+  "No portfolio has been uploaded yet" and does nothing.
+- **Your settings, your key and your portfolio now live outside the app folder**, so
+  unzipping a newer version keeps all of them. Upgrading previously lost every one.
+  An existing install is brought across automatically on first run.
+- **It looks the way it works.** A slow tint behind the page, translucent cards, a
+  glass header bar that stays with you so Check now is reachable from anywhere, and
+  buttons that spring and ripple where you press. The predicted mark rolls up into
+  place, and ticking a finding off throws a small burst of colour. All of it is turned
+  off if you have asked your system for reduced motion.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

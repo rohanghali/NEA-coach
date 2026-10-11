@@ -79,7 +79,7 @@ modified date, run a scan, and check that both are unchanged.
 | Missing page titles | A moderator cannot tell what a page is for |
 | Overloaded pages (400+ words) | Communication marks are lost in walls of text |
 | Unbroken paragraphs (120+ words) | Gets skipped, so the evidence stops counting |
-| Text too small (under 12pt) | Unreadable when printed or projected |
+| Text too small (under 10pt) | Unreadable when printed or projected |
 | Genuinely blocky images (under 72 DPI) | Only flagged when actually unreadable — see the calibration note below |
 | Images shrunk too small to read | Plenty of pixels but placed under 1.2in wide |
 | Images with no caption | An unannotated image earns almost nothing |
