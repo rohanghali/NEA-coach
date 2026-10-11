@@ -749,7 +749,16 @@
   .chip[aria-pressed="true"].sev-medium { background: var(--medium-soft); border-color: var(--medium-line); color: var(--medium); }
   .chip[aria-pressed="true"].sev-low { background: var(--low-soft); border-color: var(--low-line); color: var(--low); }
   .chip[aria-pressed="true"].sev-info { background: var(--info-soft); border-color: var(--info-line); color: var(--info); }
-  .chip[aria-pressed="true"] .chip-count { background: rgba(255, 255, 255, 0.75); color: inherit; }
+  /*
+   * `var(--card)` rather than a fixed near-white.
+   *
+   * The badge paints its fill and then inherits the chip's own text colour. In light mode that
+   * colour is dark and a white fill reads well. In DARK mode every severity colour is a light
+   * pastel, so a 75%-white badge put light text on a near-white pill: measured at 1.1-1.3:1
+   * against the 4.5:1 that AA asks for, on four chips that are visible and pressed on first
+   * paint. --card flips with the theme, so one token fixes both.
+   */
+  .chip[aria-pressed="true"] .chip-count { background: var(--card); color: inherit; }
   .chip-actions { display: inline-flex; flex-wrap: wrap; align-items: center; margin: 3px 0 0 6px; }
 
   .fields { display: flex; flex-wrap: wrap; align-items: flex-end; }
@@ -1033,9 +1042,17 @@
   /* ---------- strengths ---------- */
 
   .strengths { border: 1px solid var(--good-line); background: var(--good-soft); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
-  .strengths h3 { margin: 0 0 8px; font-size: 15px; color: #085d3a; }
+  /*
+   * Tokens, not fixed greens.
+   *
+   * #085d3a and #0b4a33 were chosen for the pale green panel of LIGHT mode. In dark mode
+   * --good-soft becomes a near-black green, so dark green text landed on it: 2.1:1 and 1.6:1.
+   * Both tokens flip with the theme, so these need no separate dark override — and cannot be
+   * forgotten if the palette changes again.
+   */
+  .strengths h3 { margin: 0 0 8px; font-size: 15px; color: var(--good); }
   .strengths ul { margin: 0; padding-left: 20px; }
-  .strengths li { font-size: 14.5px; margin-bottom: 5px; color: #0b4a33; }
+  .strengths li { font-size: 14.5px; margin-bottom: 5px; color: var(--ink-2); }
 
   /* ---------- details / table ---------- */
 
@@ -3416,7 +3433,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.40';
+  var PAGE_BUILD = '1.0.41';
 
   var state = {
     data: null,

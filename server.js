@@ -291,8 +291,24 @@ function quotaReset(at = new Date()) {
 function readQuota() {
   const today = quotaDate();
   const store = readJsonSafe(QUOTA_PATH, null);
-  if (!store || store.date !== today) return { date: today, models: {}, requestsThisScan: 0 };
-  return { date: store.date, models: store.models || {}, requestsThisScan: store.requestsThisScan || 0 };
+  if (!store || store.date !== today) return { date: today, models: {}, requestsThisScan: 0, limits: {} };
+  /*
+   * `limits` MUST be returned, and it was not.
+   *
+   * That broke the learned daily cap in two ways at once. quotaReport reads quota.limits, so it
+   * saw {} every single time: limitKnown was permanently false and the usage meter could never
+   * show a percentage of the day's allowance, only a count. And because noteRequest and
+   * learnQuotaLimit both work read -> mutate -> write, the very next counted request wrote back
+   * an object with no limits on it and DELETED whatever had been learned from the last 429.
+   *
+   * The feature logged "Learned the daily request limit for X: N" and then quietly threw it away.
+   */
+  return {
+    date: store.date,
+    models: store.models || {},
+    requestsThisScan: store.requestsThisScan || 0,
+    limits: store.limits || {},
+  };
 }
 
 function writeQuota(quota) {
@@ -410,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.40';
+const VERSION = '1.0.41';
 const DEFAULT_PORT = 4173;
 
 /*

@@ -18,24 +18,26 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The page has colour in it now.** It was white boxes on a white page; the headings carry the
-  accent colour and the background is a soft wash that the cards let through. The colour coding
-  of the findings is untouched, and nothing is louder than it needs to be.
-- **Cancelling a check now actually stops it.** The Cancel button could not stop the visual
-  review — the first and far and away the most expensive thing a check does, up to three
-  whole-portfolio reads plus a backup model — because the flag was never passed to it. Pressing
-  Cancel did nothing until every one of those had already run and been paid for. It stops before
-  the first one now.
-- **Much less work while sitting still.** The "Check now" button used to pulse for ever, and the
-  pulse was a shadow — which cannot be animated on the graphics card, so it repainted the button
-  sixty times a second, permanently, for decoration. It invites three times and then rests. The
-  background's gentle lean towards your pointer no longer animates either; it was repainting the
-  whole screen continuously while the mouse moved.
+Five faults found by a full read-through of the code, all of the same shape: something that made
+a feature work was missing, so the feature existed, logged that it had done its job, and did
+nothing.
 
-**In v1.0.39**
+- **Cancelling a check no longer throws away the pages you had already paid for.** The partial
+  cache was overwriting the good one, so the next check re-sent everything after the point you
+  cancelled at. The previous entries are carried through now.
+- **The daily allowance can finally show a percentage.** The app learns your real daily limit
+  when Google tells it — but that figure was being dropped as it was read, and then deleted by
+  the next request, so the meter could only ever show a count. It is kept.
+- **"I could not read the document" is no longer treated as a successful review.** If the model
+  reported that it could not see your pages, the app still recorded that they had been looked at
+  and reported a mark from them. It now says so instead.
+- **Two things were nearly invisible in dark mode**: the little counts on the severity buttons
+  (about 1.1:1 against the background, where 4.5:1 is the minimum) and the "what is already
+  working well" text (about 1.6:1). Both follow the theme now.
 
-- **Fixed the page stopping halfway through drawing itself** — an SVG element refuses a
-  `className` assignment, and that one line was taking the whole render down with it.
+**In v1.0.40**
+
+- Colour, much less work while idle, and Cancel actually stopping the visual review.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

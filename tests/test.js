@@ -13,6 +13,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const zlib = require('zlib');
 
 const ROOT = path.join(__dirname, '..');
@@ -558,6 +559,22 @@ section('7. Prompt construction');
 section('8. Secrets stay on the Mac');
 {
   const serverSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  /*
+   * THE SUITE MUST NOT TOUCH THE STUDENT'S REAL DATA.
+   *
+   * server.js resolves its data folder the moment it is required, and without an override that
+   * is ~/Library/Application Support/NEA Coach — the real API key, the real report, the real
+   * quota. Every test that exercised those functions was reading the live files, and any that
+   * wrote would have corrupted them. It only went unnoticed because the sandbox denies writes
+   * to ~/Library, which is a property of where this happened to be run, not of the tests.
+   *
+   * A config.json is written first on purpose: the adoption logic treats a folder without one
+   * as a fresh install and would COPY the repo's own state/ in — including an API key — into
+   * a temporary directory.
+   */
+  const testDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nea-tests-'));
+  fs.writeFileSync(path.join(testDataDir, 'config.json'), JSON.stringify({ specId: 'aqa-gcse' }));
+  process.env.NEA_COACH_DATA_DIR = testDataDir;
   const server = require(path.join(ROOT, 'server.js'));
 
   /*
@@ -3847,10 +3864,23 @@ section('12n. Your settings, key and portfolio survive an upgrade');
   const server = require(path.join(ROOT, 'server.js'));
   const os = require('os');
 
+  /*
+   * The DEFAULT location, not the override this suite sets for its own isolation. Both
+   * assertions are about what a student gets, so the override is lifted for the check and put
+   * straight back.
+   */
+  const namedDefault = (() => {
+    const held = process.env.NEA_COACH_DATA_DIR;
+    delete process.env.NEA_COACH_DATA_DIR;
+    const answer = server.perUserDataDir();
+    if (held === undefined) delete process.env.NEA_COACH_DATA_DIR;
+    else process.env.NEA_COACH_DATA_DIR = held;
+    return answer;
+  })();
   ok('the intended data folder is outside the app folder, so unzipping cannot lose it',
-    server.perUserDataDir().indexOf(ROOT) !== 0, server.perUserDataDir());
+    namedDefault.indexOf(ROOT) !== 0, namedDefault);
   ok('and it is named so a person can actually find it',
-    /NEA Coach$/.test(server.perUserDataDir()), server.perUserDataDir());
+    /NEA Coach$/.test(namedDefault), namedDefault);
   /*
    * Deliberately not asserting stateDir IS the per-user folder: on a machine where
    * that location cannot be written the app falls back, and this test has to pass on
@@ -5439,6 +5469,61 @@ section('12ab. Cancel has to reach the expensive part');
   eq('and sends no page-reading request at all', paid.length, 0);
   ok('while the free models listing is still allowed to have been tried',
     attempted.length >= 0, 'the point is only that no generateContent call was made');
+}
+
+section('12ac. Five high-severity findings from the whole-codebase audit');
+{
+  /*
+   * Every one of these was found by a read-only audit pass and is fixed here. They are grouped
+   * because they share a theme: in each case the code was doing something reasonable and the
+   * thing that made it work — a returned field, a forwarded flag, a checked error, a flipping
+   * token — was simply missing, so the feature was written, logged, and inert.
+   */
+  const server = require(path.join(ROOT, 'server.js'));
+  const aiSrc = fs.readFileSync(path.join(ROOT, 'lib', 'ai.js'), 'utf8');
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
+
+  /* ---- 1. the learned daily cap was thrown away on the next request ------------- */
+  /*
+   * readQuota() dropped `limits` from what it returned, and noteRequest/learnQuotaLimit both do
+   * read -> mutate -> write. So the limit learned from a 429 was written once and then DELETED by
+   * the next counted request, and quotaReport could never set limitKnown — which is why the usage
+   * meter could only ever show a count and never a percentage of the day's allowance.
+   */
+  server.learnQuotaLimit('audit-probe-model', 42);
+  eq('the learned limit is stored', server.readQuota().limits['audit-probe-model'], 42);
+  server.noteRequest('audit-probe-model');
+  eq('and it SURVIVES the next counted request, which used to delete it',
+    (server.readQuota().limits || {})['audit-probe-model'], 42);
+  const rep = server.quotaReport('audit-probe-model');
+  const row = (rep.models || []).filter((r) => r.model === 'audit-probe-model')[0] || {};
+  ok('so the meter can finally say how much of the day is gone',
+    row.limitKnown === true && row.limit === 42 && row.percent !== null,
+    JSON.stringify(row));
+
+  /* ---- 3. "I could not read the document" was a successful review --------------- */
+  ok('a vision reply that reports its own failure is no longer accepted as a success',
+    /parsed\.error && String\(parsed\.error\)\.trim\(\)/.test(aiSrc)
+    && /could not read the pages/.test(aiSrc),
+    'the model\u2019s own error field is ignored again, so a failed read counts as a review');
+
+  /* ---- 4/5. two dark-mode contrast bugs ---------------------------------------- */
+  ok('the severity count badge flips with the theme instead of staying near-white',
+    /\.chip\[aria-pressed="true"\] \.chip-count \{ background: var\(--card\)/.test(css),
+    'light text on a near-white pill in dark mode, at about 1.1:1');
+  ok('and the strengths text uses tokens rather than light-mode greens',
+    /\.strengths h3 \{[^}]*color: var\(--good\)/.test(css)
+    && /\.strengths li \{[^}]*color: var\(--ink-2\)/.test(css),
+    'dark green on a near-black panel in dark mode, at about 1.6:1');
+
+  /* ---- the suite itself must not read the student's real data ------------------- */
+  ok('the test suite points the app at a throwaway data folder',
+    !!process.env.NEA_COACH_DATA_DIR && /nea-tests-/.test(process.env.NEA_COACH_DATA_DIR),
+    'the suite is reading the real API key, report and quota');
+  ok('and that folder is not the real per-user one',
+    server.stateDir.indexOf(os.homedir()) !== 0 || /nea-tests-/.test(server.stateDir),
+    server.stateDir);
 }
 
 })().then(summary, (err) => {
