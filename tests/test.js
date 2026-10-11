@@ -2399,6 +2399,9 @@ section('11i. Phone layout keeps up with the desktop');
     'group-body',
     'card-title',
     'key-actions',
+    // The setup button moved into the top bar; its wrapper needs a phone rule too.
+    'topbar-actions',
+    'btn-sm',
   ];
   const missing = mustAdapt.filter((cls) => !mobile.includes('.' + cls));
   ok('every element that needs a phone rule has one', missing.length === 0,
