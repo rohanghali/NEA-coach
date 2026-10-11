@@ -1075,6 +1075,23 @@
     .predicted-unstable { font-size: 12.5px; }
     .compare-mark { font-size: 15px; }
     .compare-list li { font-size: 13.5px; }
+
+    /*
+     * The first-run wizard and the grouped Settings, added after the mobile layout
+     * was last looked at. A phone has no hover, so the tap targets need padding
+     * rather than a hover state, and the group headings must not sit side by side
+     * with their notes on a narrow screen.
+     */
+    .settings-group > summary { padding: 12px 13px; flex-direction: column; gap: 2px; }
+    .group-note { font-size: 12.5px; }
+    .group-body { padding: 4px 13px 14px; }
+    .settings-group { margin-bottom: 8px; }
+    .card-title { font-size: 12px; margin-bottom: 8px; }
+    .settings-lede { font-size: 14px; }
+    /* The exam-board and best-marks buttons stack full width with the rest. */
+    .settings-group .form-row .btn { width: 100%; margin-bottom: 8px; }
+    .key-actions { flex-direction: column; align-items: stretch; }
+    .key-actions .btn { width: 100%; margin: 0 0 8px; }
   }
 
   /* Reveal-more control for long lists. */

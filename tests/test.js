@@ -2263,6 +2263,12 @@ section('11i. Phone layout keeps up with the desktop');
     'pagechip',
     'finding-top',
     'show-more-wrap',
+    // Grouped Settings and the card headings. These had NO phone rule at all when
+    // they were added, which is the exact failure this list exists to catch.
+    'settings-group',
+    'group-body',
+    'card-title',
+    'key-actions',
   ];
   const missing = mustAdapt.filter((cls) => !mobile.includes('.' + cls));
   ok('every element that needs a phone rule has one', missing.length === 0,
