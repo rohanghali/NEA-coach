@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.66';
+const VERSION = '1.0.67';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -2724,10 +2724,36 @@ function loadDeckForAnswer() {
     const deck = fromPdf
       ? pdfdeck.deckFromPdf(fs.readFileSync(found.filePath), { fileName: path.basename(found.filePath) }).deck
       : parsePresentation(found.filePath);
-    return { deck, error: null };
+    return { deck, filePath: found.filePath, error: null };
   } catch (err) {
-    return { deck: null, error: 'Could not read your portfolio: ' + (err && err.message ? err.message : err) };
+    return { deck: null, filePath: found.filePath, error: 'Could not read your portfolio: ' + (err && err.message ? err.message : err) };
   }
+}
+
+/*
+ * The briefing pack, kept once it has been built.
+ *
+ * Building it re-reads the whole document — fine once, wasteful the tenth time, and a button that makes
+ * somebody wait several seconds every time is a button they stop using. The key is the file's size and
+ * modification time, so editing the portfolio invalidates it with nothing to remember to clear.
+ */
+let briefingCache = null;
+
+function briefingCacheKey(filePath) {
+  try {
+    const st = fs.statSync(filePath);
+    return String(filePath) + '|' + st.size + '|' + Math.round(st.mtimeMs);
+  } catch (err) {
+    return String(filePath);
+  }
+}
+
+function buildBriefingCached(deck, filePath) {
+  const key = briefingCacheKey(filePath);
+  if (briefingCache && briefingCache.key === key) { return briefingCache.text; }
+  const text = buildBriefingPack(deck);
+  briefingCache = { key: key, text: text };
+  return text;
 }
 
 /**
@@ -2812,7 +2838,12 @@ function pageIndexForAnswer(slides) {
 function askContext(deck, scope) {
   const cfg = loadConfig();
   const slides = (deck && deck.slides) || [];
-  const { findings, suggestions, criteria, report } = reportFindings();
+  /*
+   * Everything a scope might need. Missing one of these is not a subtle bug — it throws, the student
+   * sees "the AI could not answer that", and the cause is a name that was never bound. Three of them
+   * were missing when this was first written: strengths and coverage both threw, one scope each.
+   */
+  const { findings, suggestions, criteria, coverage, report, strengths } = reportFindings();
   const type = (scope && scope.type) || 'deck';
   const head = [];
   const board = (ai.specPreset(cfg.specId) || {}).label || cfg.specId || '';
@@ -2917,7 +2948,7 @@ function askContext(deck, scope) {
         : 'Nothing was raised.',
       '',
       'WHAT THE APP THINKS IS ALREADY GOOD (never suggest these):',
-      strengths.slice(0, 20).map((x) => '- ' + String(x)).join('\n') || '- (none recorded)',
+      (strengths || []).slice(0, 20).map((x) => '- ' + String(x)).join('\n') || '- (none recorded)',
       '',
       'IDEAS THE APP SUGGESTED ADDING:',
       suggestions.slice(0, 20).map((x) => '- ' + String(x.title || '')).join('\n') || '- (none)',
@@ -3444,6 +3475,8 @@ async function handle(req, res) {
    * request went through a different door.
    */
   if (p === '/api/ask' && req.method === 'POST') {
+    /* The router has no cfg of its own — every route loads the config it needs. */
+    const cfg = loadConfig();
     const body = await readBody(req);
     const question = String((body && body.question) || '').trim().slice(0, 600);
     if (!question) {
@@ -3500,7 +3533,7 @@ async function handle(req, res) {
     if (!loaded.deck) {
       return sendJson(res, 400, { ok: false, error: loaded.error });
     }
-    const text = buildBriefingPack(loaded.deck);
+    const text = buildBriefingCached(loaded.deck, loaded.filePath);
     res.writeHead(200, {
       'Content-Type': 'text/markdown; charset=utf-8',
       'Cache-Control': 'no-store',

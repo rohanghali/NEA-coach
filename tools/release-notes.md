@@ -18,29 +18,19 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-**A new "Ask AI" section**, and a small **Ask** button on almost everything.
+**Ask AI actually works now.** It did not: every question came back with an internal error, because a
+setting the code needed was not loaded where that request runs. Two more of the same kind were hiding
+behind it — one broke the general questions, one broke the per-criterion ones — so **every kind of
+question** is checked end to end now, not just the ones I happened to try.
 
-- **Ask anything about your work and get an answer about YOUR work.** The assistant is given the
-  actual words on the pages your question is about, so it can say *"page 34 shows the joint but not
-  why you chose it"* instead of something generic. It is told never to give a mark — the predicted
-  mark is the app’s own — and never to suggest work you have already done.
-- **Six questions to tap** if you do not know what to ask: what to fix first, which pages are
-  weakest, how to turn description into analysis, whether your evidence is strong enough, what would
-  improve things most for the time, and what a moderator would notice.
-- **An "Ask" button on every finding, every suggestion, every page in the Slides table, every
-  criterion in the Coverage grid, and on the Overview.** Tapping one does not send anything — it
-  opens the section with your question ready and the right pages attached, so you can see what it
-  will cost before you press Ask.
-- **A question costs one request** from the same daily allowance a check uses, and the section says
-  how much of the day is left before you ask. It will not run while a check is running, so the two
-  never compete for the allowance.
-
-**And "Copy all of it for ChatGPT".** This is the thing that was impossible before: exporting the
-report gave an outside assistant your findings and page numbers but *not your actual writing*, so it
-could only give generic advice. This copies a file containing **every page in your own words**, plus
-what the check found, what is already good, and the rules it should follow. It opens ChatGPT for you
-and puts it on the clipboard — or you can download it instead. On a phone, where the clipboard is not
-available over a local address, the text is put in a box for you to copy by hand.
+- **It is clear you can type your own question.** The section says so, and the suggestions are
+  introduced as a starting point rather than the whole list.
+- **Copying is instant.** The file is built quietly in the background when you open the section, and
+  the app keeps it once built, so pressing Copy is immediate instead of a several-second wait. It is
+  rebuilt automatically if you change your portfolio.
+- **Copying and opening ChatGPT are separate buttons.** One press used to do both, which pulled you
+  away from the page while it was still building the file, with no way to tell whether it had worked.
+  There is now **Copy everything for ChatGPT**, **Open ChatGPT**, and **Save as a file**.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

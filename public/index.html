@@ -1103,6 +1103,7 @@
   .ask-lede { margin: 0 0 15px; font-size: 14px; line-height: 1.6; color: var(--ink-2); max-width: 64ch; }
 
   /* The prefilled questions. Pills, because they are one tap and then gone. */
+  .ask-or { margin: 0 0 8px; }
   .ask-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
   .ask-chip {
     padding: 8px 13px;
@@ -3863,11 +3864,13 @@
   <section class="card" aria-labelledby="askHeading">
     <h2 class="card-title" id="askHeading">Ask about your work</h2>
     <p class="ask-lede" id="askLede">
-      Ask anything about your portfolio. The assistant is given the words on the pages your question is
-      about, so it can point at page numbers instead of giving generic advice. It never gives a mark —
-      the predicted mark is the app's own.
+      <strong>Type your own question</strong> below — anything you want to know about your work — or tap one
+      of the suggestions to start. The assistant is given the words on the pages your question is about,
+      so it can point at page numbers instead of giving generic advice. It never gives a mark: the
+      predicted mark is the app's own.
     </p>
 
+    <p class="ask-or muted small">Or start with one of these:</p>
     <div class="ask-chips" id="askChips"></div>
 
     <div class="ask-about" id="askAbout" hidden></div>
@@ -3884,9 +3887,10 @@
     <div class="ask-answer" id="askAnswer" hidden></div>
 
     <div class="ask-export">
-      <button class="btn btn-secondary btn-sm" id="btnBriefing" type="button">Copy all of it for ChatGPT</button>
-      <button class="btn btn-quiet btn-sm" id="btnBriefingDownload" type="button">Download it instead</button>
-      <span class="muted small" id="askExportNote">Every page in your own words, so an outside assistant knows what it is talking about.</span>
+      <button class="btn btn-secondary btn-sm" id="btnBriefing" type="button">Copy everything for ChatGPT</button>
+      <button class="btn btn-quiet btn-sm" id="btnBriefingOpen" type="button">Open ChatGPT</button>
+      <button class="btn btn-quiet btn-sm" id="btnBriefingDownload" type="button">Save as a file</button>
+      <span class="muted small" id="askExportNote">Every page in your own words, plus what the check found. Paste it into any AI assistant and ask it anything.</span>
     </div>
     <!--
       The clipboard needs a secure context, and http://192.168.x.x on a phone is not one — so the text
@@ -4452,7 +4456,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.66';
+  var PAGE_BUILD = '1.0.67';
 
   var state = {
     data: null,
@@ -5835,6 +5839,9 @@
     }
 
     if (ui.askCost) { setText(ui.askCost, state.asking ? 'Asking…' : askCostText()); }
+
+    /* Build the export in the background so the button is instant when it is pressed. */
+    prepareBriefing();
     if (ui.btnAsk) {
       ui.btnAsk.disabled = !!state.asking;
       setText(ui.btnAsk, state.asking ? 'Asking…' : 'Ask');
@@ -5901,48 +5908,83 @@
     try { ui.askFallbackText.focus(); ui.askFallbackText.select(); } catch (err) { /* fine */ }
   }
 
+  /** Whether the Ask section is the one on screen. */
+  function isAskVisible() {
+    var panel = document.getElementById('panelAsk');
+    return !!(panel && String(panel.className).indexOf('is-active') >= 0);
+  }
+
   /**
-   * Copy everything, and open ChatGPT.
+   * Build the file in the background, as soon as the section is opened.
    *
-   * The window is opened FIRST, synchronously, because a popup opened after an await is blocked by
-   * every browser. The clipboard is the part that may not work: it needs a secure context, and the
-   * whole point of this app is that a phone reaches it over http://192.168.x.x, which is not one. So
-   * when the copy cannot be done, the text is put in a box to select from instead of failing silently.
+   * It re-reads the whole portfolio, so building it when the button is PRESSED makes the button feel
+   * broken — which is exactly what happened. Prepared in advance, the copy itself is instant.
+   */
+  function prepareBriefing() {
+    if (state.briefingText || state.briefingLoading || !isAskVisible()) { return; }
+    state.briefingLoading = true;
+    if (ui.btnBriefing) { setText(ui.btnBriefing, 'Preparing…'); }
+    fetchBriefing().then(function (text) {
+      state.briefingLoading = false;
+      state.briefingText = text;
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy everything for ChatGPT'); }
+    }).catch(function () {
+      state.briefingLoading = false;
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy everything for ChatGPT'); }
+    });
+  }
+
+  /** Put the text on the clipboard, or show it to be copied by hand. */
+  function putOnClipboard(text) {
+    var clip = window.navigator && window.navigator.clipboard;
+    if (clip && clip.writeText) {
+      clip.writeText(text).then(function () {
+        setBanner('ask', 'good', 'Copied — ' + Math.round(text.length / 1024)
+          + ' KB. Open ChatGPT and paste it in, then ask it anything about your work.', true);
+      }).catch(function () { showBriefingFallback(text); });
+    } else {
+      showBriefingFallback(text);
+    }
+  }
+
+  /**
+   * Copy everything.
+   *
+   * Nothing else: the earlier version also opened a tab, which yanked the student away from the page
+   * with no way to tell whether the copy had worked. Two buttons, two jobs.
    */
   function copyBriefing() {
-    if (state.briefingBusy) { return; }
-    state.briefingBusy = true;
-    try { window.open('https://chatgpt.com/', '_blank'); } catch (err) { /* a blocked popup is fine */ }
-    if (ui.btnBriefing) { setText(ui.btnBriefing, 'Building…'); }
-
+    if (state.briefingText) { putOnClipboard(state.briefingText); return; }
+    if (state.briefingLoading) {
+      setBanner('ask', 'warn', 'Still preparing it — one moment.', true);
+      return;
+    }
+    state.briefingLoading = true;
+    if (ui.btnBriefing) { setText(ui.btnBriefing, 'Preparing…'); }
     fetchBriefing().then(function (text) {
-      state.briefingBusy = false;
-      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy all of it for ChatGPT'); }
-      var clip = window.navigator && window.navigator.clipboard;
-      if (clip && clip.writeText) {
-        clip.writeText(text).then(function () {
-          if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copied — now paste it in'); }
-          setBanner('ask', 'good', 'Copied. Paste it into the ChatGPT tab with Ctrl+V (or Cmd+V). '
-            + 'Then ask it anything about your work.', true);
-        }).catch(function () { showBriefingFallback(text); });
-      } else {
-        showBriefingFallback(text);
-      }
+      state.briefingLoading = false;
+      state.briefingText = text;
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy everything for ChatGPT'); }
+      putOnClipboard(text);
     }).catch(function (err) {
-      state.briefingBusy = false;
-      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy all of it for ChatGPT'); }
+      state.briefingLoading = false;
+      if (ui.btnBriefing) { setText(ui.btnBriefing, 'Copy everything for ChatGPT'); }
       setBanner('ask', 'warn', friendlyError(err, 'The app could not build that file.'), true);
     });
   }
 
+  /** Open the assistant. Its own button, because it is its own decision. */
+  function openChatGpt() {
+    try { window.open('https://chatgpt.com/', '_blank'); } catch (err) { /* a blocked popup is fine */ }
+  }
+
   /** The same file, as a download, for anyone who would rather keep it. */
   function downloadBriefing() {
-    if (state.briefingBusy) { return; }
-    state.briefingBusy = true;
-    if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Building…'); }
-    fetchBriefing().then(function (text) {
-      state.briefingBusy = false;
-      if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Download it instead'); }
+    if (state.briefingLoading) {
+      setBanner('ask', 'warn', 'Still preparing it — one moment.', true);
+      return;
+    }
+    var use = function (text) {
       var blob = new window.Blob([text], { type: 'text/markdown' });
       var url = window.URL.createObjectURL(blob);
       var a = document.createElement('a');
@@ -5953,9 +5995,18 @@
       document.body.removeChild(a);
       setTimeout(function () { window.URL.revokeObjectURL(url); }, 4000);
       setBanner('ask', 'good', 'Saved as NEA-Coach-briefing.md. Upload or paste it into any AI assistant.', true);
+    };
+    if (state.briefingText) { use(state.briefingText); return; }
+    state.briefingLoading = true;
+    if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Preparing…'); }
+    fetchBriefing().then(function (text) {
+      state.briefingLoading = false;
+      state.briefingText = text;
+      if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Save as a file'); }
+      use(text);
     }).catch(function (err) {
-      state.briefingBusy = false;
-      if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Download it instead'); }
+      state.briefingLoading = false;
+      if (ui.btnBriefingDownload) { setText(ui.btnBriefingDownload, 'Save as a file'); }
       setBanner('ask', 'warn', friendlyError(err, 'The app could not build that file.'), true);
     });
   }
@@ -5963,6 +6014,7 @@
   function wireAsk() {
     on(ui.btnAsk, 'click', function () { askQuestion(); });
     on(ui.btnBriefing, 'click', function () { copyBriefing(); });
+    on(ui.btnBriefingOpen, 'click', function () { openChatGpt(); });
     on(ui.btnBriefingDownload, 'click', function () { downloadBriefing(); });
     /*
      * Ctrl/Cmd+Enter sends. A question often runs to a line or two, and a plain Enter should make a
@@ -9554,7 +9606,7 @@
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
       'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'checkPlan',
       'askChips', 'askAbout', 'askInput', 'askCost', 'btnAsk', 'askAnswer', 'askInline',
-      'btnBriefing', 'btnBriefingDownload', 'askFallback', 'askFallbackText', 'askExportNote', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
+      'btnBriefing', 'btnBriefingOpen', 'btnBriefingDownload', 'askFallback', 'askFallbackText', 'askExportNote', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',

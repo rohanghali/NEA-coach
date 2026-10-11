@@ -6810,6 +6810,15 @@ section('12ap. Asking about the work');
 
   /* ---- where it can be asked from ---- */
   const places = (html.match(/askMiniButton\(/g) || []).length;
+  /*
+   * The section must say that the student can write their own question, not only tap a suggestion.
+   * Reported as unclear, and it is the whole point of the feature.
+   */
+  ok('it says plainly that you can write your own question',
+    /Type your own question/.test(html), 'the six suggestions read like the only options');
+  ok('and the suggestions are introduced as a starting point, not the whole list',
+    /Or start with one of these/.test(html));
+
   ok('and it can be asked from anywhere it might occur to you',
     places >= 6, 'found ' + places + ' call sites (1 definition + the places it is offered)');
   for (const [what, needle] of [
@@ -6844,6 +6853,26 @@ section('12ap. Asking about the work');
    * ai.findings, and the page merges them. Reading only the first meant answering from 3 of the 31
    * things the student can see — the 28 the AI found were invisible to every question.
    */
+  /*
+   * Every name a scope branch uses must be bound at the top of askContext.
+   *
+   * Three of them were not when this was first written — strengths, then coverage — and each one threw
+   * at run time, which the student sees as "the AI could not answer that". A missing destructuring is
+   * not a subtle bug; it is a blank answer and a wasted request.
+   */
+  (() => {
+    const start = server.indexOf('function askContext(');
+    const end = server.indexOf('function buildBriefingPack(');
+    const fn = start >= 0 && end > start ? server.slice(start, end) : '';
+    const destructured = (/const \{([^}]*)\} = reportFindings\(\)/.exec(fn) || [])[1] || '';
+    const bound = destructured.split(',').map((x) => x.trim());
+    const used = ['findings', 'suggestions', 'criteria', 'coverage', 'strengths', 'report'];
+    const missing = used.filter((name) => fn.indexOf(name + '.') >= 0 && bound.indexOf(name) < 0);
+    ok('every name the question scopes use is actually bound',
+      fn.length > 0 && missing.length === 0,
+      'missing from the destructuring: ' + missing.join(', '));
+  })();
+
   ok('both lists of findings are read, not just the free ones',
     /localList\.concat\(aiList\)/.test(server),
     'local.findings and ai.findings are different lists and the page shows them merged');
@@ -6857,10 +6886,26 @@ section('12ap. Asking about the work');
     /String\(s\.text \|\| ''\)\.trim\(\)/.test(server) && /## Every page/.test(server));
   ok('and it tells the receiving AI the same rules this app holds itself to',
     /Never give a mark, a grade or a band/.test(server) && /page numbers/.test(server));
-  ok('the copy button opens the assistant BEFORE awaiting, or the popup is blocked',
-    /window\.open\('https:\/\/chatgpt\.com\/', '_blank'\)/.test(html)
-    && html.indexOf("window.open('https://chatgpt.com/'") < html.indexOf('fetchBriefing().then'),
-    'a window opened after an await is blocked by every browser');
+  /*
+   * Two buttons, two jobs.
+   *
+   * The first version copied AND opened a tab in one press, which yanked the student away from a page
+   * that was still building the file — with no way to tell whether the copy had worked. And it took
+   * seconds, because the pack was built when the button was pressed rather than in advance.
+   */
+  ok('copying and opening the assistant are separate buttons',
+    /function copyBriefing/.test(html) && /function openChatGpt/.test(html)
+    && /id="btnBriefingOpen"/.test(html)
+    && !/function copyBriefing[\s\S]{0,600}window\.open/.test(html),
+    'one press that does two things, one of them leaving the page, is worse than two buttons');
+  ok('and the file is built in the background so the copy is instant',
+    /function prepareBriefing/.test(html) && /prepareBriefing\(\);/.test(html)
+    && /if \(state\.briefingText\) \{ putOnClipboard/.test(html),
+    'building it on press is what made it feel broken');
+  ok('with the server keeping it once built, keyed to the file it came from',
+    /let briefingCache = null/.test(server) && /function buildBriefingCached/.test(server)
+    && /st\.size \+ '\|' \+ Math\.round\(st\.mtimeMs\)/.test(server),
+    'the key is the size and modification time, so an edited portfolio invalidates it');
 
   /* ---- and it works on a phone, where the clipboard does not ---- */
   /*
