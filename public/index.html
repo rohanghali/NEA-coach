@@ -453,14 +453,6 @@
   .predicted-note { margin: 0; font-size: 13.5px; color: var(--muted); }
   /* Supporting facts that are not prose: quiet, one per line, easy to skim. */
   .predicted-fact { margin: 0; font-size: 12.5px; color: var(--muted); }
-  .predicted-calibrated {
-    margin: 0;
-    padding: 9px 11px;
-    font-size: 13px;
-    background: var(--accent-soft);
-    border-left: 3px solid var(--accent);
-    border-radius: 0 6px 6px 0;
-  }
   .predicted-rows { border-top: 1px solid var(--line); padding-top: 12px; }
   .predicted-row { margin-bottom: 13px; }
   .predicted-row-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
@@ -5191,24 +5183,21 @@
       }
 
       /*
-       * WHAT THE APP HAS MEASURED ABOUT ITS OWN ERROR.
+       * ONE short line when the figure was adjusted, and the same short line when it
+       * was not. There is deliberately no longer a paragraph headed "Why the estimate
+       * is higher than the AI's own reading".
        *
-       * This is what makes the number usable rather than merely suggestive. The raw AI
-       * figure is kept visible beside the adjusted one, with the reason: the app has
-       * been checked against real portfolios whose marks are known, and on those it
-       * read systematically low, so the difference is stated rather than hidden. A
-       * predicted mark shown without its error bar invites more trust than it earned.
+       * That paragraph reasoned about three other portfolios at length, and on a real
+       * one it read: "The AI read this as 81 out of 100 ... reads 16 to 23 marks low
+       * ... adjusted up to 98" - against a real mark of 90. It was explaining, at
+       * length, a correction that made the estimate WORSE than the raw reading. The
+       * user's response was "this needs to go", and they were right.
+       *
+       * The correction is now applied only when the measured error is tight enough
+       * for it to be an improvement (MAX_RELIABLE_SPAN in lib/calibration.js), so
+       * this line is short and, when it says "adjusted", earned.
        */
-      if (cal && cal.applied) {
-        /*
-         * `cal.note` already opens with the raw figure, so it is used whole rather
-         * than prefixed — the prefix duplicated it verbatim.
-         */
-        supporting.push(el('div', { cls: 'predicted-calibrated' }, [
-          el('strong', { text: 'Why the estimate is higher than the AI\u2019s own reading. ' }),
-          el('span', { text: cal.note })
-        ]));
-      } else if (cal && cal.note) {
+      if (cal && cal.note) {
         supporting.push(el('p', { cls: 'predicted-fact', text: cal.note }));
       }
 
@@ -5245,7 +5234,7 @@
           el('div', {
             cls: 'predicted-marks',
             text: (cal && cal.applied)
-              ? 'the app\u2019s estimate \u2014 the AI itself read ' + cal.raw + ' of ' + (p.maximum || 100)
+              ? 'the app\u2019s estimate \u2014 the AI\u2019s own reading was ' + cal.raw + ' of ' + (p.maximum || 100)
               : ((p.weightsPublished && typeof p.predicted === 'number' && typeof p.maximum === 'number')
                 ? 'about ' + p.predicted + ' of ' + p.maximum + ' marks'
                 : 'sharing the marks equally between criteria')
@@ -5302,8 +5291,8 @@
         kids.push(el('p', { cls: 'predicted-total' }, [
           el('strong', { text: 'The AI\u2019s own total: ' + markTotal + ' of ' + maxTotal + '.' }),
           el('span', { text: (cal && cal.applied)
-            ? ' The estimate above adds the measured correction for the app\u2019s known under-read, which is why it is higher than this total.'
-            : '' })
+            ? ' The estimate above is adjusted for the app\u2019s measured under-read, which is why it differs from this total.'
+            : ' No adjustment has been applied, so the estimate above is this total.' })
         ]));
       }
     }

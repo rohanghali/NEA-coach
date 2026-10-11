@@ -1398,10 +1398,28 @@ section('12. Scoring calibration');
   let worstCheap = 0;
   for (const a of cheap) {
     const r = cal.assessPrediction(a.app, 100, { board: a.board, model: a.model });
-    worstCheap = Math.max(worstCheap, Math.abs(r.calibrated - a.real));
+    // The shown figure is the corrected one WHEN a correction was applied.
+    const shown = r.applied ? r.calibrated : r.raw;
+    worstCheap = Math.max(worstCheap, Math.abs(shown - a.real));
   }
-  ok('the cheap model also lands within 2 marks once corrected',
-    worstCheap <= 2, 'worst error ' + worstCheap);
+  /*
+   * The cheap model is deliberately NOT corrected any more.
+   *
+   * Its fitted line is a good fit on its own anchors (max residual 1.2), but its
+   * measured error spans 16 to 23 marks. Applying one number across a spread that
+   * wide is another guess, and on a real portfolio it turned an 81 into a 98
+   * against a true 90 - eight marks out, when the raw reading had been nine out.
+   * The user's verdict was "still inaccurate ... this needs to go". So this model
+   * now reports the AI's own figure and says why it is not adjusted.
+   */
+  ok('the cheap model is left uncorrected, because its error range is too wide',
+    cheap.every((a) => {
+      const r = cal.assessPrediction(a.app, 100, { board: a.board, model: a.model });
+      return r.applied === false && r.reason === 'error-too-variable';
+    }),
+    'a cheap-model anchor was still corrected');
+  ok('and its span really is the reason',
+    cal.assessPrediction(80, 100, { board: 'aqa-gcse', model: 'gemini-3.1-flash-lite' }).measuredSpan > 5);
 
   /*
    * The two models must NOT share a correction. The strong model's fit and the cheap
@@ -1424,9 +1442,20 @@ section('12. Scoring calibration');
    */
   const anchorCheap = cheap[cheap.length - 1];
   const wrong = Math.round(fs1.slope * anchorCheap.app + fs1.intercept);
-  ok('using the wrong model\'s correction would be worse',
-    Math.abs(wrong - anchorCheap.real) > Math.abs(worstCheap),
-    'wrong-model result ' + wrong + ' vs real ' + anchorCheap.real);
+  const right = Math.round(fc1.slope * anchorCheap.app + fc1.intercept);
+  /*
+   * Measured against the RIGHT correction, not against leaving it alone.
+   *
+   * It used to compare the wrong-model result with `worstCheap`, which was the
+   * corrected error. Now that the cheap model is deliberately left uncorrected,
+   * "no correction" is the weaker baseline (23 marks out here) and the wrong line
+   * at 12 marks out would beat it - making the assertion pass for the wrong reason.
+   * The claim grouping actually protects is that the right fit beats the wrong one.
+   */
+  ok('using the wrong model\'s correction would be clearly worse',
+    Math.abs(wrong - anchorCheap.real) > Math.abs(right - anchorCheap.real) + 5,
+    'wrong-model ' + wrong + ' (err ' + Math.abs(wrong - anchorCheap.real)
+      + ') vs right-model ' + right + ' (err ' + Math.abs(right - anchorCheap.real) + ')');
 
   // Refusing to correct outside the measured range is the point.
   const below = cal.assessPrediction(40, 100, { board: 'aqa-gcse', model: 'gemini-3.5-flash' });
@@ -1472,10 +1501,23 @@ section('12. Scoring calibration');
   ok('the report carries the calibration', /predicted: Object\.assign\(\{\}, predicted, \{ calibration \}\)/.test(serverSrc));
   ok('it is computed with the marking model, not the page reader',
     /const markModel = String\(cfg\.visionModel \|\| ''\)\.trim\(\) \|\| cfg\.model;/.test(serverSrc));
-  ok('the UI shows the adjustment and its reason',
-    /predicted-calibrated/.test(page) && /cal\.note/.test(page));
-  ok('and shows the unadjusted note when no adjustment applies',
-    /else if \(cal && cal\.note\)/.test(page));
+  /*
+   * ONE short line, whichever way the correction went.
+   *
+   * There used to be an emphasised block headed "Why the estimate is higher than
+   * the AI's own reading" whenever a correction applied. On a real portfolio it
+   * explained, at length, turning 81 into 98 against a true 90. The user's verdict
+   * was "this needs to go", and the correction itself is now only applied when the
+   * measured error is tight enough for it to be an improvement - so the long
+   * justification has nothing left to justify.
+   */
+  ok('the UI states the calibration outcome in one line',
+    /if \(cal && cal\.note\) \{[\s\S]{0,160}predicted-fact/.test(page));
+  ok('and the long "why this is higher" block is gone',
+    !/Why the estimate is higher/.test(page),
+    'the paragraph the user asked to remove is still present');
+  ok('and there is no separate emphasised calibration block any more',
+    !/predicted-calibrated/.test(page));
   /*
    * The panel was restructured after the student said it "looked a bit messy": the
    * number was sharing a 128px column with three percentages and three notes. The fix
@@ -1485,8 +1527,6 @@ section('12. Scoring calibration');
     /predicted-body/.test(page) && /el\('div', \{ cls: 'predicted-body' \}, supporting\)/.test(page));
   ok('the figure column no longer holds the notes',
     !/cls: 'predicted-note'[\s\S]{0,80}cls: 'predicted-pct'/.test(page));
-  ok('the calibration note is its own emphasised block',
-    /class="predicted-calibrated"|cls: 'predicted-calibrated'/.test(page));
   ok('the measurement facts use the quiet fact style',
     /predicted-fact/.test(page));
 }
@@ -3039,13 +3079,22 @@ section('11b. AI pass applies the cross-check');
 
     ok('the criteria table states its own total',
       new RegExp("own total: " + criterionTotal + " of 100").test(joined), joined.slice(0, 200));
-    ok('and says why that differs from the estimate',
-      /why it is higher than this total/i.test(joined));
-    ok('the headline figure is the calibrated one', c.applied && /about ' + String(c.calibrated) + ' of 100/.test(joined) === false
-      || joined.indexOf('about ' + c.calibrated + ' of 100') > -1,
-      'headline ' + c.calibrated + ' not found');
-    ok('and the AI\'s own reading is named beside it',
-      joined.indexOf('the AI itself read ' + criterionTotal + ' of 100') > -1, joined.slice(0, 200));
+    ok('and explains the relationship between that total and the estimate',
+      /why it differs from this total|is this total/i.test(joined), joined.slice(-200));
+    /*
+     * The headline is whatever the calibration decided: the corrected figure when
+     * one was applied, otherwise the AI's own reading. Both are correct answers to
+     * "what does the panel show", and asserting only the corrected form is what
+     * broke when the cheap model stopped being corrected.
+     */
+    const expectedHeadline = c.applied ? c.calibrated : c.raw;
+    ok('the headline figure matches what the calibration decided',
+      joined.indexOf('about ' + expectedHeadline + ' of 100') > -1,
+      'expected about ' + expectedHeadline + ' of 100, got: ' + joined.slice(0, 160));
+    ok('and the AI\'s own reading is named',
+      new RegExp('read this as ' + criterionTotal + ' out of 100').test(joined)
+      || joined.indexOf('the AI\u2019s own reading was ' + criterionTotal) > -1,
+      joined.slice(0, 240));
     // The raw reading was printed twice in a row once already.
     ok('the raw reading is stated once, not twice',
       !/own reading was/.test(joined), 'the duplicate line is back');
