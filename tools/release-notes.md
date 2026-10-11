@@ -18,28 +18,24 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Settings now shows which of the two files you have added.** Your portfolio section opens with two
-  rows, one for the **PDF** and one for the **PowerPoint**, each ticked and naming the file, or saying
-  what is missing and what it costs you — "not added — the AI is reading your words only, so drawn and
-  photographed work is invisible to it and the mark will read low". The group's own header names them
-  too, so you can see it without opening the section.
-- **Fixed a bug in that header.** It read a field the app never sends, so with a PowerPoint and no PDF
-  it said *"nothing added yet"* while a portfolio was loaded and being marked. Wrong way round, and
-  silent, in the one place that answers "what have I given it?".
+- **It has an icon now** — in the browser tab, on a phone home screen, and on the desktop. If
+  you already added it to your phone, remove the old shortcut and add it again: iOS takes the
+  icon at the moment you add it, so the old one will keep its blank tile.
+- **A real Mac app.** The download now contains `NEA Coach.app`. Drag it to your Desktop or to
+  Applications — it carries everything inside it, so it keeps working wherever you put it, and
+  it has a proper icon in the Dock.
+- **A Desktop shortcut on Windows.** `Start NEA Coach.bat` puts "NEA Coach" on your Desktop with
+  the icon the first time it runs. If you delete it, it stays deleted.
 
-**In the previous version (v1.0.27)**
+**In v1.0.28**
 
-- **One box for your portfolio instead of two**, with a note saying what each format is good for. The
-  PDF is what the AI reads, page by page, including your sketches and photographs. The PowerPoint adds
-  the layout checks a PDF cannot support.
+- **Settings shows which of the two files you have added** — one row for the PDF and one for the
+  PowerPoint, each naming the file or saying what is missing. It also fixed a bug in that header
+  that reported a loaded PowerPoint as "nothing added yet".
 
-**In v1.0.26**
+**In v1.0.27**
 
-- **Removed a warning that was not true** — that with only a PDF the free checks had nothing to read.
-
-**In v1.0.25**
-
-- **A "Top" button** in the bottom corner, once you are far enough down a report for it to help.
+- **One box for your portfolio instead of two**, with a note saying what each format is good for.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

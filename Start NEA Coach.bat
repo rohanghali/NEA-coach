@@ -34,6 +34,23 @@ echo   %~dp0
 goto :finish
 :in_folder
 
+REM ------------------------------------------------------------
+REM  A Desktop shortcut with a real icon.
+REM
+REM  A .bat cannot carry an icon of its own: Windows draws every batch
+REM  file as the same generic gear, so the app looked like a script
+REM  rather than an app. A .lnk points at an icon, so one is made the
+REM  first time this runs - only if it is missing, so deleting it is
+REM  respected rather than undone on every launch.
+REM
+REM  The whole command is on one line on purpose. Inside a bracketed
+REM  block the parentheses in the PowerShell would close the block
+REM  early, which is the same trap the pushd above is written to avoid.
+REM ------------------------------------------------------------
+if not exist "%~dp0assets\NEA Coach.ico" goto :no_shortcut
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path ([Environment]::GetFolderPath('Desktop')) 'NEA Coach.lnk'; if (-not (Test-Path $p)) { $s=(New-Object -ComObject WScript.Shell).CreateShortcut($p); $s.TargetPath='%~f0'; $s.WorkingDirectory='%~dp0.'; $s.IconLocation='%~dp0assets\NEA Coach.ico,0'; $s.Description='NEA Coach'; $s.Save() }" >nul 2>&1
+:no_shortcut
+
 REM Mirror server.js and the Mac launcher: NEA_COACH_PORT wins if it is set,
 REM otherwise 4173. An empty value counts as "not set", which is what makes
 REM the "if not defined" test below work.

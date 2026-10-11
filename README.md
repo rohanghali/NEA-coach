@@ -580,6 +580,21 @@ which is also how you would keep the app and its data together on a USB stick.
 To start again from nothing, delete that folder. To find your saved reports, they are
 the `*.json` files in it.
 
+**Putting it on a phone, or on the desktop**
+
+- **Phone.** Open the app on your phone at the address printed in the NEA Coach window, then
+  use your browser's *Add to Home Screen*. The name and icon come from the app itself, so it
+  looks like an app rather than a bookmark. On iOS use **Safari** — Chrome and Firefox on iOS
+  cannot add to the home screen.
+- **Mac.** The download contains `NEA Coach.app`. Drag it to the Desktop or to Applications.
+  It carries its own copy of everything, so it keeps working after being moved.
+- **Windows.** `Start NEA Coach.bat` puts a shortcut with the icon on your Desktop the first
+  time it runs. Deleting the shortcut is respected — it is not recreated on every launch.
+
+The icons come from one drawing in `tools/make-icons.js`, so the browser tab, the phone
+icon, the Mac app and the Windows shortcut cannot drift apart into four near-misses. That
+script only needs running if the design changes; its output is committed.
+
 **Design constraints, deliberately chosen:**
 
 - **Zero npm dependencies.** Nothing to install, nothing to break, no supply chain.

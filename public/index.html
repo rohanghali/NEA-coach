@@ -4,8 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<meta name="description" content="NEA Coach — a read-only PowerPoint portfolio reviewer for A-level Design and Technology.">
+<meta name="description" content="NEA Coach — a read-only portfolio reviewer for A-level Design and Technology. Give it a PDF or a PowerPoint and it tells you what to fix.">
 <title>NEA Coach</title>
+
+<!--
+  The icon, in every shape the places it appears want.
+
+  There was none at all, which is what the student noticed: "i have it on my home screen on
+  mobile but theres no icon". A phone home-screen shortcut takes its icon from
+  apple-touch-icon, not from the favicon, so the favicon alone would not have fixed it.
+
+  Drawn by tools/make-icons.js and committed, so the browser tab, the phone icon, the Mac
+  .app and the Windows shortcut are all the SAME drawing rather than four near-misses.
+-->
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<!-- The colour of the browser chrome and the phone status bar, matching the accent. -->
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<!--
+  Safari's own tags. The manifest above is ignored for "Add to Home Screen" on iOS, which
+  reads these instead — and it reads them over plain HTTP, which matters because this is
+  served from a Mac on the local network with no certificate.
+-->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="NEA Coach">
 <style>
   :root {
     color-scheme: light;

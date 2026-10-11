@@ -13,6 +13,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const zlib = require('zlib');
 
 const ROOT = path.join(__dirname, '..');
 const { parsePresentation } = require(path.join(ROOT, 'lib/pptx.js'));
@@ -4179,6 +4180,197 @@ section('12r. What has been loaded, said plainly');
   ok('nothing reads a config field the server does not send',
     !/config\.deckName/.test(live),
     'config.deckName has never been sent by the server, and reading it is what hid a loaded PowerPoint');
+}
+
+section('12s. The icon, in every place it appears');
+{
+  /*
+   * Reported: "i have it on my home screen on mobile but theres no icon".
+   *
+   * A phone home-screen shortcut takes its icon from apple-touch-icon, NOT from the
+   * favicon, so having one and not the other would not have fixed it. There was no icon
+   * anywhere: not in the tab, not on the home screen, not on the desktop.
+   */
+  const publicDir = path.join(ROOT, 'public');
+  const assetsDir = path.join(ROOT, 'assets');
+  const page = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+
+  // --- the files are there ----------------------------------------------------------
+  const webIcons = ['favicon.ico', 'icon-16.png', 'icon-32.png', 'icon-180.png',
+    'icon-192.png', 'icon-512.png', 'icon-512-maskable.png', 'manifest.webmanifest'];
+  ok('every icon file the page needs is present',
+    webIcons.every((f) => fs.existsSync(path.join(publicDir, f))),
+    webIcons.filter((f) => !fs.existsSync(path.join(publicDir, f))).join(', ') + ' missing');
+  ok('the Mac icon is present', fs.existsSync(path.join(assetsDir, 'NEA Coach.icns')));
+  ok('the Windows icon is present', fs.existsSync(path.join(assetsDir, 'NEA Coach.ico')));
+
+  // --- the page asks for them -------------------------------------------------------
+  ok('the page declares an apple-touch-icon',
+    /rel="apple-touch-icon"[^>]*href="\/icon-180\.png"/.test(page),
+    'iOS reads apple-touch-icon for Add to Home Screen, not the favicon');
+  ok('and a favicon', /rel="icon"[^>]*href="\/favicon\.ico"/.test(page));
+  ok('and the manifest', /rel="manifest"[^>]*href="\/manifest\.webmanifest"/.test(page));
+  ok('and a theme colour, so the phone status bar matches',
+    /name="theme-color"[^>]*content="#2563eb"/.test(page));
+  ok('and the Safari standalone tag, which iOS still needs',
+    /name="apple-mobile-web-app-capable"[^>]*content="yes"/.test(page));
+
+  // --- decoding, which is the only thing that catches a bad checksum -----------------
+  /*
+   * Node's own CRC, deliberately. Reusing the generator's would let a shared bug pass, and
+   * a shared bug is exactly what happened: the first version of tools/make-icons.js shifted
+   * by one bit instead of eight, producing a checksum that looks like a checksum. `file`
+   * still reported "PNG image data, 180 x 180" while macOS and the image readers refused to
+   * open it. Nothing short of decoding finds that.
+   */
+  ok('this Node can verify checksums independently',
+    typeof zlib.crc32 === 'function', 'zlib.crc32 is unavailable');
+
+  const decode = (buf, label) => {
+    if (buf.slice(0, 8).toString('hex') !== '89504e470d0a1a0a') { return label + ': not a PNG'; }
+    let off = 8; let w = 0; let h = 0; let bitDepth = 0; let colour = 0;
+    const idat = [];
+    while (off + 12 <= buf.length) {
+      const len = buf.readUInt32BE(off);
+      const type = buf.slice(off + 4, off + 8).toString('ascii');
+      const data = buf.slice(off + 8, off + 8 + len);
+      const stored = buf.readUInt32BE(off + 8 + len);
+      const mine = zlib.crc32(Buffer.concat([buf.slice(off + 4, off + 8), data])) >>> 0;
+      if (mine !== stored) { return label + ': ' + type + ' checksum is wrong'; }
+      if (type === 'IHDR') {
+        w = data.readUInt32BE(0); h = data.readUInt32BE(4); bitDepth = data[8]; colour = data[9];
+      }
+      if (type === 'IDAT') { idat.push(data); }
+      off += 12 + len;
+    }
+    if (bitDepth !== 8 || colour !== 6) { return label + ': expected 8-bit RGBA'; }
+    const raw = zlib.inflateSync(Buffer.concat(idat));
+    if (raw.length !== (w * 4 + 1) * h) {
+      return label + ': inflated ' + raw.length + ' bytes, wanted ' + ((w * 4 + 1) * h);
+    }
+    return { w: w, h: h };
+  };
+
+  const pngFiles = webIcons.filter((f) => /\.png$/.test(f));
+  const badPng = pngFiles.filter((f) => typeof decode(fs.readFileSync(path.join(publicDir, f)), f) === 'string');
+  ok('every generated PNG decodes, checksums and all', badPng.length === 0, badPng.join(', '));
+
+  // --- the manifest agrees with the files -------------------------------------------
+  const manifest = JSON.parse(fs.readFileSync(path.join(publicDir, 'manifest.webmanifest'), 'utf8'));
+  ok('the manifest names the app',
+    manifest.name === 'NEA Coach' && manifest.short_name === 'NEA Coach');
+  ok('it opens at the root, which the access cookie already authenticates',
+    manifest.start_url === '/', manifest.start_url);
+  ok('and asks to be shown without browser chrome',
+    manifest.display === 'standalone', manifest.display);
+  ok('every icon it declares exists and is the size it claims',
+    manifest.icons.every((i) => {
+      const file = path.join(publicDir, i.src.replace(/^\//, ''));
+      if (!fs.existsSync(file)) { return false; }
+      const d = decode(fs.readFileSync(file), i.src);
+      return typeof d !== 'string' && d.w + 'x' + d.h === i.sizes;
+    }), JSON.stringify(manifest.icons.map((i) => i.src + ' -> ' + i.sizes)));
+  ok('and one of them is maskable, because Android crops to its own shape',
+    manifest.icons.some((i) => i.purpose === 'maskable'));
+
+  // --- the two platform icons are real containers -----------------------------------
+  const icoSizes = (file) => {
+    const buf = fs.readFileSync(file);
+    if (buf.readUInt16LE(0) !== 0 || buf.readUInt16LE(2) !== 1) { return null; }
+    const out = [];
+    for (let i = 0; i < buf.readUInt16LE(4); i++) {
+      const at = 6 + i * 16;
+      const declared = buf[at] === 0 ? 256 : buf[at];
+      const len = buf.readUInt32LE(at + 8);
+      const off = buf.readUInt32LE(at + 12);
+      out.push({ declared: declared, png: buf.slice(off, off + len) });
+    }
+    return out;
+  };
+
+  for (const [label, file] of [['favicon.ico', path.join(publicDir, 'favicon.ico')],
+    ['NEA Coach.ico', path.join(assetsDir, 'NEA Coach.ico')]]) {
+    const entries = icoSizes(file);
+    ok(label + ' is a real icon container', !!entries && entries.length > 0);
+    /*
+     * Different jobs, different sizes. A favicon only ever appears in a tab, so 16/32/48 is
+     * the right set; Explorer and the taskbar ask for a large one, which is why the Windows
+     * icon carries 256 as well.
+     */
+    if (label === 'favicon.ico') {
+      ok(label + ' holds the sizes a browser tab asks for',
+        [16, 32].every((s) => entries.some((e) => e.declared === s)),
+        entries.map((e) => e.declared).join(', '));
+    } else {
+      ok(label + ' holds a small size for the taskbar and a large one for Explorer',
+        entries.some((e) => e.declared <= 32) && entries.some((e) => e.declared >= 256),
+        entries.map((e) => e.declared).join(', '));
+    }
+    const broken = entries.filter((e) => {
+      const d = decode(e.png, label);
+      return typeof d === 'string' || d.w !== e.declared;
+    });
+    ok(label + ' holds PNGs that decode at the size each entry claims',
+      broken.length === 0, broken.length + ' bad entries');
+  }
+
+  const icns = fs.readFileSync(path.join(assetsDir, 'NEA Coach.icns'));
+  ok('the Mac icon is a real icns container',
+    icns.slice(0, 4).toString('ascii') === 'icns' && icns.readUInt32BE(4) === icns.length,
+    'the icns header or length is wrong');
+  const icnsTypes = [];
+  const icnsPngs = [];
+  for (let off = 8; off + 8 <= icns.length;) {
+    const type = icns.slice(off, off + 4).toString('ascii');
+    const len = icns.readUInt32BE(off + 4);
+    icnsTypes.push(type);
+    icnsPngs.push(icns.slice(off + 8, off + len));
+    off += len;
+  }
+  ok('and it carries the sizes macOS asks for',
+    ['ic11', 'ic12', 'ic07', 'ic08', 'ic09', 'ic10'].every((t) => icnsTypes.indexOf(t) > -1),
+    icnsTypes.join(', '));
+  ok('with every one decoding',
+    icnsPngs.every((b, i) => typeof decode(b, 'icns ' + icnsTypes[i]) !== 'string'));
+
+  /*
+   * The generator must refuse to write anything if its checksum is wrong. This is the
+   * self-check that turns a silent, every-decoder-rejects-it failure into a loud one.
+   */
+  const tool = fs.readFileSync(path.join(ROOT, 'tools', 'make-icons.js'), 'utf8');
+  ok('the icon generator checks its own CRC before writing anything',
+    /0xcbf43926/.test(tool), 'the standard CRC-32 test vector is not checked');
+  ok('and the update step shifts by eight, which is the bug it had',
+    /crc >>> 8/.test(tool), 'the checksum update is wrong again');
+
+  // --- the desktop icons ------------------------------------------------------------
+  const bat = fs.readFileSync(path.join(ROOT, 'Start NEA Coach.bat'), 'utf8');
+  ok('the Windows launcher makes a Desktop shortcut with the icon',
+    /CreateShortcut/.test(bat) && /IconLocation='%~dp0assets\\NEA Coach\.ico/.test(bat),
+    'a .bat cannot carry an icon, so a shortcut is the only way to give it one');
+  ok('and only when it is missing, so deleting it is respected',
+    /if \(-not \(Test-Path \$p\)\)/.test(bat));
+  /*
+   * Ordering, and this was a real bug introduced while adding it. `pushd` is followed by
+   * `if not errorlevel 1 goto :in_folder`, and the shortcut call was first placed BETWEEN
+   * them — so a PowerShell that failed (a blocked execution policy, say) would make the
+   * launcher report "could not open the app folder" and refuse to start at all.
+   */
+  const pushdAt = bat.indexOf('pushd "%~dp0."');
+  const checkAt = bat.indexOf('if not errorlevel 1 goto :in_folder');
+  const shortcutAt = bat.indexOf('CreateShortcut');
+  ok('the shortcut call cannot break the launcher\'s own start-up check',
+    pushdAt > -1 && checkAt > pushdAt && shortcutAt > checkAt,
+    'anything between pushd and its errorlevel check changes what that check is testing');
+
+  const pkg = fs.readFileSync(path.join(ROOT, 'tools', 'package.sh'), 'utf8');
+  ok('the Mac package builds a real .app bundle',
+    /build_mac_app/.test(pkg) && /CFBundleExecutable/.test(pkg) && /CFBundleIconFile/.test(pkg));
+  ok('the bundle carries its own copy of the app, so it can be dragged to the Desktop',
+    /Contents\/Resources\/app/.test(pkg));
+  ok('and it is staged outside the folder it copies, or the copy would recurse',
+    /\.nea-app-stage/.test(pkg));
+  ok('assets ship, so both platforms can find their icon', /^\s*assets$/m.test(pkg));
 }
 
 })().then(summary, (err) => {

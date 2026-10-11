@@ -408,7 +408,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.28';
+const VERSION = '1.0.29';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -1684,6 +1684,7 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.webmanifest': 'application/manifest+json',
 };
 
 function serveStatic(req, res, urlPath) {
