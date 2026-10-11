@@ -3079,6 +3079,57 @@ section('11b. AI pass applies the cross-check');
       /'modelNote'/.test(src.match(/function cacheElements\(\)[\s\S]*?\];/)[0]));
   }
 
+section('12e2. The exam board\'s own guidance reaches the marking prompt');
+{
+  /*
+   * The user supplied AQA's 8552 candidate record form, which carries the board's
+   * per-criterion "positive features" and "further development" notes. The second
+   * of those is what the board says is typically MISSING from work at that level,
+   * and it is the most directly useful thing in the document for marking.
+   *
+   * It was silently dropped the first time: loadSpec() whitelists the fields it
+   * copies out of each criterion, so anything not listed is discarded without a
+   * word. That is the same silent-failure shape as the uncached ui.* elements, so
+   * it is pinned here.
+   */
+  const ai = require(path.join(ROOT, 'lib', 'ai.js'));
+  const spec = ai.loadSpec(path.join(ROOT, 'spec'), 'aqa-gcse');
+
+  ok('the AQA spec still loads', spec.criteria.length === 6, String(spec.criteria.length));
+  ok('the six official criteria are the ones AQA actually marks',
+    spec.criteria.map((c) => c.name).join('|')
+      === 'Identifying and investigating design possibilities|Producing a design brief and specification|Generating design ideas|Developing design ideas|Realising design ideas|Analysing and evaluating',
+    spec.criteria.map((c) => c.name).join('|'));
+  ok('and their maxima total 100, as the record form states',
+    spec.criteria.reduce((t, c) => t + (c.weight || 0), 0) === 100,
+    String(spec.criteria.reduce((t, c) => t + (c.weight || 0), 0)));
+  ok('the per-criterion maxima match the form (10/10/20/20/20/20)',
+    spec.criteria.map((c) => c.weight).join(',') === '10,10,20,20,20,20',
+    spec.criteria.map((c) => c.weight).join(','));
+
+  ok('every criterion carries the board\'s top-band wording',
+    spec.criteria.every((c) => c.evidence && c.evidence.length > 80),
+    'a criterion has no evidence text');
+  ok('and the board\'s note on what is typically missing',
+    spec.criteria.every((c) => c.commonShortfalls && c.commonShortfalls.length > 40),
+    spec.criteria.map((c) => c.id + ':' + (c.commonShortfalls ? 'yes' : 'MISSING')).join(' '));
+
+  // loadSpec must COPY the field, not merely have it in the file.
+  const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'spec', 'aqa-gcse-dt-criteria.json'), 'utf8'));
+  ok('the spec file itself holds the guidance',
+    raw.criteria.every((c) => c.commonShortfalls));
+  ok('loadSpec carries it through rather than dropping unknown fields',
+    spec.criteria.every((c) => c.commonShortfalls && c.commonShortfalls.length > 40));
+
+  // And it must actually be interpolated into the prompt text.
+  const src = fs.readFileSync(path.join(ROOT, 'lib', 'ai.js'), 'utf8');
+  ok('it is placed in the marking prompt, twice (batch and cross-check)',
+    (src.match(/commonShortfalls/g) || []).length >= 4,
+    String((src.match(/commonShortfalls/g) || []).length) + ' references');
+  ok('the prompt version was bumped so cached results are not reused',
+    /PROMPT_VERSION = '8'/.test(src));
+}
+
   /* ------------------------------------------------------------------ *
    * 12f. Settings save themselves
    *

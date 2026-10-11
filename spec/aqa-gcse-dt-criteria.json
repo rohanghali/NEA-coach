@@ -1,5 +1,5 @@
 {
-  "_source": "AQA GCSE Design and Technology (8552) specification, section 2.2 Assessments and the NEA assessment criteria. Criterion NAMES and the 100-mark total are taken from AQA's published specification at https://www.aqa.org.uk/subjects/design-and-technology/gcse/design-and-technology-8552/specification/specification-at-a-glance",
+  "_source": "AQA GCSE Design and Technology (8552) specification, section 2.2 Assessments and the NEA assessment criteria. Criterion NAMES and the 100-mark total are taken from AQA's published specification at https://www.aqa.org.uk/subjects/design-and-technology/gcse/design-and-technology-8552/specification/specification-at-a-glance Per-criterion evidence wording and the commonShortfalls notes are the exam board's own descriptive guidance, taken from the AQA 8552 candidate record form (8552/CRF).",
   "_note": "The six assessment criteria for the NEA, and their mark allocation, are taken from the official AQA GCSE Design and Technology (8552) specification, Version 1.2 (6 June 2022), sections 4.4.4.1 to 4.4.4.6. The NEA is 100 marks (50% of the GCSE). Section 4.4.4 states that each band must be viewed HOLISTICALLY when marking, and that the criteria must not be viewed as a linear process.",
   "_band_note": "AQA marks by best fit within a band: work that fully meets a band is placed at the top of it, that mostly meets it in the middle, and that just meets it at the bottom.",
   "_total_marks": 100,
@@ -10,8 +10,9 @@
       "weight": 10,
       "ao": "AO1",
       "description": "Investigating the contextual challenge: identifying design possibilities, researching the client's and user's needs and wants, and investigating the work of others. AQA expects evidence of investigation, not description.",
-      "evidence": "A top-band response identifies and investigates a range of design possibilities arising from the contextual challenge, with perceptive research into the needs, wants and values of the intended user, and clear evidence that investigating the work of others has informed the direction taken.",
-      "bandRange": "9-10 marks is the top band"
+      "evidence": "The student has analysed the design problem. A product analysis is a good way to look at the work of others and allows the student to start looking at product strengths and weaknesses, and it is clear this is primary research. An important focus throughout is on the client: the client has been identified along with the user and the environment, and primary investigation has been carried out with the client, for example a questionnaire. Investigation is concluded throughout and directly informs the brief and specification, and a research analysis table consolidates the findings. Investigation happens throughout the portfolio and is clearly evidenced, which shows the iterative process.",
+      "bandRange": "9-10 marks is the top band",
+      "commonShortfalls": "An analysis of the contextual challenge and possible opportunities would improve this section, and a wider range of research techniques would strengthen the development research."
     },
     {
       "id": "b",
@@ -19,8 +20,9 @@
       "weight": 10,
       "ao": "AO1",
       "description": "Turning the investigation into a design brief and a specification that is objective and measurable, so the design work can be tested against it later.",
-      "evidence": "A top-band response produces a clear design brief grounded in the investigation, and a detailed specification of measurable criteria which the design and the prototype can be evaluated against.",
-      "bandRange": "9-10 marks is the top band"
+      "evidence": "The design brief is clear and identifies all the key points in the marking criteria. The design specification directly links to the investigation that has taken place. Most points are measurable and have been justified to a good standard.",
+      "bandRange": "9-10 marks is the top band",
+      "commonShortfalls": "Specification points are more an analysis of the research than measurable specification points; each one should be a measurable target that can later be tested against."
     },
     {
       "id": "c",
@@ -28,8 +30,9 @@
       "weight": 20,
       "ao": "AO2",
       "description": "Generating a range of initial design ideas in response to the brief, showing creativity and an understanding of materials and processes.",
-      "evidence": "A top-band response generates a range of creative initial ideas that clearly respond to the design brief, communicated with enough skill that a third party can understand them, and showing understanding of the materials and processes involved.",
-      "bandRange": "16-20 marks is the top band"
+      "evidence": "The initial ideas show a range of ideas informed by investigation work, and it is clear where inspiration has come from. A range of techniques has been used to communicate ideas, and it is good practice to see the student analysing their designs throughout. Further investigation is discussed, and the ideas are clear and well communicated.",
+      "bandRange": "16-20 marks is the top band",
+      "commonShortfalls": "Ideas should be analysed as they are generated rather than only presented, and further investigation should be discussed alongside each idea."
     },
     {
       "id": "d",
@@ -37,8 +40,9 @@
       "weight": 20,
       "ao": "AO2",
       "description": "Iteratively developing ideas through modelling, testing and the views of others, with detail of materials, dimensions, finishes and production, so the design is ready to make.",
-      "evidence": "A top-band response develops ideas iteratively, using modelling and testing to make and justify design decisions, and arrives at a detailed proposal giving materials, dimensions, finishes and production requirements that satisfies the specification.",
-      "bandRange": "16-20 marks is the top band"
+      "evidence": "The student has used many techniques to develop the final prototype and has explained and analysed decisions throughout. A range of basic models has been produced to plan the manufacture of the prototype and to help make decisions, and investigation continues throughout this section. A detailed manufacturing specification has been produced in the form of a cutting list and orthographic drawing, and a final model has been produced supported by a final design.",
+      "bandRange": "16-20 marks is the top band",
+      "commonShortfalls": "The manufacturing specification is lacking the detail needed for third-party manufacture: tolerances, finishes, quantities and the sequence of making."
     },
     {
       "id": "e",
@@ -46,8 +50,9 @@
       "weight": 20,
       "ao": "AO2",
       "description": "Making the prototype: a logical sequence of production, selection of appropriate materials and components, safe and accurate use of tools and processes, and the quality of the finished outcome.",
-      "evidence": "A top-band response shows a logical and achievable sequence of production, selects appropriate materials and components, works safely and accurately with specialist tools and processes, and produces a high-quality prototype that functions as intended.",
-      "bandRange": "16-20 marks is the top band"
+      "evidence": "A final prototype has been produced using a range of appropriate tools and processes. The student has evidenced quality control throughout the manufacture plan, evidence of the stages of making is evident, and clear photographs of the prototype are included.",
+      "bandRange": "16-20 marks is the top band",
+      "commonShortfalls": "Evidence of the CAD files would support the manufacture section, and quality-control checks should be shown against measurable tolerances rather than described."
     },
     {
       "id": "f",
@@ -55,8 +60,9 @@
       "weight": 20,
       "ao": "AO3",
       "description": "Analysing and evaluating the design decisions and the finished prototype against the brief and specification, drawing conclusions and identifying how the outcome could be improved.",
-      "evidence": "A top-band response critically analyses and evaluates the design decisions and the final prototype against the specification and the views of the user, draws appropriate conclusions, and identifies specific improvements with reference to measurable criteria.",
-      "bandRange": "16-20 marks is the top band"
+      "evidence": "Clear testing against the specification has taken place at the end of the portfolio, the student has conducted a range of appropriate physical tests of the product, and the client and customer have provided feedback and tested the product. There is good discussion of how the product could be further developed, and analysis and evaluation happen throughout the portfolio, usually evidenced in a summary box.",
+      "bandRange": "16-20 marks is the top band",
+      "commonShortfalls": "The student could redevelop possible solutions for future development to support the written responses, and evaluation should compare measured results with the specification targets rather than describe the outcome."
     }
   ]
 }
