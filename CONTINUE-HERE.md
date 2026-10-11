@@ -455,6 +455,21 @@ Advanced, with a "best marks" preset. And the visual pass — depth, type scale,
 clear primary action — has not been started. Phase 3 changes how the whole app looks
 and still needs a human to look at it.
 
+**Published as v1.0.4**, both platforms, and verified by downloading the release back
+and checking the wizard markup (`introOverlay` x10, `btnShowSetup` x4) is inside BOTH
+zips. `VERSION` in `server.js` was moved to `1.0.4` at the same time — it had said
+`1.0.0` through three releases, which is actively misleading when a user reports a
+problem and the first useful fact is which build they are on. Keep it in step with the
+release tag by hand; nothing enforces that yet.
+
+### Seeing the wizard when you already have it set up
+
+The suppression flag is `localStorage['neaCoach.intro.v1'] === 'done'` in the BROWSER,
+so a fresh download shows the wizard even for an existing user with a portfolio and key
+saved — it just opens with a welcome-back note offering to skip to the end. To see it
+again in the same browser: **Settings → Getting started → Show setup again**, or clear
+that one localStorage key.
+
 ---
 
 ## 7. Still to do
