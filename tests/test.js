@@ -2403,8 +2403,17 @@ section('11p. Which portfolio is being marked');
     /if \(pdfName\) \{[\s\S]{0,200}setText\(ui\.reviewedName, pdfName\)/.test(page));
   ok('a mismatched PDF and .pptx name is flagged',
     /have different names\. If they are not the same piece of work/.test(page));
-  ok('a PDF with no .pptx is flagged, because the free checks cannot run',
-    /the free structural checks have nothing to read/.test(page));
+  /*
+   * Inverted deliberately. This used to assert a warning on the grounds that "the free
+   * structural checks cannot run" for a PDF-only setup. They can and do: lib/pdfdeck.js
+   * hands the checks a real deck with the page count and every page's text. The student
+   * asked for the warning to go, and it was wrong as well as unwanted.
+   */
+  ok('a PDF on its own is NOT flagged as un-checkable',
+    !/the free structural checks have nothing to read/.test(page),
+    'the false warning is back');
+  ok('and nothing warns about a .pptx being required',
+    !/Add the \.pptx as well/.test(page));
 }
 
 section('11o. Daily allowance');
@@ -3920,6 +3929,49 @@ section('12o. The back-to-top button');
     /\.to-top \{[\s\S]*?backdrop-filter:\s*blur\(/.test(css));
   ok('and it stays out of the way on a phone, where the word is dropped',
     /@media \(max-width: 700px\) \{[\s\S]{0,200}\.to-top-text \{ display: none/.test(css));
+}
+
+section('12p. The app no longer claims a PDF leaves it nothing to check');
+{
+  /*
+   * The warning read: "Only the PDF is set, so the free structural checks have nothing
+   * to read and the pages cannot be counted. Add the .pptx as well to get those, or
+   * accept that this check is AI-only."
+   *
+   * It was false, and had been for several versions. It is removed rather than reworded,
+   * and these assertions exist so it cannot drift back in.
+   */
+  /*
+   * Comments are stripped first. The note recording WHY the warning was removed quotes
+   * it, and a test that cannot tell an explanation from live code is not testing
+   * anything.
+   */
+  const source = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const page = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const pdfdeck = fs.readFileSync(path.join(ROOT, 'lib', 'pdfdeck.js'), 'utf8');
+
+  ok('the "AI-only" warning is gone', !/AI-only/.test(page), 'the message is still live in the page');
+  ok('and so is the claim that the pages cannot be counted',
+    !/pages cannot be counted/.test(page));
+  ok('and the instruction to add a .pptx as well', !/Add the \.pptx as well/.test(page));
+  ok('the explanation for removing it is still there, so it is not re-added',
+    /do not put it back/.test(source));
+
+  // The facts that made it wrong, asserted against the code rather than trusted.
+  ok('a PDF is read into a real deck, so the free checks do have something to read',
+    /pdfdeck\.deckFromPdf\(fs\.readFileSync\(filePath\)/.test(server),
+    'the PDF path is no longer wired into the scan');
+  ok('the PDF adapter supplies the page count',
+    /slideCount: slides\.length/.test(pdfdeck), 'no page count from a PDF');
+  ok('and the text of every page',
+    /textShapes,/.test(pdfdeck), 'no text from a PDF');
+  ok('and the page count is what the scan logs, so pages are counted',
+    /Read \$\{deck\.slideCount\} pages/.test(server));
+  ok('the rules a PDF genuinely cannot run are still named, rule by rule',
+    /const skipped = \[\]/.test(fs.readFileSync(path.join(ROOT, 'lib', 'checks.js'), 'utf8'))
+    && /skippedRules/.test(page),
+    'a limitation must stay attached to the check it affects');
 }
 
 })().then(summary, (err) => {

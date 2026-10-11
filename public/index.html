@@ -6275,9 +6275,20 @@
         warns.push('The PDF ("' + pdfName + '") and the PowerPoint ("' + deckName + '") have different names. If they are not the same piece of work, the mark would combine two portfolios — remove one of them.');
       }
     }
-    if (pdfName && !deckName) {
-      warns.push('Only the PDF is set, so the free structural checks have nothing to read and the pages cannot be counted. Add the .pptx as well to get those, or accept that this check is AI-only.');
-    }
+    /*
+     * There used to be a warning here saying that with only a PDF "the free structural
+     * checks have nothing to read and the pages cannot be counted". That is not true,
+     * and had not been for a while: lib/pdfdeck.js reads a PDF into a real deck carrying
+     * the page count, the text of every page and a per-page image count, so the text
+     * rules run and the pages ARE counted. On the student's own portfolio it reports 24
+     * pages, with text-too-small firing on two of them.
+     *
+     * What a PDF genuinely cannot supply — per-image size and resolution, shape geometry
+     * and speaker notes — is already named rule by rule in the coverage panel. That is
+     * where a limitation belongs: attached to the check it affects, rather than to the
+     * whole report as a blanket claim. So the warning was wrong AND redundant, and it has
+     * been removed rather than reworded. Please do not put it back.
+     */
     if (warns.length) {
       setText(ui.reviewedWarn, warns.join(' '));
       show(ui.reviewedWarn, true);
