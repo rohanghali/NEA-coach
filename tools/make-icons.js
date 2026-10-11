@@ -20,7 +20,10 @@
  *
  * ONE DRAWING, MANY SIZES
  *
- * Everything below paints a single function of (x, y) in 0..1. The favicon, the phone
+ * Everything below paints a single function of (x, y) in 0..1.
+ *
+ * The mark is three flowing bands — the same drapes that move behind the app — so the icon and
+ * the app are recognisably one thing. The favicon, the phone
  * icon, the Windows icon and the Mac icon are all THAT drawing sampled at different
  * sizes and, in two cases, with different framing — so they cannot drift apart into
  * four subtly different logos.
@@ -108,7 +111,7 @@ function over(dst, src) {
  * macOS expects. Everything inside is expressed as fractions of the BADGE, not of the
  * canvas, so insetting the artwork does not silently rescale the design.
  */
-function sample(u, v, inset, shadow, maskable) {
+function sample(u, v, inset, shadow, maskable, size) {
   const span = 1 - inset * 2;
   const bx = (u - inset) / span;      // 0..1 across the badge
   const by = (v - inset) / span;
@@ -149,32 +152,56 @@ function sample(u, v, inset, shadow, maskable) {
   if (out[3] === 0) { return out; }
 
   /*
-   * The page. A tall rounded rectangle, white, sitting slightly high so the tick below it
-   * has room — that asymmetry is what stops it reading as a generic "document" glyph.
+   * The mark: flowing bands, the app's own visual signature.
+   *
+   * What was here was a white document with a blue tick on it — the generic "checked file"
+   * glyph, and the reason the icon read as basic. Anyone can draw a page with a tick; it says
+   * nothing about what this is.
+   *
+   * These are the same layered drapes that move behind the page. The icon and the app now look
+   * like the same thing, which is the whole job of a mark at this size.
+   *
+   * Each band is a signed distance from its own centre line — a sine of x — so the edge can be
+   * softened the same way the badge is. A hard threshold would look fine at 512px and ragged at
+   * 16, where the whole band is under two pixels tall.
    */
-  const page = { x0: 0.265, x1: 0.735, y0: 0.180, y1: 0.795, r: 0.055 };
-  // Its own shadow, so the page reads as lying on the badge rather than printed into it.
-  const pageShadow = roundedRectDist(bx, by, page.x0 - 0.006, page.y0 + 0.020, page.x1 + 0.006, page.y1 + 0.030, page.r);
-  if (pageShadow < 0) {
-    out = over(out, [0x10, 0x27, 0x70, 0.30 * falloff(pageShadow, 0.035)]);
-  }
-  if (roundedRectDist(bx, by, page.x0, page.y0, page.x1, page.y1, page.r) < 0) {
-    out = over(out, [255, 255, 255, 1]);
-
-    /*
-     * The tick, in the app's accent, stroked as two capsules with round ends.
-     *
-     * Drawn in badge coordinates at 0.088 wide. That is deliberately heavy: at 16px the
-     * whole page is about 7 pixels across and a hairline tick simply disappears, which is
-     * the difference between a recognisable icon and a blue smudge.
-     */
-    const w = 0.076;
-    const d = Math.min(
-      segmentDist(bx, by, 0.392, 0.548, 0.452, 0.612),
-      segmentDist(bx, by, 0.452, 0.612, 0.618, 0.428)
-    );
-    if (d < w) {
-      out = over(out, [ACCENT[0], ACCENT[1], ACCENT[2], 1]);
+  /*
+   * TWO bands when the icon is small, three when it is large.
+   *
+   * At 16px the badge is sixteen pixels across, so three bands of a pixel and a half — with soft
+   * edges on top of that — merge into a blue smudge with a pale streak through it. Rendered at 32
+   * and looked at, which is how this was caught: it read as a wave at 512 and as noise at 32.
+   *
+   * Two thicker bands still read as the same mark, and the shape survives the downscale.
+   */
+  const small = Number(size) > 0 && Number(size) <= 48;
+  const BANDS = small
+    ? [
+      { mid: 0.375, amp: 0.055, phase: 0.00, thick: 0.155, alpha: 1.00 },
+      { mid: 0.660, amp: 0.055, phase: 0.10, thick: 0.135, alpha: 0.80 },
+    ]
+    : [
+      /* The crest: brightest, and the one that carries the shape. */
+      { mid: 0.345, amp: 0.050, phase: 0.00, thick: 0.094, alpha: 1.00 },
+      /* The fold behind it. */
+      { mid: 0.525, amp: 0.058, phase: 0.09, thick: 0.104, alpha: 0.84 },
+      /* And the one falling away into the badge. */
+      { mid: 0.706, amp: 0.048, phase: 0.18, thick: 0.082, alpha: 0.58 },
+    ];
+  /*
+   * One wave shared by all three, offset by phase, so the bands run parallel like folds in cloth
+   * rather than crossing. A little under one and a quarter cycles across the badge: enough for
+   * the curve to read as a wave, not so much that it looks like a squiggle.
+   */
+  const FREQ = 1.2;
+  for (let i = 0; i < BANDS.length; i++) {
+    const band = BANDS[i];
+    const centre = band.mid + band.amp * Math.sin((bx * FREQ + band.phase) * Math.PI * 2);
+    const edge = Math.abs(by - centre) - band.thick / 2;
+    // About a pixel of softness at 512px, in badge units.
+    const a = clamp01(1 - edge / 0.013);
+    if (a > 0) {
+      out = over(out, [255, 255, 255, a * band.alpha]);
     }
   }
 
@@ -198,7 +225,7 @@ function render(size, opts) {
       let r = 0, g = 0, b = 0, a = 0;
       for (let sy = 0; sy < ss; sy++) {
         for (let sx = 0; sx < ss; sx++) {
-          const c = sample((x + (sx + 0.5) / ss) / size, (y + (sy + 0.5) / ss) / size, inset, shadow, !!(opts && opts.maskable));
+          const c = sample((x + (sx + 0.5) / ss) / size, (y + (sy + 0.5) / ss) / size, inset, shadow, !!(opts && opts.maskable), size);
           r += c[0] * c[3];
           g += c[1] * c[3];
           b += c[2] * c[3];
