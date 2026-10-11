@@ -21,6 +21,8 @@ const crypto = require('crypto');
 const { parsePresentation } = require('./lib/pptx');
 const { runLocalChecks } = require('./lib/checks');
 const pdfdeck = require('./lib/pdfdeck');
+const pdftext = require('./lib/pdftext');
+const { compareSameWork } = require('./lib/samework');
 const { assessPrediction: calibrationOf } = require('./lib/calibration');
 const ai = require('./lib/ai');
 
@@ -408,7 +410,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.34';
+const VERSION = '1.0.35';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -1095,6 +1097,48 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
     const deck = fromPdf
       ? pdfdeck.deckFromPdf(fs.readFileSync(filePath), { fileName: path.basename(filePath) }).deck
       : parsePresentation(filePath);
+
+    /*
+     * ---- 2b. Are the two files the same portfolio?
+     *
+     * Only ONE file is ever the structural deck — the .pptx if one is set, the PDF otherwise —
+     * but the PDF is also what the AI looks at. So when both are set the report combines a
+     * layout analysis of one file with a visual mark of another, and if those are not the same
+     * piece of work then every number in it is about neither of them properly.
+     *
+     * Both files are already open here and both parsers expose the text of each page, so the
+     * evidence costs one extra pass over the PDF. See lib/samework.js for why the measure is
+     * Jaccard and where its thresholds came from — the first choice was measured and discarded.
+     */
+    let sameWork = null;
+    if (!fromPdf && cfg.deckFile && cfg.pdfFile && fs.existsSync(cfg.pdfFile)) {
+      try {
+        const pdfParsed = pdftext.extractPdfTextFile(cfg.pdfFile);
+        sameWork = compareSameWork(
+          deck.slides.map((x) => x.text || ''),
+          (pdfParsed.pages || []).map((x) => x.text || '')
+        );
+        // The two names it actually compared, so the page can tell whether the verdict still
+        // applies after a file has been swapped without a re-scan.
+        sameWork.pptxFile = path.basename(cfg.deckFile);
+        sameWork.pdfFile = path.basename(cfg.pdfFile);
+        log('Compared the PowerPoint with the PDF: ' + sameWork.verdict
+          + ' (' + Math.round(sameWork.jaccard * 100) + '% of distinctive words shared, '
+          + sameWork.pptxPages + ' pages against ' + sameWork.pdfPages + ')');
+        if (sameWork.verdict === 'different') {
+          log('WARNING: those look like different pieces of work, so the report below combines two portfolios.');
+        }
+      } catch (err) {
+        log('Could not compare the PowerPoint with the PDF: ' + err.message);
+        sameWork = {
+          verdict: 'unknown',
+          reason: 'unreadable',
+          note: 'Could not read the PDF to compare it with the PowerPoint, so there is no way to tell whether they are the same portfolio.',
+          pptxFile: path.basename(cfg.deckFile),
+          pdfFile: path.basename(cfg.pdfFile),
+        };
+      }
+    }
     const cache = readJsonSafe(CACHE_PATH, {});
     const fileHash = crypto
       .createHash('sha1')
@@ -1485,6 +1529,13 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
         error: (aiResult && aiResult.error) || null,
         availableModels: (aiResult && aiResult.availableModels) || [],
       },
+      /*
+       * Whether the .pptx and the PDF were the same portfolio, with the two names it compared.
+       * Frozen into the report rather than recomputed live: reading both files on every state
+       * poll would cost more than it is worth, and the names let the page tell when the answer
+       * has gone stale because a file was swapped.
+       */
+      sameWork: sameWork,
       combined: { score: combinedScore, bySeverity, findings: allFindings },
       cost: {
         totalGbp: Number((finalCost.totalGbp || 0).toFixed(4)),

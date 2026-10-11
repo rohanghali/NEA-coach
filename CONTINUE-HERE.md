@@ -857,6 +857,57 @@ the threshold, not the sample.
 
 ---
 
+## 6j. "Are these two the same portfolio?" — added in v1.0.35
+
+The .pptx and the PDF are not interchangeable and only one of them is the structural deck:
+`findDeck` returns the .pptx if one is set and the PDF otherwise, while the PDF is ALSO what the
+AI looks at. So with both set, the report combines a layout analysis of one file with a visual
+mark of another. If they are different pieces of work, every number in the report is about
+neither of them properly.
+
+The only check was the filename, which is weak in both directions: an export gets whatever name
+the tool chose, so a genuine pair can look mismatched, and two different portfolios both called
+"Portfolio" pass straight through.
+
+**The measurement is the whole story here, and it killed the first design.**
+
+Containment — the share of the smaller document's distinctive words that also appear in the
+larger — was the obvious choice, on the reasoning that a PDF export is often a subset of the
+.pptx and containment would not punish it for being one. Measured on the real files:
+
+| | containment | jaccard |
+| --- | --- | --- |
+| a portfolio .pptx vs its own PDF export | 0.997 | **0.980** |
+| Rohan's PDF vs Arjun's PDF | 0.567 | **0.286** |
+| Rohan's .pptx vs Arjun's PDF | 0.568 | **0.290** |
+| the bundled sample .pptx vs Rohan's PDF | 0.541 | **0.176** |
+
+**Two different students share 54-57% of their distinctive words by containment.** Every D&T
+portfolio is written in the same vocabulary. A threshold placed anywhere sensible would have
+called unrelated work the same, which is far worse than saying nothing.
+
+Jaccard on the same pairs runs 0.98 against 0.18-0.29 — a gap a threshold can sit inside.
+`JACCARD_SAME = 0.6`, `JACCARD_DIFFERENT = 0.35`, everything between answers "unsure".
+
+**The second measurement was a negative result worth keeping.** Dropping the D&T vocabulary
+("design", "client", "material", "specification") to try to sharpen it was measured too: it moved
+the strangers from 0.286 to 0.278 and the genuine pair not at all. Those words are too few of the
+two thousand or so distinctive ones to matter, so they stay. They are evidence.
+
+Two smaller decisions, both about not overclaiming:
+
+- The verdict travels with the report **together with the two filenames it compared**. A verdict
+  from ten minutes ago can easily be about a different pair: swapping a file does not re-scan.
+  The page only uses it while the names still match, and falls back to the filename hint
+  meanwhile — saying plainly that it is a hint.
+- An unreadable PDF is `unknown`, not `different`. Failing to look is not evidence of a
+  mismatch.
+
+The comparison costs one extra pass over the PDF and only runs when BOTH files are set, which is
+the only case that can be wrong.
+
+---
+
 ## 7. Still to do
 
 ### Already built, waiting on a Gemini API key

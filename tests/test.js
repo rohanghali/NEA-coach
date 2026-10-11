@@ -2465,8 +2465,14 @@ section('11p. Which portfolio is being marked');
   // The decision itself, in both directions.
   ok('a PDF is what gets marked when one is set',
     /if \(pdfName\) \{[\s\S]{0,200}setText\(ui\.reviewedName, pdfName\)/.test(page));
-  ok('a mismatched PDF and .pptx name is flagged',
-    /have different names\. If they are not the same piece of work/.test(page));
+  /*
+   * A name mismatch is now only a HINT, and says so: the real check compares the two files'
+   * text (section 12x). A PDF export is routinely given a different name by the export tool,
+   * so the name alone is not evidence of anything.
+   */
+  ok('a mismatched PDF and .pptx name is still raised, as a hint rather than a verdict',
+    /have different names, and they have not been compared yet/.test(page),
+    'the fallback hint is gone, so a mismatch would pass unmentioned before a scan');
   /*
    * Inverted deliberately. This used to assert a warning on the grounds that "the free
    * structural checks cannot run" for a PDF-only setup. They can and do: lib/pdfdeck.js
@@ -4911,6 +4917,146 @@ section('12w. The aesthetic pass: a tighter phone, and more life in the marks');
   // is here so nobody "improves" that rule away later.
   ok('every one of them is still covered by the reduced-motion rule',
     /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,220}animation-duration: 0\.01ms !important/.test(css));
+}
+
+section('12x. Are the PowerPoint and the PDF the same portfolio?');
+{
+  /*
+   * Requested: "a thing that checks whether the pdf and pptx are the same".
+   *
+   * It matters because only ONE file is the structural deck — the .pptx if set, the PDF
+   * otherwise — while the PDF is ALSO what the AI looks at. With both set, the report combines a
+   * layout analysis of one file with a visual mark of another, so if they are not the same piece
+   * of work then every number in it is about neither of them properly.
+   *
+   * The only check was the filename, which is weak in both directions: an export gets whatever
+   * name the tool chose, and two different portfolios both called "Portfolio" sail through.
+   */
+  const sw = require(path.join(ROOT, 'lib', 'samework.js'));
+
+  /* ---- what the measure actually looks at ---------------------------------------- */
+  eq('short words are dropped, because they are noise and page numbers',
+    sw.tokensOf('a of it the 3 and cad abs'), ['cad', 'abs']);
+  eq('punctuation cannot hide a match',
+    sw.tokensOf('CAD-modelled, client/led'), sw.tokensOf('cad modelled client led'));
+  eq('words that carry no evidence are dropped',
+    sw.tokensOf('the and for with from this that which'), []);
+  /*
+   * D&T vocabulary is deliberately KEPT, though it looks like noise — every portfolio says
+   * "design", "client", "material". Dropping it was MEASURED on the real files: it moved two
+   * strangers from 0.286 to 0.278 and the genuine pair not at all. Those words are simply too
+   * few of the two thousand or so distinctive ones to matter, so removing them would only
+   * throw evidence away.
+   */
+  eq('but D&T vocabulary is kept, because dropping it was measured to change nothing',
+    sw.tokensOf('design material client specification').length, 4);
+
+  const pool = (from, to, prefix) => {
+    const out = [];
+    for (let i = from; i <= to; i++) { out.push(prefix + 'word' + i); }
+    return out;
+  };
+  const pageOf = (words) => words.join(' ');
+  const pages = (arr, count) => {
+    const out = [];
+    for (let i = 0; i < count; i++) { out.push(pageOf(arr.slice(Math.floor(i * arr.length / count), Math.floor((i + 1) * arr.length / count)))); }
+    return out;
+  };
+
+  const shared = pool(1, 100, 'a');
+  const extra = pool(101, 140, 'b');
+
+  let r = sw.compareSameWork(pages(shared, 10), pages(shared, 10));
+  eq('the same words on both sides is the same portfolio', r.verdict, 'same');
+  eq('and the match is complete', r.jaccard, 1);
+
+  r = sw.compareSameWork(pages(shared, 10), pages(extra, 10));
+  eq('wholly different words is a different portfolio', r.verdict, 'different');
+  eq('and nothing is shared', r.shared, 0);
+
+  // 60 of A's words plus 40 new ones: intersection 60, union 140.
+  const partial = shared.slice(0, 60).concat(extra);
+  r = sw.compareSameWork(pages(shared, 10), pages(partial, 10));
+  eq('a partial overlap is reported as unsure, not rounded to a verdict', r.verdict, 'unsure');
+  ok('and the sentence says what the number was',
+    /\d+% of their distinctive words/.test(r.note || ''), r.note);
+
+  r = sw.compareSameWork(['one', 'two'], ['three']);
+  eq('a portfolio with almost no text cannot be compared', r.verdict, 'unknown');
+  eq('and says why', r.reason, 'not-enough-text');
+  ok('without pretending that means they differ', /nothing to match/.test(r.note || ''), r.note);
+
+  /*
+   * The thresholds, and the measurement they came from.
+   *
+   * This is the part worth guarding. Containment (shared over the smaller document) was the
+   * first choice and MEASURING KILLED IT: two different students' portfolios share 57%, 57% and
+   * 54% of their distinctive words by containment, against 99.7% for a portfolio and its own
+   * export. Jaccard on the same pairs is 0.98 for the genuine one and 0.18 to 0.29 for the
+   * strangers, which is a gap a threshold can sit inside.
+   */
+  eq('the same threshold sits above the highest measured different pair', sw.JACCARD_SAME, 0.6);
+  eq('the different threshold sits below the lowest measured same pair', sw.JACCARD_DIFFERENT, 0.35);
+  ok('the two bands leave a gap for "unsure"',
+    sw.JACCARD_DIFFERENT < sw.JACCARD_SAME, 'there would be no unsure band at all');
+
+  /* ---- the page shows the verdict ------------------------------------------------ */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  const pdfName = 'Work.pdf';
+  const pptxName = 'Work.pptx';
+  const draw = (sameWork) => {
+    page.state.data = {
+      ok: true,
+      config: { pdfFile: '/x/' + pdfName, pdfName: pdfName, deckFile: '/x/' + pptxName },
+      deck: { fileName: pptxName, slideCount: 60 },
+      local: { findings: [] },
+      ai: {},
+      sameWork: sameWork,
+    };
+    page.call('renderReviewed');
+    return {
+      warn: page.ui.reviewedWarn.hidden === false ? page.ui.reviewedWarn.textContent : '',
+      how: page.ui.reviewedHow.textContent,
+    };
+  };
+
+  let d = draw({ verdict: 'same', jaccard: 0.98, note: 'n', pptxFile: pptxName, pdfFile: pdfName });
+  ok('a confirmed match is SAID, not merely left unmentioned',
+    /checked against the PowerPoint: same portfolio/.test(d.how), d.how);
+  ok('and it does not raise a warning', !/NOT look like the same/.test(d.warn), d.warn);
+
+  d = draw({ verdict: 'different', jaccard: 0.2, note: 'These two do NOT look like the same portfolio.', pptxFile: pptxName, pdfFile: pdfName });
+  ok('different work is warned about, in the comparison\'s own words',
+    /NOT look like the same portfolio/.test(d.warn), d.warn);
+  ok('and the page does not still claim they match',
+    !/checked against the PowerPoint/.test(d.how), d.how);
+
+  d = draw({ verdict: 'unsure', jaccard: 0.45, note: 'check they really are the same portfolio.', pptxFile: pptxName, pdfFile: pdfName });
+  ok('an unsure answer is passed on rather than hidden',
+    /check they really are the same portfolio/.test(d.warn), d.warn);
+
+  /*
+   * A verdict from an earlier scan must not be shown against different files. Swapping a file
+   * does not trigger a re-scan, so a stale answer is the easy mistake to make here.
+   */
+  d = draw({ verdict: 'same', jaccard: 0.98, note: 'n', pptxFile: 'Something Else.pptx', pdfFile: pdfName });
+  ok('a verdict about a DIFFERENT pair of files is not shown at all',
+    !/checked against the PowerPoint/.test(d.how), d.how);
+  ok('and with nothing to go on it falls back to naming the mismatch, saying that is all it is',
+    !/different/i.test(d.warn) || /have not been compared yet/.test(d.warn), d.warn);
+
+  /* ---- and it is actually wired into the scan ------------------------------------ */
+  const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  ok('the scan compares the two files', /compareSameWork\(/.test(src) && /pdftext\.extractPdfTextFile\(cfg\.pdfFile\)/.test(src));
+  ok('only when both are actually set, since that is the only case that can be wrong',
+    /if \(!fromPdf && cfg\.deckFile && cfg\.pdfFile && fs\.existsSync\(cfg\.pdfFile\)\)/.test(src));
+  ok('the verdict travels with the report', /sameWork: sameWork,/.test(src));
+  ok('and it records which two files it compared, so a stale answer can be spotted',
+    /sameWork\.pptxFile = path\.basename\(cfg\.deckFile\)/.test(src)
+    && /sameWork\.pdfFile = path\.basename\(cfg\.pdfFile\)/.test(src));
+  ok('a PDF that cannot be read is reported as unknown rather than as a mismatch',
+    /verdict: 'unknown',\s*\n\s*reason: 'unreadable'/.test(src));
 }
 
 })().then(summary, (err) => {

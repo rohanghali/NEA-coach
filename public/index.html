@@ -6699,6 +6699,22 @@
     // Page count only describes the portfolio if the report is about that one.
     if (deckName && scannedDeck && deckName !== scannedDeck) { pages = null; }
 
+    /*
+     * Whether the PowerPoint and the PDF are the same portfolio.
+     *
+     * The report carries a comparison of their actual TEXT — see lib/samework.js — which is the
+     * real answer, and a far better one than the filenames: a PDF export is routinely given a
+     * different name by the export tool, and two different portfolios both called "Portfolio"
+     * would pass a name check without a murmur.
+     *
+     * It is only used while it still describes the two files in play. The names it compared
+     * travel with it for exactly that reason: swapping a file does not trigger a re-scan, so a
+     * verdict from ten minutes ago can easily be about a different pair.
+     */
+    var same = data.sameWork || null;
+    var sameCurrent = !!(same && pdfName && deckName
+      && same.pdfFile === pdfName && same.pptxFile === deckName);
+
     if (!deckName && !pdfName) {
       setText(ui.reviewedName, 'Nothing chosen yet');
       setText(ui.reviewedHow, 'choose or drag in your portfolio below');
@@ -6710,7 +6726,14 @@
       // The PDF is the document the mark is based on.
       setText(ui.reviewedName, pdfName);
       setText(ui.reviewedHow, 'the PDF — every page is looked at'
-        + (deckName ? ', with the written text taken from ' + deckName : ''));
+        + (deckName ? ', with the written text taken from ' + deckName : '')
+        /*
+         * Say so when the two HAVE been checked against each other. A silent all-clear is
+         * indistinguishable from never having looked, and this is the one place a student would
+         * want to know that the layout analysis and the mark are about the same thing.
+         */
+        + (sameCurrent && same.verdict === 'same'
+          ? ' \u00b7 checked against the PowerPoint: same portfolio' : ''));
     } else {
       setText(ui.reviewedName, deckName);
       setText(ui.reviewedHow, 'the PowerPoint only — the AI reads the text, so drawings and photographs are invisible to it'
@@ -6733,10 +6756,17 @@
     if (notYetRead) {
       warns.push('Not read yet — press Check now. Everything below still describes the previous portfolio.');
     }
-    if (pdfName && deckName) {
+    if (sameCurrent && (same.verdict === 'different' || same.verdict === 'unsure')) {
+      // The comparison supplies its own sentence, including the numbers behind it.
+      warns.push(same.note);
+    } else if (pdfName && deckName && !sameCurrent) {
+      /*
+       * Nothing to go on: the two were not both in place at the last check. Fall back to the
+       * filenames, and say plainly that is all it is — a hint, not a verdict.
+       */
       var stem = function (n) { return String(n).replace(/\.(pptx|pdf)$/i, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); };
       if (stem(pdfName) !== stem(deckName)) {
-        warns.push('The PDF ("' + pdfName + '") and the PowerPoint ("' + deckName + '") have different names. If they are not the same piece of work, the mark would combine two portfolios — remove one of them.');
+        warns.push('The PDF ("' + pdfName + '") and the PowerPoint ("' + deckName + '") have different names, and they have not been compared yet. Press Check now and the app will read both and tell you whether they are actually the same portfolio.');
       }
     }
     /*
