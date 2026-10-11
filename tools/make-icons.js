@@ -111,7 +111,7 @@ function over(dst, src) {
  * macOS expects. Everything inside is expressed as fractions of the BADGE, not of the
  * canvas, so insetting the artwork does not silently rescale the design.
  */
-function sample(u, v, inset, shadow, maskable, size) {
+function sample(u, v, inset, shadow, maskable, size, square) {
   const span = 1 - inset * 2;
   const bx = (u - inset) / span;      // 0..1 across the badge
   const by = (v - inset) / span;
@@ -121,7 +121,7 @@ function sample(u, v, inset, shadow, maskable, size) {
    * shape, and a rounded source leaves transparent slivers at the extreme corners that the
    * crop does not always cover.
    */
-  const radius = maskable ? 0 : 0.215;
+  const radius = (maskable || square) ? 0 : 0.215;
 
   let out = [0, 0, 0, 0];
 
@@ -225,7 +225,7 @@ function render(size, opts) {
       let r = 0, g = 0, b = 0, a = 0;
       for (let sy = 0; sy < ss; sy++) {
         for (let sx = 0; sx < ss; sx++) {
-          const c = sample((x + (sx + 0.5) / ss) / size, (y + (sy + 0.5) / ss) / size, inset, shadow, !!(opts && opts.maskable), size);
+          const c = sample((x + (sx + 0.5) / ss) / size, (y + (sy + 0.5) / ss) / size, inset, shadow, !!(opts && opts.maskable), size, !!(opts && opts.square));
           r += c[0] * c[3];
           g += c[1] * c[3];
           b += c[2] * c[3];
@@ -389,12 +389,25 @@ console.log('Drawing the icon...');
 // --- what the browser and a phone home screen ask for -------------------------------
 const FULL = { inset: 0, shadow: false };
 const MASKABLE = { inset: 0, shadow: false, maskable: true };
+/*
+ * SQUARE: the same drawing, flat and full-bleed, for a phone's home screen.
+ *
+ * A home screen does NOT want the rounded, transparent-cornered icon that a browser tab does. iOS
+ * masks the icon into its own squircle and composites transparency onto BLACK, so a source that is
+ * already rounded and transparent gets masked a second time and shows dark artefacts at the corners —
+ * or is shrunk inside them. Apple asks for a square, opaque image with no transparency and no
+ * pre-rounded corners, and Android wants the same for a legacy icon it will mask itself.
+ *
+ * The maskable variant is already opaque because Android crops it; this is the same idea for the
+ * targets that are NOT maskable but are still a home screen.
+ */
+const SQUARE = { inset: 0, shadow: false, square: true };
 
 write(path.join(PUBLIC_DIR, 'icon-16.png'), png(16, FULL));
 write(path.join(PUBLIC_DIR, 'icon-32.png'), png(32, FULL));
-write(path.join(PUBLIC_DIR, 'icon-180.png'), png(180, FULL));   // apple-touch-icon
-write(path.join(PUBLIC_DIR, 'icon-192.png'), png(192, FULL));
-write(path.join(PUBLIC_DIR, 'icon-512.png'), png(512, FULL));
+write(path.join(PUBLIC_DIR, 'icon-180.png'), png(180, SQUARE));  // apple-touch-icon
+write(path.join(PUBLIC_DIR, 'icon-192.png'), png(192, SQUARE));
+write(path.join(PUBLIC_DIR, 'icon-512.png'), png(512, SQUARE));
 // Android crops a maskable icon to its own shape, so this one is a full square.
 write(path.join(PUBLIC_DIR, 'icon-512-maskable.png'), png(512, MASKABLE));
 write(path.join(ASSET_DIR, 'icon-1024.png'), png(1024, FULL));

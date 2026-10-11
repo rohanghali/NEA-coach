@@ -4337,10 +4337,10 @@ section('12s. The icon, in every place it appears');
 
   // --- the page asks for them -------------------------------------------------------
   ok('the page declares an apple-touch-icon',
-    /rel="apple-touch-icon"[^>]*href="\/icon-180\.png"/.test(page),
+    /rel="apple-touch-icon"[^>]*href="\/icon-180\.png/.test(page),
     'iOS reads apple-touch-icon for Add to Home Screen, not the favicon');
   ok('and a favicon', /rel="icon"[^>]*href="\/favicon\.ico"/.test(page));
-  ok('and the manifest', /rel="manifest"[^>]*href="\/manifest\.webmanifest"/.test(page));
+  ok('and the manifest', /rel="manifest"[^>]*href="\/manifest\.webmanifest/.test(page));
   ok('and a theme colour, so the phone status bar matches',
     /name="theme-color"[^>]*content="#2563eb"/.test(page));
   ok('and the Safari standalone tag, which iOS still needs',
@@ -4379,7 +4379,8 @@ section('12s. The icon, in every place it appears');
     if (raw.length !== (w * 4 + 1) * h) {
       return label + ': inflated ' + raw.length + ' bytes, wanted ' + ((w * 4 + 1) * h);
     }
-    return { w: w, h: h };
+    /* raw is handed back too: every row is written with filter 0, so pixels are directly readable. */
+    return { w: w, h: h, raw: raw };
   };
 
   const pngFiles = webIcons.filter((f) => /\.png$/.test(f));
@@ -4396,13 +4397,54 @@ section('12s. The icon, in every place it appears');
     manifest.display === 'standalone', manifest.display);
   ok('every icon it declares exists and is the size it claims',
     manifest.icons.every((i) => {
-      const file = path.join(publicDir, i.src.replace(/^\//, ''));
+      // The ?v= stamp is a cache-buster for the phone, not part of the path.
+      const file = path.join(publicDir, i.src.replace(/^\//, '').split('?')[0]);
       if (!fs.existsSync(file)) { return false; }
       const d = decode(fs.readFileSync(file), i.src);
       return typeof d !== 'string' && d.w + 'x' + d.h === i.sizes;
     }), JSON.stringify(manifest.icons.map((i) => i.src + ' -> ' + i.sizes)));
   ok('and one of them is maskable, because Android crops to its own shape',
     manifest.icons.some((i) => i.purpose === 'maskable'));
+
+  /*
+   * THE ACTUAL BUG REPORTED: "the mobile logo didnt update when i added it to my homescreen again."
+   *
+   * Two causes, and the pixels were one of them. icon-180 (what iOS uses) had TRANSPARENT, rounded
+   * corners. iOS masks the icon into its own squircle and composites transparency onto BLACK, so a
+   * source that is already rounded and transparent is masked a second time and shows dark artefacts -
+   * or is shrunk inside them. Apple asks for square and opaque with no pre-rounded corners.
+   */
+  const opaque = (file) => {
+    const d = decode(fs.readFileSync(path.join(publicDir, file)), file);
+    if (typeof d === 'string' || !d.raw) { return false; }
+    const stride = d.w * 4 + 1; // one filter byte per row, and it is always 0 here
+    const at = (x, y) => d.raw[y * stride + 1 + x * 4 + 3];
+    return at(0, 0) === 255 && at(d.w - 1, 0) === 255 && at(0, d.h - 1) === 255 && at(d.w - 1, d.h - 1) === 255;
+  };
+  for (const file of ['icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png']) {
+    ok('the home-screen icon ' + file + ' is opaque to its corners',
+      opaque(file),
+      'a transparent corner is composited on black by iOS and masked twice');
+  }
+  ok('while the browser-tab icons keep their rounded corners, where that is correct',
+    !opaque('icon-32.png'));
+
+  /*
+   * And the second cause: a phone caches a home-screen icon against its URL and keeps the old one even
+   * after the page is re-added, so fixing the image alone reaches nobody who already saved it. The URL
+   * carries the running version, filled in by the server so it cannot go stale.
+   */
+  ok('the home-screen icon URL is version-stamped so a phone will refetch it',
+    /icon-180\.png\?v=__APP_VERSION__/.test(page)
+    && /__APP_VERSION__/.test(fs.readFileSync(path.join(publicDir, 'manifest.webmanifest'), 'utf8')),
+    'the page and the manifest carry the token');
+  ok('and the server fills that token in from the running version',
+    (() => {
+      const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+      return /text\.indexOf\('__APP_VERSION__'\)/.test(src)
+        && /text\.split\('__APP_VERSION__'\)\.join\(VERSION\)/.test(src);
+    })(),
+    'a hand-written number is how this goes stale');
 
   // --- the two platform icons are real containers -----------------------------------
   const icoSizes = (file) => {
@@ -6694,7 +6736,7 @@ section('12ao. One drawing, and every target it has to reach');
 
   /* ---- phone ---- */
   ok('the page names its phone icon explicitly, which is what iOS actually uses',
-    /rel="apple-touch-icon" sizes="180x180" href="\/icon-180\.png"/.test(html));
+    /rel="apple-touch-icon" sizes="180x180" href="\/icon-180\.png/.test(html));
   ok('and the conventional iOS names serve the same file rather than 404',
     APPLE_RE.test(server) || /apple-touch-icon-precomposed\.png'\]/.test(server));
   const manifest = fs.readFileSync(path.join(ROOT, 'public', 'manifest.webmanifest'), 'utf8');

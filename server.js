@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.64';
+const VERSION = '1.0.65';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -2016,6 +2016,16 @@ function serveStatic(req, res, urlPath) {
   const APPLE_ICON_ALIASES = ['/apple-touch-icon.png', '/apple-touch-icon-precomposed.png'];
   if (APPLE_ICON_ALIASES.indexOf(urlPath) >= 0) { urlPath = '/icon-180.png'; }
 
+  /*
+   * A version-stamped URL for the home-screen icons.
+   *
+   * A phone caches a home-screen icon against its URL and keeps the old one even after the page is
+   * re-added, so correcting the image alone does not reach anybody who has already saved it. The page
+   * and the manifest carry the token __APP_VERSION__, and it is filled in HERE from the running
+   * version — which means it cannot go stale the way a hand-written number would. It changes whenever
+   * the app does, and the icons are tiny.
+   */
+
   let rel = urlPath === '/' ? 'index.html' : urlPath.replace(/^\/+/, '');
   // Prevent path traversal out of the public folder.
   const full = path.normalize(path.join(PUBLIC_DIR, rel));
@@ -2030,11 +2040,19 @@ function serveStatic(req, res, urlPath) {
       res.end('Not found');
       return;
     }
+    const ext = path.extname(full).toLowerCase();
+    let body = data;
+    if (ext === '.html' || ext === '.webmanifest') {
+      const text = data.toString('utf8');
+      if (text.indexOf('__APP_VERSION__') >= 0) {
+        body = Buffer.from(text.split('__APP_VERSION__').join(VERSION), 'utf8');
+      }
+    }
     res.writeHead(200, {
-      'Content-Type': MIME[path.extname(full).toLowerCase()] || 'application/octet-stream',
+      'Content-Type': MIME[ext] || 'application/octet-stream',
       'Cache-Control': 'no-store',
     });
-    res.end(data);
+    res.end(body);
   });
 }
 
