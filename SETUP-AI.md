@@ -54,8 +54,10 @@ is the one that pays if anything is ever charged.
 
 - Never share a key. Do not paste it into a group chat, email it to a friend, or
   leave it visible in a screenshot or a screen recording.
-- Do not send someone the whole `NEA-Coach` folder if it already contains your
-  key: the key sits in `state/config.json` inside that folder.
+- Your key is not stored inside the `NEA-Coach` folder, so sending someone that
+  folder does NOT send your key. It lives in your own user data folder — on a Mac,
+  `~/Library/Application Support/NEA Coach/config.json`; on Windows,
+  `%APPDATA%\\NEA Coach\\config.json`. Do not send that folder to anyone.
 - If a key does leak, open <https://aistudio.google.com/apikey>, **delete that
   key**, and create a new one. Replacing it costs nothing and takes a minute.
 
@@ -123,7 +125,7 @@ If Windows hides the file extension, the file is still the one called
 After the first scan, the **cost meter** in the app shows what was spent. Expect
 **a few pence** for 200 pages.
 
-You can watch the running total in `state/cost.json` at any time.
+You can watch the running total in `<your data folder>/cost.json` at any time.
 
 ---
 

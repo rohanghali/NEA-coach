@@ -26,7 +26,165 @@ const ai = require('./lib/ai');
 
 const APP_DIR = __dirname;
 const PUBLIC_DIR = path.join(APP_DIR, 'public');
-const STATE_DIR = path.join(APP_DIR, 'state');
+
+/*
+ * Where the student's own data lives: their config (including the API key), the
+ * saved reports, the scan cache, the history, and the copy of the portfolio they
+ * uploaded.
+ *
+ * This used to be `<app folder>/state`, which is inside the thing being upgraded.
+ * Every release unzips into a NEW folder — deliberately, because that is what stops
+ * an older copy overwriting a newer one — so every release also arrived with an empty
+ * state folder. The student's key, their portfolio and their settings were still
+ * sitting in the previous version's folder, and they had to add all of it again.
+ * The user's report was "it should stay uploaded if the user opens the app at a later
+ * date", and they were right: their key was already missing.
+ *
+ * It now lives outside the app, where each platform expects per-user data, so
+ * unzipping a new version beside the old one changes nothing at all.
+ */
+function perUserDataDir() {
+  /*
+   * An explicit override, for two reasons. It lets the adoption path be tested on a
+   * machine that cannot write outside its own sandbox, and it is the escape hatch for
+   * anyone who wants NEA Coach to keep its data on a USB stick beside the app rather
+   * than in the home folder.
+   */
+  if (process.env.NEA_COACH_DATA_DIR) return path.resolve(process.env.NEA_COACH_DATA_DIR);
+  const home = require('os').homedir();
+  let base;
+  if (process.platform === 'darwin') {
+    base = path.join(home, 'Library', 'Application Support');
+  } else if (process.platform === 'win32') {
+    base = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+  } else {
+    base = process.env.XDG_DATA_HOME || path.join(home, '.local', 'share');
+  }
+  return path.join(base, 'NEA Coach');
+}
+
+/*
+ * Bring an existing install's data across, once.
+ *
+ * It MOVES rather than copies where it can: the app folder and the data folder are
+ * normally on the same disk, and a rename is instant even for a 500 MB portfolio.
+ * If the move is refused — a different disk — it copies instead, so the worst case is
+ * a slow first start rather than a lost portfolio.
+ *
+ * Two places are searched, newest config first:
+ *
+ *   1. This app folder's own "state" — the layout of every version up to v1.0.22.
+ *   2. A SIBLING version folder's state, anything matching "NEA-Coach-&lt;version&gt;".
+ *      This is the one that actually matters: a new version unzips into the same
+ *      folder as the last one, so the previous version's state is sitting right
+ *      beside the new version's and (1) finds nothing.
+ *
+ * Without (2) the import would do nothing on the exact upgrade it exists for.
+ */
+function adoptPreviousState(target) {
+  if (fs.existsSync(path.join(target, 'config.json'))) return null;
+
+  const candidates = [];
+  const consider = (dir) => {
+    try {
+      candidates.push({ dir, mtime: fs.statSync(path.join(dir, 'config.json')).mtimeMs });
+    } catch (err) { /* not a state folder */ }
+  };
+
+  consider(path.join(APP_DIR, 'state'));
+
+  const parent = path.dirname(APP_DIR);
+  let siblings = [];
+  try { siblings = fs.readdirSync(parent, { withFileTypes: true }); } catch (err) { siblings = []; }
+  for (const e of siblings) {
+    if (!e.isDirectory()) continue;
+    if (!/^NEA[- ]?Coach/i.test(e.name)) continue;
+    const dir = path.join(parent, e.name);
+    if (path.resolve(dir) === path.resolve(APP_DIR)) continue;
+    consider(path.join(dir, 'state'));
+  }
+
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => b.mtime - a.mtime);
+  const from = candidates[0].dir;
+
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  if (fs.existsSync(target)) {
+    fs.cpSync(from, target, { recursive: true, force: false, errorOnExist: false });
+  } else {
+    try {
+      fs.renameSync(from, target);
+    } catch (err) {
+      fs.cpSync(from, target, { recursive: true, force: false, errorOnExist: false });
+    }
+  }
+  return from;
+}
+
+/*
+ * Re-point an adopted config at the portfolio's new home.
+ *
+ * The uploaded portfolio is stored as an ABSOLUTE path, and the whole state folder
+ * has just moved — so without this the app would claim a portfolio was chosen and
+ * then fail to find it. Also backfills deckDirChosen for anyone who already had a
+ * portfolio, so the "nothing uploaded" guard cannot lock them out of their own file.
+ */
+function repairAdoptedPaths(dir) {
+  try {
+    const cfgPath = path.join(dir, 'config.json');
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    let changed = false;
+
+    for (const key of ['deckFile', 'pdfFile']) {
+      const old = cfg[key];
+      if (!old || fs.existsSync(old)) continue;
+      const moved = path.join(dir, 'portfolio', path.basename(old));
+      if (fs.existsSync(moved)) { cfg[key] = moved; changed = true; }
+    }
+    if ((cfg.deckFile || cfg.pdfFile) && !cfg.deckDirChosen) {
+      cfg.deckDirChosen = true;
+      changed = true;
+    }
+    if (changed) fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+  } catch (err) { /* nothing to repair */ }
+}
+
+let STATE_ADOPTED_FROM = null;
+
+function resolveStateDir() {
+  const fallback = path.join(APP_DIR, 'state');
+  try {
+    const target = perUserDataDir();
+    STATE_ADOPTED_FROM = adoptPreviousState(target);
+    if (STATE_ADOPTED_FROM) {
+      repairAdoptedPaths(target);
+      return target;
+    }
+    /*
+     * Nothing to adopt, so create the folder ourselves — and this IS the writability
+     * check. It has to happen now rather than when the server first saves its config,
+     * or an unwritable location fails at the worst possible moment instead of falling
+     * back cleanly. It is deliberately NOT done before the adoption above: creating the
+     * folder first would make it exist, and adoptPreviousState would then copy a
+     * 500 MB portfolio instead of moving it.
+     */
+    fs.mkdirSync(target, { recursive: true });
+    return target;
+  } catch (err) {
+    /*
+     * A missing or read-only home directory must not stop the app running, but it
+     * must not be silent either. Falling back to the in-app folder means everything
+     * the student has set up will be lost on the next upgrade, and silently losing
+     * it is the exact fault this whole change exists to fix. Print the reason, and
+     * keep going.
+     */
+    console.log('[startup] Could not use the per-user data folder: ' + err.message);
+    console.log('[startup] Falling back to ' + fallback + ' — your settings will not survive an upgrade.');
+    return fallback;
+  }
+}
+
+const STATE_DIR = resolveStateDir();
 const SPEC_DIR = path.join(APP_DIR, 'spec');
 const CONFIG_PATH = path.join(STATE_DIR, 'config.json');
 const CACHE_PATH = path.join(STATE_DIR, 'cache.json');
@@ -250,7 +408,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.22';
+const VERSION = '1.0.23';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -275,6 +433,13 @@ function log(msg) {
 }
 
 const scanLog = [];
+
+// Said once, at startup, so an upgrade that silently kept everything is visibly not
+// silent. It is worth a line: the whole point of the change is that the student does
+// NOT have to do anything, and they should be able to see that it happened.
+if (STATE_ADOPTED_FROM) {
+  log(`Kept your settings and portfolio: brought them across from ${STATE_ADOPTED_FROM}`);
+}
 
 function readJsonSafe(file, fallback) {
   try {
@@ -349,6 +514,16 @@ function defaultConfig() {
      * inside it — that avoids duplicating a 500 MB file in Dropbox.
      */
     deckDir: '..',
+    /*
+     * Has the student actually CHOSEN a portfolio?
+     *
+     * ".." is only a starting point, and it is indistinguishable from someone who
+     * typed ".." on purpose, so the two are separate fields. Until this is true the
+     * app refuses to go looking for anything — see findDeck, where an unconditional
+     * folder search picked an unrelated .pptx out of ~/Downloads and wrote a full
+     * report about it.
+     */
+    deckDirChosen: false,
     // Blank means "use the most recently edited .pptx found in deckDir".
     deckFile: null,
     /*
@@ -517,6 +692,11 @@ function publicConfig(cfg, readingSample) {
      * the sample flag went wrong — a report created while the sample was being read
      * kept claiming the sample even after a real portfolio was uploaded.
      */
+    /*
+     * Whether a portfolio has been chosen at all. The page uses this to draw an empty
+     * state instead of a report, which is the visible half of the findDeck guard.
+     */
+    portfolioChosen: !!cfg.deckDirChosen,
     readingSample: readingSample !== undefined
       ? !!readingSample
       : (function () { const f = findDeck(cfg); return !!(f && !f.error && f.usedSample); }()),
@@ -620,6 +800,14 @@ function refuseAccess(res, urlPath) {
  * Deck discovery
  * ------------------------------------------------------------------ */
 
+/*
+ * Shown whenever the app has nothing of the student's own to read. Deliberately a
+ * statement of fact rather than an instruction: the page adds its own "Add my
+ * portfolio" button beside it, and a message from the server should not be telling
+ * anyone which menu item to open.
+ */
+const NO_PORTFOLIO_MESSAGE = 'No portfolio has been uploaded yet.';
+
 /** Find the .pptx to review: an explicit choice, else the most recently edited. */
 function findDeck(cfg) {
   // Resolve a relative deckDir against the app folder so the app still works
@@ -646,6 +834,27 @@ function findDeck(cfg) {
    */
   if (cfg.pdfFile && fs.existsSync(cfg.pdfFile)) {
     return { filePath: cfg.pdfFile, kind: 'pdf' };
+  }
+
+  /*
+   * Nothing has been chosen yet, so nothing is looked for.
+   *
+   * The search below used to run unconditionally, and the default folder is ".." —
+   * the parent of the app. The app is delivered by unzipping into ~/Downloads, so
+   * "the parent of the app" is the most cluttered folder on a Mac. Pressing Check
+   * now with no portfolio therefore silently picked the most recently edited .pptx
+   * in Downloads and wrote a full report about it. On the developer's own machine
+   * that was "AQA DT 7552 Unit 2 T1 Performance-Polymers.pptx", an exam-board
+   * teaching deck, and the app produced 48 findings about it as though it were the
+   * student's coursework. The only clue anywhere was a small filename.
+   *
+   * Choosing a portfolio is now a real piece of state rather than an assumption, so
+   * until it has been chosen the app says so instead of guessing. This also fixes
+   * every existing install without a migration: those have deckDir ".." saved but no
+   * deckDirChosen at all, so the flag is simply absent and the guard fires.
+   */
+  if (!cfg.deckDirChosen) {
+    return { error: NO_PORTFOLIO_MESSAGE, needsPortfolio: true };
   }
 
   let entries;
@@ -717,22 +926,32 @@ function findDeck(cfg) {
 
   if (!candidates.length) {
     /*
-     * Nothing found. Before giving up, fall back to the bundled sample deck so a
-     * freshly copied app is never dead on arrival: a student who double-clicks
-     * and sees a working example is much better off than one who sees an error.
+     * Nothing in the chosen folder.
+     *
+     * This used to fall back to the bundled sample deck, on the reasoning that a
+     * freshly copied app should never be dead on arrival. That is sound for a demo
+     * and wrong for a mark: the student got a full report, a cheerful banner, and no
+     * portfolio of their own anywhere in sight. Asking them to choose a file is a
+     * worse-looking first run and a more honest one.
      */
-    const sampleDir = path.join(APP_DIR, 'sample');
-    if (path.resolve(sampleDir) !== path.resolve(dir) && fs.existsSync(sampleDir)) {
-      const sample = findDeck({ deckDir: sampleDir, deckFile: null });
-      if (sample && sample.filePath) {
-        return Object.assign({}, sample, { usedSample: true });
-      }
-    }
-    return { error: `No .pptx file was found in ${dir}. Put your portfolio there, or change the folder in Settings.` };
+    return {
+      error: `No PowerPoint was found in ${dir}. Choose your portfolio, or drop the file into that folder.`,
+      needsPortfolio: true,
+    };
   }
 
   candidates.sort((a, b) => b.mtime - a.mtime);
-  return { filePath: candidates[0].filePath, alternatives: candidates.map((c) => c.filePath) };
+  const picked = candidates[0];
+  /*
+   * Still flag the bundled sample when that is genuinely what was chosen: a student
+   * may point the folder at sample/ on purpose to see what the app does, and the
+   * standing notice is what keeps that from reading as their own work.
+   */
+  const insideSample = path.resolve(picked.filePath).indexOf(bundledSampleDir + path.sep) === 0;
+  return Object.assign(
+    { filePath: picked.filePath, alternatives: candidates.map((c) => c.filePath) },
+    insideSample ? { usedSample: true } : {}
+  );
 }
 
 /* ------------------------------------------------------------------ *
@@ -2128,23 +2347,33 @@ function appendHistory(snapshot) {
 
 function buildStateResponse() {
   const cfg = loadConfig();
-  const report = lastReport || readJsonSafe(LAST_REPORT_PATH, null);
 
   /*
-   * Is the app currently reading the STUDENT's portfolio, or the bundled sample?
+   * What the app has to read, resolved BEFORE the saved report — because a saved
+   * report is only worth showing when there is still a portfolio it could honestly
+   * be about.
    *
-   * findDeck falls back to sample/ so that a freshly copied app is never dead on
-   * arrival. That is the right behaviour for a demo, but it was silent: a user
-   * with no portfolio pressed Check now, got a full report and a cheerful
-   * "opened" banner, and had no way to know the findings were about a stranger's
-   * coursework. Reported by the user, and it is a bad first impression.
-   *
-   * `usedSample` was already being set by findDeck and never read by anything.
-   * This reads it and tells the UI, which shows a standing banner until a real
-   * file is added.
+   * `usedSample` was already being set by findDeck and never read by anything. It is
+   * read now, and the page shows a standing banner while the bundled sample is what
+   * is being marked.
    */
   const current = findDeck(cfg);
+  const portfolioReady = !!(current && !current.error);
   const readingSample = !!(current && !current.error && current.usedSample);
+
+  /*
+   * Suppress the saved report while there is no portfolio.
+   *
+   * Without this the guard in findDeck is invisible in the one case that matters:
+   * the app stops SCANNING, but the previous report stays on screen, so a student
+   * who has uploaded nothing still reads a page full of findings. On the developer's
+   * machine that page carried 48 findings about an unrelated exam-board teaching
+   * deck, which is exactly the state that prompted this.
+   *
+   * The file on disk is left alone. It is not deleted; it is simply not shown while
+   * there is nothing it could honestly be about.
+   */
+  const report = portfolioReady ? (lastReport || readJsonSafe(LAST_REPORT_PATH, null)) : null;
 
   if (!report) {
     /*
@@ -2374,6 +2603,7 @@ function handleUpload(req, res) {
     const cfg = loadConfig();
     cfg.deckDir = dir;
     cfg.deckFile = target;
+    cfg.deckDirChosen = true;
     saveConfig(cfg);
     startWatching();
 
@@ -2482,6 +2712,8 @@ function handlePdfUpload(req, res) {
     const cfg = loadConfig();
     const hadDeck = cfg.deckFile ? path.basename(cfg.deckFile) : null;
     cfg.pdfFile = target;
+    // An uploaded PDF is a chosen portfolio, so the guard in findDeck stands down.
+    cfg.deckDirChosen = true;
     // The PDF becomes the portfolio under review; a stale .pptx path would only
     // describe a different student's work.
     cfg.deckFile = null;
@@ -2580,6 +2812,8 @@ async function handle(req, res) {
         cfg.deckDir = dir;
         cfg.deckFile = null; // re-discover in the new folder
       }
+      // A folder typed into Settings is a deliberate choice, so searching it is allowed.
+      cfg.deckDirChosen = true;
     }
     if (typeof body.deckFile === 'string') cfg.deckFile = body.deckFile.trim() || null;
     if (typeof body.model === 'string' && body.model.trim()) {
@@ -3068,4 +3302,4 @@ if (require.main === module) {
   start();
 }
 
-module.exports = { start, performScan, buildStateResponse, findDeck, loadConfig, publicConfig, checkAccess, newAccessCode, handle, compareReports, findingKey, matchAiFindings, snapshotOf, appendHistory, quotaDate, quotaReset, readQuota, noteRequest, quotaReport, learnQuotaLimit, quotaLimitFromError, buildStats, exportHtml, escapeHtml };
+module.exports = { start, performScan, buildStateResponse, findDeck, defaultConfig, stateDir: STATE_DIR, perUserDataDir, adoptPreviousState, repairAdoptedPaths, loadConfig, publicConfig, checkAccess, newAccessCode, handle, compareReports, findingKey, matchAiFindings, snapshotOf, appendHistory, quotaDate, quotaReset, readQuota, noteRequest, quotaReport, learnQuotaLimit, quotaLimitFromError, buildStats, exportHtml, escapeHtml };

@@ -243,7 +243,7 @@ function loadPage(appRoot) {
     'renderTiles', 'renderControls', 'renderTabs', 'renderAiNotice', 'renderStrengths',
     'renderFixList', 'renderSuggestions', 'renderCoverage', 'renderComparison',
     'renderPredicted', 'renderSlides', 'renderSettings', 'renderStats', 'renderReviewed',
-    'renderUploadSection', 'renderModelCostPreview', 'renderSampleNotice',
+    'renderUploadSection', 'renderModelCostPreview', 'renderPortfolioNotice',
     // The feel layer, so a test can fire a ripple or a burst and inspect the DOM
     // it produces instead of only being able to see that the page loaded.
     'spawnRipple', 'celebrate', 'rollFigure', 'rolledFigure', 'sparkLayer',

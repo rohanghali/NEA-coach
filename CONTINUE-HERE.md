@@ -715,6 +715,91 @@ unchanged asset size are the only evidence you will get.
 
 ---
 
+## 6h. What the app reads, and where its data lives — fixed in v1.0.23
+
+Two faults the user found in the same session, both of which made the app talk about
+something other than their work.
+
+**It reviewed a file nobody chose.** Reported as *"i clicked check now after uploading
+nothing and it had stiuff to say"* — and it had 48 things to say. The evidence, from
+their own last report:
+
+```
+deck.fileName : AQA DT 7552 Unit 2 T1 Performance-Polymers.pptx
+deck.filePath : /Users/rohanghali/Downloads/AQA DT 7552 Unit 2 T1 Performance-Polymers.pptx
+pages         : 29        findings: 48
+```
+
+The chain was: the default portfolio folder is `..` (the parent of the app) →
+the app is delivered by unzipping into `~/Downloads` → with no file chosen,
+`findDeck` walked that folder three levels deep and took **the most recently edited
+`.pptx` it found**. That was an exam-board teaching deck. Nothing said so except a
+small filename, because `readingSample` only ever fired for the app's own bundled
+sample, never for a real file found by accident.
+
+Choosing a portfolio is now real state (`deckDirChosen`), set by the three routes that
+can supply one: uploading a `.pptx`, uploading a `PDF`, or saving a folder in
+Settings. Until it is set, `findDeck` returns `needsPortfolio` and looks at nothing.
+**That also fixes every existing install with no migration**, because they have
+`deckDir` `".."` saved and no `deckDirChosen` at all, so the guard simply fires.
+
+Two things had to go with it, or the fix would have been invisible:
+
+- **The silent fall back to `sample/`.** The user asked for "just says no portfolio has
+  been uploaded", and a report about a made-up deck is exactly the "stuff to say" they
+  were complaining about. The sample is still read if a folder containing it is chosen
+  deliberately, and the standing banner still fires in that case.
+- **The stale report.** Guarding `findDeck` alone stops the *scan*, but the previous
+  report stayed on screen — so `buildStateResponse` now suppresses it while there is no
+  portfolio. The file is not deleted, just not shown.
+
+**Its key and portfolio were being lost on every upgrade.** Reported as *"it should stay
+uploaded if the user opens the app at a later date"*. Their v1.0.22 `config.json` had
+`"apiKey": ""`, which is what that failure looks like from the student's side.
+
+The cause: `STATE_DIR` was `<app folder>/state`, *inside the thing being upgraded*.
+Every release unzips into a new folder — deliberately, because that is what stops an
+older copy overwriting a newer one — so every release also arrived with an empty state
+folder.
+
+State now lives in the per-user location (`~/Library/Application Support/NEA Coach` on
+macOS, `%APPDATA%\NEA Coach` on Windows) and `adoptPreviousState` brings an existing
+install across on first run. It **renames** rather than copies where it can, because a
+rename is instant even for a 500 MB portfolio; if the target exists it copies, and if
+the move is refused it copies. It looks in two places, newest config first: this app
+folder's own `state`, and a **sibling version folder's** `state` — the second is the
+one that matters, because a new version unzips beside the last one and finds nothing in
+its own folder.
+
+Three details that are easy to get wrong and are all covered by tests:
+
+- `repairAdoptedPaths` re-points `deckFile`/`pdfFile`, which are stored as **absolute
+  paths**, at the portfolio's new home. Without it the app would claim a portfolio was
+  chosen and then fail to find it. It also sets `deckDirChosen`, so the new guard cannot
+  lock a student out of their own file.
+- The data folder is deliberately **not created before adoption runs** — creating it
+  first makes `adoptPreviousState` see an existing target and copy instead of move.
+- An unwritable location falls back to `<app folder>/state` **and prints why**. Silently
+  falling back means silently losing everything on the next upgrade, which is the whole
+  bug. The fallback is decided at startup, not when the first write fails.
+
+`NEA_COACH_DATA_DIR` overrides the location. It exists so the adoption path could be
+verified on a machine that cannot write outside its workspace, and it is also the escape
+hatch for a portable install on a USB stick.
+
+**Verified how.** The move was driven end to end with a fake old install
+(`NEA-Coach-mac-0.0.1/state` beside `NEA-Coach-mac-0.0.2`) and confirmed to carry the
+config, the API key, the history and the portfolio across, re-point the portfolio path
+and log a line. The empty state was confirmed to return `deck: null`, `findings: 0`,
+`portfolioChosen: false`.
+
+**Watch out for this when testing on a sandboxed machine:** if the per-user folder cannot
+be written, `findDeck` and everything else still work, but the app is back to the old
+behaviour and will lose the data on the next upgrade. The startup line tells you which
+one you got. Do not mistake the fallback for success.
+
+---
+
 ## 7. Still to do
 
 ### Already built, waiting on a Gemini API key

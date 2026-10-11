@@ -2067,7 +2067,8 @@
 
   <section class="card" aria-labelledby="actionsHeading">
     <h2 class="card-title" id="actionsHeading">Run a check</h2>
-    <!-- Filled by renderSampleNotice() only while the bundled sample is being read. -->
+    <!-- Filled by renderPortfolioNotice() when there is nothing of the student's own
+         to describe: no portfolio chosen at all, or the bundled sample being read. -->
     <div id="sampleNotice"></div>
     <div class="actions-row">
       <button class="btn btn-primary btn-lg" id="btnCheck" type="button">
@@ -3480,39 +3481,68 @@
 
   function renderActions() {
     var busy = isBusy();
-    if (ui.btnCheck) { ui.btnCheck.disabled = busy; }
-    if (ui.btnRecheck) { ui.btnRecheck.disabled = busy; }
+    var cfg = (state.data && state.data.config) || {};
+    /*
+     * No portfolio, no scan. The server refuses one anyway (see the guard in
+     * findDeck); disabling the button as well is what turns that refusal into
+     * something the student can see before they press it rather than after.
+     * The label carries the reason, because a dead button with no explanation is
+     * the worst of both.
+     */
+    var ready = cfg.portfolioChosen !== false;
+    if (ui.btnCheck) { ui.btnCheck.disabled = busy || !ready; }
+    if (ui.btnRecheck) { ui.btnRecheck.disabled = busy || !ready; }
     if (ui.thinkingToggle) { ui.thinkingToggle.disabled = busy; }
     show(ui.checkSpinner, busy);
-    setText(ui.btnCheckLabel, busy ? 'Checking…' : 'Check now');
-    renderSampleNotice();
+    setText(ui.btnCheckLabel, busy ? 'Checking…' : (ready ? 'Check now' : 'Add a portfolio first'));
+    renderPortfolioNotice();
   }
 
   /**
-   * Say out loud when the app is reading the BUNDLED SAMPLE, not the student's work.
+   * Say out loud when there is nothing of the student's own to describe.
    *
-   * findDeck falls back to sample/ so a freshly copied app is never dead on
-   * arrival, but the fallback used to be silent: pressing Check now with nothing
-   * uploaded returned a full report of findings about a stranger's coursework, and
-   * nothing anywhere said so. That is worse than an error, because an error is
-   * obviously about you and a false report is not.
+   * Two cases, one banner.
    *
-   * The notice cannot be dismissed — it clears itself the moment a real portfolio
-   * exists — and it sits with the Check button, which is the one place a user is
-   * about to act on the findings.
+   * The first is that no portfolio has been chosen at all, and the honest thing
+   * there is to say so rather than to go looking in a folder — which is what the
+   * app used to do. With the default folder being the parent of the app, and the
+   * app being unzipped into ~/Downloads, pressing Check now silently picked the most
+   * recently edited .pptx in Downloads and returned 48 findings about an exam-board
+   * teaching deck as though it were the student's coursework. The user's report was
+   * "i clicked check now after uploading nothing and it had stiuff to say".
+   *
+   * The second is the bundled sample, still honoured for anyone who points the
+   * folder at it deliberately. A report about a made-up example deck must never read
+   * as advice about real work.
+   *
+   * Neither can be dismissed. Each clears itself the moment it stops being true, and
+   * the banner sits with the Check button, which is the one place someone is about to
+   * act on whatever is below it.
    */
-  function renderSampleNotice() {
+  function renderPortfolioNotice() {
     var host = ui.sampleNotice;
     if (!host) { return; }
     clearNode(host);
     var cfg = (state.data && state.data.config) || {};
-    if (!cfg.readingSample) { return; }
-    host.appendChild(el('div', { cls: 'banner banner-warn', attrs: { role: 'status' } }, [
+    if (cfg.readingSample) {
+      host.appendChild(portfolioBanner(
+        'This is the built-in sample, not your portfolio. ',
+        'Anything below describes a made-up example deck. Add your own file to get advice about your work.'));
+      return;
+    }
+    if (cfg.portfolioChosen === false) {
+      host.appendChild(portfolioBanner(
+        'No portfolio has been uploaded yet. ',
+        'There is nothing of yours to describe, so no check has been run. Add your PowerPoint or your PDF export, and this page will be about your work.'));
+    }
+  }
+
+  /** The banner those two cases share: a warning strip and the one useful button. */
+  function portfolioBanner(lead, rest) {
+    return el('div', { cls: 'banner banner-warn', attrs: { role: 'status' } }, [
       el('div', { cls: 'banner-text' }, [
-        el('strong', { text: 'This is the built-in sample, not your portfolio. ' }),
-        el('span', {
-          text: 'Anything below describes a made-up example deck. Add your own file to get advice about your work.'
-        })
+        el('strong', { text: lead }),
+        el('span', { text: rest })
       ]),
       el('button', {
         cls: 'btn btn-secondary',
@@ -3520,7 +3550,7 @@
         attrs: { type: 'button' },
         on: { click: function () { openSettings(); if (ui.uploadInput) { ui.uploadInput.click(); } } }
       })
-    ]));
+    ]);
   }
 
   /* ------------------------------------------------------------------ *

@@ -18,8 +18,11 @@ This matters, because portfolio regulations require the work to be yours.
 - The app never launches PowerPoint. It reads the file format directly.
 - Nothing is uploaded anywhere except the **text of your slides**, and only if you
   have added an AI key. See "What leaves your computer" below.
-- The only files the app creates are its own `state/`, `spec/` and `runtime/`
-  folders, all inside this folder.
+- The app creates no files inside its own folder except a downloaded `runtime/`
+  and its `spec/`. Everything about you — your settings, your key, the saved report
+  and the copy of your portfolio — lives in **your own user data folder**, outside
+  the app, so unzipping a newer version never loses any of it. See
+  "Where your data lives" below.
 
 You can verify this yourself: make a copy of your portfolio, note its size and
 modified date, run a scan, and check that both are unchanged.
@@ -53,8 +56,9 @@ modified date, run a scan, and check that both are unchanged.
 
 2. **Choose your portfolio.**
    Open **Settings**, and under "Get started — choose your portfolio" pick your
-   `.pptx` file. The app copies it into its own `state/portfolio` folder and reads
-   that copy, so the file you pick is never changed, moved or renamed. You can
+   `.pptx` file. The app copies it into the `portfolio` folder inside your data
+   folder (see "Where your data lives") and reads that copy, so the file you pick is
+   never changed, moved or renamed. You can
    also type or paste a folder path further down in Settings instead, if you would
    rather keep the file where it is.
 
@@ -230,7 +234,7 @@ says so instead of appearing to do nothing.
 From the second check onwards, a **"Since your last check"** panel shows the
 predicted mark before and after, how each criterion moved, the problems that are
 now fixed, and anything new. The previous report is kept in
-`state/previous-report.json`; only one is kept, because "since last time" is the
+`<your data folder>/previous-report.json`; only one is kept, because "since last time" is the
 question people actually ask, and a full history would grow without bound.
 
 Findings are matched by **what they are about** — the rule and page for a free
@@ -389,7 +393,7 @@ If Google renames or retires models, the app **asks the API which models your ke
 actually use** and picks a sensible equivalent automatically. It ignores models Google still
 lists but which refuse new keys with a 404.
 
-To pin a specific model, set `"model"` in `state/config.json`.
+To pin a specific model, set `"model"` in `<your data folder>/config.json`.
 
 ---
 
@@ -412,7 +416,7 @@ Most settings are changed in the app itself, under **Settings**:
 - **Deck folder path** — only needed if you would rather keep your file where it
   is than let the app copy it in.
 
-Under the hood they live in `state/config.json`:
+Under the hood they live in `<your data folder>/config.json`:
 
 ```json
 {
@@ -551,9 +555,27 @@ NEA-Coach/
 ├── public/index.html         Entire frontend, self-contained, no CDN
 ├── sample/                   A 24-page test deck with deliberate flaws
 ├── spec/                     Drop your mark scheme here
-├── state/                    config, cache, cost meter, last report (created at runtime)
 └── runtime/                  Downloaded Node binary (created at runtime)
 ```
+
+**Where your data lives**
+
+Nothing you care about is stored inside the app folder. Your settings, your API key,
+the saved report, the scan history and the copy of your portfolio all live in a
+per-user data folder, so unzipping a new version beside the old one changes nothing:
+
+| Platform | Where your data is |
+| --- | --- |
+| **macOS** | `~/Library/Application Support/NEA Coach` |
+| **Windows** | `%APPDATA%\\NEA Coach` |
+
+The folder is created on first run. If you are upgrading from v1.0.22 or earlier, the
+app brings your existing settings and portfolio across the first time it starts, and
+says so in its window. Set `NEA_COACH_DATA_DIR` to put the folder somewhere else,
+which is also how you would keep the app and its data together on a USB stick.
+
+To start again from nothing, delete that folder. To find your saved reports, they are
+the `*.json` files in it.
 
 **Design constraints, deliberately chosen:**
 
@@ -601,13 +623,13 @@ full-screen like an app, with the key remembered.
 ### The access code
 
 Only this Mac gets in without a code. Every other device needs the key in the
-address, which is stored as `accessCode` in `state/config.json` and stays the
+address, which is stored as `accessCode` in `<your data folder>/config.json` and stays the
 same across restarts. Without it, anyone on the same Wi-Fi could read the
 report, replace the API key, point the app at any folder on the Mac and run
 scans that cost money. Web pages open on the Mac are blocked from changing
 settings or starting scans too.
 
-If the code ever leaks, delete the `accessCode` line from `state/config.json`
+If the code ever leaks, delete the `accessCode` line from `<your data folder>/config.json`
 and restart: a new one is made. To make the app Mac-only, set `"host"` to
 `"127.0.0.1"`.
 

@@ -1882,13 +1882,13 @@ section('11t. The bundled sample is never mistaken for the student\'s work');
   // The UI must say so, in the place a user is about to act on the findings.
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   ok('the page renders a notice when it is reading the sample',
-    /function renderSampleNotice/.test(page));
+    /function renderPortfolioNotice/.test(page));
   ok('the notice is drawn by renderActions, beside the Check button',
-    /renderActions\(\) \{[\s\S]{0,400}renderSampleNotice\(\)/.test(page));
+    /renderActions\(\) \{[\s\S]{0,1600}renderPortfolioNotice\(\)/.test(page));
   ok('and it offers a way to add a real portfolio',
     /Add my portfolio/.test(page));
   ok('the notice is not dismissible, so it cannot be lost',
-    !/renderSampleNotice[\s\S]{0,900}banner-dismiss/.test(page));
+    !/renderPortfolioNotice[\s\S]{0,1400}banner-dismiss/.test(page));
 }
 
 section('11w. The exam board is offered even before the first check');
@@ -2627,7 +2627,7 @@ section('11v. The page draws a real report without falling over');
   const renderers = ['renderHeader', 'renderStatus', 'renderActions', 'renderCost',
     'renderTiles', 'renderControls', 'renderTabs', 'renderFixList', 'renderSuggestions',
     'renderCoverage', 'renderSlides', 'renderSettings', 'renderStats', 'renderReviewed',
-    'renderKeySection', 'renderCheckCoverage', 'renderScanCostHint', 'renderSampleNotice'];
+    'renderKeySection', 'renderCheckCoverage', 'renderScanCostHint', 'renderPortfolioNotice'];
   const threw = [];
   for (const fn of renderers) {
     const out = page.call(fn);
@@ -3578,6 +3578,200 @@ section('12l. The feel layer: ripples, rolling figures and the reward for finish
 
   ok('nothing in the feel layer threw while all of that ran',
     page.errors.length === 0, JSON.stringify(page.errors));
+}
+
+section('12m. Nothing is reviewed until a portfolio has actually been chosen');
+{
+  /*
+   * Reported: "i clicked check now after uploading nothing and it had stiuff to say".
+   *
+   * It had plenty to say. The default portfolio folder is the parent of the app, the
+   * app is delivered by unzipping into ~/Downloads, and with no file chosen findDeck
+   * searched that folder three levels deep and took the most recently edited .pptx it
+   * found. On the developer's own machine that was
+   * "AQA DT 7552 Unit 2 T1 Performance-Polymers.pptx", an exam-board teaching deck,
+   * and the app produced 48 findings about it as though it were the student's NEA.
+   * The only clue anywhere was a small filename.
+   *
+   * The rule is now: no portfolio chosen, no report.
+   */
+  const server = require(path.join(ROOT, 'server.js'));
+  const os = require('os');
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nea-deck-'));
+  const somebodyElse = path.join(tmp, 'Somebody Elses Coursework.pptx');
+  fs.writeFileSync(somebodyElse, 'not really a pptx');
+
+  // The folder HAS a .pptx in it. It must not be used.
+  const notChosen = server.findDeck({ deckDir: tmp, deckDirChosen: false, deckFile: null, pdfFile: null });
+  ok('with no portfolio chosen the app refuses instead of searching the folder',
+    !!notChosen.error && notChosen.needsPortfolio === true, JSON.stringify(notChosen));
+  ok('and it says the one thing the student needs to know',
+    notChosen.error === 'No portfolio has been uploaded yet.', notChosen.error);
+  ok('it does not quietly hand back the file it found anyway',
+    !notChosen.filePath, String(notChosen.filePath));
+
+  // The flag is what makes the difference, not the folder.
+  const chosen = server.findDeck({ deckDir: tmp, deckDirChosen: true, deckFile: null, pdfFile: null });
+  ok('once a folder has been chosen deliberately, searching it is allowed again',
+    chosen.filePath === somebodyElse, JSON.stringify(chosen));
+
+  // An explicit file needs no folder flag — that is the upload path.
+  const explicit = server.findDeck({ deckDir: tmp, deckDirChosen: false, deckFile: somebodyElse, pdfFile: null });
+  ok('an explicitly chosen file is read even without the folder flag',
+    explicit.filePath === somebodyElse, JSON.stringify(explicit));
+
+  const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'nea-empty-'));
+  const none = server.findDeck({ deckDir: empty, deckDirChosen: true, deckFile: null, pdfFile: null });
+  ok('an empty chosen folder does NOT quietly become the bundled sample',
+    !!none.error && none.needsPortfolio === true && !none.usedSample, JSON.stringify(none));
+
+  // The shipped default is "not chosen", which is what fixes existing installs with
+  // deckDir ".." already saved: the flag is simply absent there.
+  ok('a fresh install starts with no portfolio chosen',
+    server.defaultConfig().deckDirChosen === false,
+    String(server.defaultConfig().deckDirChosen));
+  ok('and the browser is told, so it can draw an empty state',
+    server.publicConfig({ deckDirChosen: false }).portfolioChosen === false
+    && server.publicConfig({ deckDirChosen: true }).portfolioChosen === true);
+
+  /*
+   * Every route that hands the app a portfolio must set the flag, or the guard would
+   * lock a student out of their own file — a worse bug than the one being fixed.
+   */
+  const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  ok('uploading a PowerPoint marks the portfolio as chosen',
+    /cfg\.deckFile = target;\n\s*cfg\.deckDirChosen = true;/.test(src));
+  ok('uploading a PDF marks it chosen too',
+    /cfg\.pdfFile = target;\n\s*\/\/[^\n]*\n\s*cfg\.deckDirChosen = true;/.test(src));
+  const flagSites = (src.match(/cfg\.deckDirChosen = true;/g) || []).length;
+  ok('and saving a folder in Settings does as well', flagSites >= 3, flagSites + ' sites set the flag');
+
+  ok('the saved report is suppressed while there is no portfolio',
+    /const report = portfolioReady \? \(lastReport \|\| readJsonSafe\(LAST_REPORT_PATH, null\)\) : null;/.test(src),
+    'a stale report would still be shown even though the scan is refused');
+
+  // The page must say so, and stop offering to scan.
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  ok('the page still loads with the guard in place', page.errors.length === 0, JSON.stringify(page.errors));
+
+  const textOf = (node) => {
+    if (!node) { return ''; }
+    let out = node.textContent ? String(node.textContent) : '';
+    for (const k of (node.children || [])) { out += ' ' + textOf(k); }
+    return out;
+  };
+
+  page.state.scanning = false;
+  page.state.data = { ok: true, config: { portfolioChosen: false }, deck: null, local: { findings: [] }, ai: {} };
+  const drew = page.call('renderActions');
+  ok('renderActions survives an install with no portfolio', drew.ok, drew.error);
+  ok('Check now is disabled when there is no portfolio', page.ui.btnCheck.disabled === true);
+  ok('and the button says why, rather than sitting there dead',
+    /portfolio first/i.test(page.ui.btnCheckLabel.textContent), page.ui.btnCheckLabel.textContent);
+  ok('the banner states it plainly',
+    /No portfolio has been uploaded yet/.test(textOf(page.els.get('sampleNotice'))),
+    textOf(page.els.get('sampleNotice')));
+  ok('the banner offers the way out', /Add my portfolio/.test(textOf(page.els.get('sampleNotice'))));
+
+  // And it lets go the moment there is something to read.
+  page.state.data = { ok: true, config: { portfolioChosen: true }, deck: null, local: { findings: [] }, ai: {} };
+  page.call('renderActions');
+  ok('with a portfolio the button comes back', page.ui.btnCheck.disabled === false);
+  ok('and the banner clears itself', textOf(page.els.get('sampleNotice')).trim() === '',
+    textOf(page.els.get('sampleNotice')));
+
+  fs.rmSync(tmp, { recursive: true, force: true });
+  fs.rmSync(empty, { recursive: true, force: true });
+}
+
+section('12n. Your settings, key and portfolio survive an upgrade');
+{
+  /*
+   * Reported: "it should stay uploaded if the user opens the app at a later date".
+   *
+   * It did not. The data lived in <app folder>/state, and every release unzips into a
+   * NEW folder — deliberately, because that is what stops an older copy overwriting a
+   * newer one — so every release also arrived with an empty state folder. The key, the
+   * portfolio and the settings were still sitting in the previous version's folder.
+   * The user's v1.0.22 config had an empty apiKey, which is exactly what that looks
+   * like from their side.
+   *
+   * The data now lives where each platform expects per-user data, and an existing
+   * install is brought across on first run.
+   */
+  const server = require(path.join(ROOT, 'server.js'));
+  const os = require('os');
+
+  ok('the intended data folder is outside the app folder, so unzipping cannot lose it',
+    server.perUserDataDir().indexOf(ROOT) !== 0, server.perUserDataDir());
+  ok('and it is named so a person can actually find it',
+    /NEA Coach$/.test(server.perUserDataDir()), server.perUserDataDir());
+  /*
+   * Deliberately not asserting stateDir IS the per-user folder: on a machine where
+   * that location cannot be written the app falls back, and this test has to pass on
+   * both. What matters is that it is one of the two documented answers.
+   */
+  ok('the resolved folder is the per-user one, or the documented fallback',
+    server.stateDir === server.perUserDataDir()
+    || server.stateDir === path.join(ROOT, 'state'), server.stateDir);
+
+  // The override is the escape hatch, and the only way to exercise this in a sandbox.
+  const overrideDir = path.join(os.tmpdir(), 'nea-override-check');
+  const previous = process.env.NEA_COACH_DATA_DIR;
+  process.env.NEA_COACH_DATA_DIR = overrideDir;
+  ok('NEA_COACH_DATA_DIR overrides where the data lives',
+    server.perUserDataDir() === overrideDir, server.perUserDataDir());
+  if (previous === undefined) delete process.env.NEA_COACH_DATA_DIR;
+  else process.env.NEA_COACH_DATA_DIR = previous;
+
+  /*
+   * A stale absolute path in an adopted config is the one fault that would look like a
+   * success and behave like a failure: the app would say a portfolio had been chosen
+   * and then fail to find it. repairAdoptedPaths is what prevents that, and it is
+   * driven here against a config laid out exactly like a real one.
+   */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nea-adopted-'));
+  fs.mkdirSync(path.join(dir, 'portfolio'), { recursive: true });
+  const moved = path.join(dir, 'portfolio', 'My Work.pptx');
+  fs.writeFileSync(moved, 'x');
+  const cfgPath = path.join(dir, 'config.json');
+  fs.writeFileSync(cfgPath, JSON.stringify({
+    deckFile: '/somewhere/that/went/away/My Work.pptx',
+    pdfFile: '/somewhere/that/went/away/Gone For Good.pdf',
+    apiKey: 'AIzaKEEPME',
+  }));
+
+  server.repairAdoptedPaths(dir);
+  const repaired = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+  ok('a portfolio whose old path has gone is re-pointed at its new home',
+    repaired.deckFile === moved, repaired.deckFile);
+  ok('a portfolio that genuinely is not there is left alone rather than faked',
+    repaired.pdfFile === '/somewhere/that/went/away/Gone For Good.pdf', repaired.pdfFile);
+  ok('and having a portfolio counts as having chosen one, so the guard cannot lock them out',
+    repaired.deckDirChosen === true);
+  ok('the API key comes across untouched', repaired.apiKey === 'AIzaKEEPME');
+  fs.rmSync(dir, { recursive: true, force: true });
+
+  /*
+   * An unusable per-user folder must not stop the app, and must not be quiet about it:
+   * falling back means the data will be lost on the next upgrade, which is the exact
+   * fault this section exists for.
+   */
+  const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  ok('an unwritable data folder falls back instead of refusing to start',
+    /const fallback = path\.join\(APP_DIR, 'state'\)/.test(src) && /return fallback;/.test(src));
+  ok('and says so out loud, because silently losing the data IS the bug',
+    /Could not use the per-user data folder/.test(src));
+  ok('the fallback is decided at startup, not when the first write fails',
+    /fs\.mkdirSync\(target, \{ recursive: true \}\);\n\s*return target;/.test(src),
+    'an unwritable folder would only surface when the server tried to save');
+  ok('adoption is logged when it happens, so a silent success is still visible',
+    /brought them across from/.test(src));
+  ok('the data folder is not created before adoption, or a move would become a copy',
+    src.indexOf('adoptPreviousState(target)') < src.indexOf('fs.mkdirSync(target, { recursive: true })'),
+    'mkdir now runs before adoption, so a 500 MB portfolio would be copied instead of moved');
 }
 
 })().then(summary, (err) => {
