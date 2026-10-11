@@ -128,11 +128,16 @@ function makeEl(id) {
 /**
  * Load the page script with a DOM around it.
  *
- * @param {string} appRoot  the app folder containing public/index.html
+ * The app root is derived from this file's own location, NOT from the working
+ * directory, so the suite still runs when invoked as `node <app>/tests/test.js`
+ * from somewhere else.
+ *
+ * @param {string} [appRoot] override; defaults to the folder containing this file
  * @returns {{els, store, errors, call, state, ui, document, window, html}}
  */
 function loadPage(appRoot) {
-  const html = fs.readFileSync(path.join(appRoot, 'public', 'index.html'), 'utf8');
+  const root = appRoot || path.join(__dirname, '..');
+  const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
   let script = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
   const ids = [...new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]))];
