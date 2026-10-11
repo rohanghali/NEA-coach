@@ -1807,10 +1807,9 @@
      * rather than a hover state, and the group headings must not sit side by side
      * with their notes on a narrow screen.
      */
-    .settings-group > summary { padding: 12px 13px; flex-direction: column; gap: 2px; }
+    .settings-group > summary { flex-direction: column; }
     .group-note { font-size: 12.5px; }
     .group-body { padding: 4px 13px 14px; }
-    .settings-group { margin-bottom: 8px; }
     .card-title { font-size: 12px; margin-bottom: 8px; }
     .settings-lede { font-size: 14px; }
     /* The exam-board and best-marks buttons stack full width with the rest. */
@@ -1856,6 +1855,19 @@
   }
   .settings-group > summary::-webkit-details-marker { display: none; }
   .settings-group > summary:hover { background: var(--accent-soft); }
+  /*
+   * The phone spacing for these groups, placed AFTER the rules above rather than in the big mobile
+   * block near the top of the file.
+   *
+   * Those overrides were written there first, and this section was added later — so at equal
+   * specificity the later, unconditional rule won at every width and the phone values never applied.
+   * A media query contributes no specificity; only order does.
+   */
+  @media (max-width: 700px) {
+    .settings-group { margin-bottom: 8px; }
+    .settings-group > summary { padding: 12px 13px; gap: 2px; }
+  }
+
   .group-title { font-weight: 650; font-size: 15.5px; }
   .group-note { font-size: 13.5px; }
   /*
@@ -3116,19 +3128,19 @@
     you need without hunting. The nine in between scroll.
   -->
   <div class="toptabs-row">
-    <button class="toptab toptab-start" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview" type="button">Overview</button>
+    <button class="toptab toptab-start" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panelOverview" data-tab="overview" type="button">Overview</button>
     <div class="toptabs-scroll" id="topTabsScroll">
-      <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panel-fixlist" data-tab="fixlist" type="button">Fix list</button>
-      <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panel-suggest" data-tab="suggest" type="button">Things to add</button>
-      <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panel-predicted" data-tab="predicted" type="button">Predicted mark</button>
-      <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panel-coverage" data-tab="coverage" type="button">Coverage grid</button>
-      <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panel-since" data-tab="since" type="button">Since your last check</button>
-      <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panel-slides" data-tab="slides" type="button">Slides</button>
-      <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" type="button">Past checks</button>
-      <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-tab="stats" type="button">Statistics</button>
-      <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panel-info" data-tab="info" type="button">Information</button>
+      <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panelFixlist" data-tab="fixlist" type="button">Fix list</button>
+      <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panelSuggest" data-tab="suggest" type="button">Things to add</button>
+      <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panelPredicted" data-tab="predicted" type="button">Predicted mark</button>
+      <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panelCoverage" data-tab="coverage" type="button">Coverage grid</button>
+      <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panelSince" data-tab="since" type="button">Since your last check</button>
+      <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panelSlides" data-tab="slides" type="button">Slides</button>
+      <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panelHistory" data-tab="history" type="button">Past checks</button>
+      <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panelStats" data-tab="stats" type="button">Statistics</button>
+      <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panelInfo" data-tab="info" type="button">Information</button>
     </div>
-    <button class="toptab toptab-end" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" type="button">Settings</button>
+    <button class="toptab toptab-end" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panelSettings" data-tab="settings" type="button">Settings</button>
   </div>
   <!--
     The scroller: a long bar you drag, rather than two small arrows.
@@ -4021,6 +4033,15 @@
 
   function show(node, visible) {
     if (!node) { return; }
+    /*
+     * The attribute as well as the inline style.
+     *
+     * Some elements are hidden in the markup with a bare `hidden`, whose UA rule is display:none.
+     * Clearing only the inline display left that attribute in force wherever no author rule
+     * overrode it, so "show" could not show them: the welcome-back note on the first-run wizard was
+     * written into an element that stayed invisible for ever.
+     */
+    node.hidden = !visible;
     node.style.display = visible ? '' : 'none';
   }
 
@@ -4184,7 +4205,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.59';
+  var PAGE_BUILD = '1.0.60';
 
   var state = {
     data: null,
@@ -5068,6 +5089,30 @@
    * for the chosen model and the deck's real page count, and it accounts for the
    * fact that a repeat check of unchanged pages costs nothing.
    */
+  /**
+   * How many pages the last scan saw — or null when that file is no longer the one chosen.
+   *
+   * state.data.deck belongs to the last COMPLETED scan. Choose a different portfolio and the two
+   * disagree until the next check: after swapping a 60-page PDF for a shorter one, the cost hints
+   * still said "on your 60 pages" and priced the check on the old document, which can stop a student
+   * running a check they can actually afford. null means "not worked out yet", and every caller here
+   * already has a branch for that.
+   */
+  function scannedPageCount() {
+    var data = state.data;
+    if (!data || !data.deck || typeof data.deck.slideCount !== 'number') { return null; }
+    var same = data.sameWork || null;
+    var cfg = data.config || {};
+    /* sameWork records the files the last scan actually read. */
+    var scannedPdf = same && same.pdfFile ? String(same.pdfFile) : null;
+    var chosenPdf = cfg.pdfName ? String(cfg.pdfName) : null;
+    if (scannedPdf && chosenPdf && scannedPdf !== chosenPdf) { return null; }
+    var scannedPptx = same && same.pptxFile ? String(same.pptxFile) : null;
+    var chosenPptx = cfg.deckName ? String(cfg.deckName) : null;
+    if (scannedPptx && chosenPptx && scannedPptx !== chosenPptx) { return null; }
+    return data.deck.slideCount;
+  }
+
   function renderScanCostHint() {
     var host = ui.scanCostHint;
     if (!host) { return; }
@@ -5081,7 +5126,7 @@
       return;
     }
 
-    var pages = data && data.deck && typeof data.deck.slideCount === 'number' ? data.deck.slideCount : 0;
+    var pages = scannedPageCount() || 0;
     /*
      * Price the model that is SELECTED, not the one last saved, so changing the
      * dropdown shows the new cost immediately instead of after saving.
@@ -5441,8 +5486,7 @@
 
     var cfg = (state.data && state.data.config) || {};
     var plan = cfg.wouldRun || null;
-    var pages = (state.data && state.data.deck && typeof state.data.deck.slideCount === 'number')
-      ? state.data.deck.slideCount : 0;
+    var pages = scannedPageCount() || 0;
 
     var label = el('span', { cls: 'check-plan-label', text: 'If you check now' });
     host.appendChild(label);
@@ -6655,13 +6699,32 @@
         : (config.specName ? String(config.specName) : '');
       var lines = [
         el('p', { cls: 'empty-title', text: 'No mark scheme loaded yet' }),
-        el('p', { text: 'The coverage grid needs the list of criteria your work is marked against. Drop the specification PDF — or a plain text file of the criteria — into a folder called spec, next to the app.' }),
+        /*
+     * A .txt or .md of the criteria — NOT a PDF.
+     *
+     * This said "the specification PDF", and the loader pushes every .pdf to its skipped list with the
+     * reason "PDF — convert to text or .md for now". So a student who followed the instruction exactly
+     * got an empty grid and no explanation, while the server held the reason and the client never read
+     * it.
+     */
+        el('p', { text: 'The coverage grid needs the list of criteria your work is marked against. Put a plain text file of the criteria (.txt or .md) in a folder called spec, next to the app.' }),
         el('p', { text: 'Then press Re-check everything and this tab fills in: each criterion, how much it is worth, and the pages that evidence it.' })
       ];
       if (specName) {
         lines.push(el('p', { cls: 'muted small', text: 'The app is currently looking at: ' + specName }));
       } else {
-        lines.push(el('p', { cls: 'muted small', text: 'Accepted: a .pdf, .txt or .md file. One file is enough — the first one found is used.' }));
+        lines.push(el('p', { cls: 'muted small', text: 'Accepted: a .txt or .md file. One file is enough — the first one found is used.' }));
+        /*
+         * And if a file WAS found and rejected, say why. The server has always sent specSkipped with the
+         * reason on it; nothing read it, so the only feedback a student got was an empty grid.
+         */
+        var skippedSpec = (config.specSkipped && config.specSkipped.length) ? config.specSkipped : [];
+        for (var si = 0; si < skippedSpec.length && si < 3; si++) {
+          var note = skippedSpec[si] && (skippedSpec[si].reason || skippedSpec[si].name)
+            ? (skippedSpec[si].name ? skippedSpec[si].name + ': ' : '') + (skippedSpec[si].reason || 'not usable')
+            : 'not usable';
+          lines.push(el('p', { cls: 'muted small', text: 'Found but not used — ' + note }));
+        }
       }
       host.appendChild(el('div', { cls: 'empty' }, lines));
       return;
@@ -7745,6 +7808,8 @@
       if (ui.deckDirInput) { ui.deckDirInput.value = config && config.deckDir ? String(config.deckDir) : ''; }
       if (ui.modelSelect && model !== 'Not set') { ui.modelSelect.value = model; }
       if (ui.markToggle) { ui.markToggle.checked = !(config && config.markEnabled === false); }
+      /* Restored from the saved setting, or the switch shows off while the server thinks otherwise. */
+      if (ui.thinkingToggle) { ui.thinkingToggle.checked = !!(config && config.thinking); }
       fillSpecSelect(config);
       state.settingsFilled = true;
     }
@@ -8352,8 +8417,16 @@
     var model = ui.modelSelect ? String(ui.modelSelect.value || '') : '';
     if (!model) { setText(host, ''); return; }
 
-    var pages = state.data && state.data.deck && typeof state.data.deck.slideCount === 'number'
-      ? state.data.deck.slideCount : 60;
+    /*
+     * The page count of the file actually chosen. It defaulted to 60 when the deck was unknown, which
+     * quietly priced a number nobody had checked — and it read the LAST scan's deck, so after swapping
+     * portfolios the estimate described the old one.
+     */
+    var pages = scannedPageCount();
+    if (!pages) {
+      setText(host, 'The number of pages is worked out at the next check, and the request estimate with it.');
+      return;
+    }
     var reqs = estimateScanRequests(pages, hasPdf() ? visionRunCount() : 0);
     var limit = dailyLimitFor(model);
     var fits = Math.max(1, Math.floor(limit / reqs.total));
@@ -9042,7 +9115,18 @@
      * Re-price the next check the moment either switch is flipped, so the cost is
      * never a surprise after the fact.
      */
-    on(ui.thinkingToggle, 'change', function () { renderScanCostHint(); });
+    /*
+     * Deep thinking is SAVED, like the mark switch beside it.
+     *
+     * It only re-priced the hint and never wrote the setting, so cfg.thinking stayed false for ever:
+     * the switch showed on, the front page said "Deep thinking is off", the choice was lost on
+     * reload, and automatic re-scans (which take the saved value) ran without it.
+     */
+    on(ui.thinkingToggle, 'change', function () {
+      renderScanCostHint();
+      renderCheckPlan();
+      saveSetting({ thinking: !!(ui.thinkingToggle && ui.thinkingToggle.checked) });
+    });
 
     // Exam board and the best-marks preset save on their own.
     on(ui.btnSaveBoard, 'click', saveBoard);
@@ -9400,7 +9484,12 @@
     var model = bestMarkingModel();
     if (ui.markToggle) { ui.markToggle.checked = true; }
     if (ui.visionModelSelect && model) { ui.visionModelSelect.value = model; }
+    /*
+     * Turned on here as part of a batch of settings, so it has to be part of the same save — this
+     * posted only visionModel, markEnabled and specId, so the switch came on and the setting did not.
+     */
     if (ui.thinkingToggle) { ui.thinkingToggle.checked = true; }
+    var bestThinking = true;
 
     var btn = ui.btnBestMarks;
     if (btn) { btn.disabled = true; }
@@ -9409,6 +9498,8 @@
     apiPost('/api/config', {
       visionModel: ui.visionModelSelect ? String(ui.visionModelSelect.value) : '',
       markEnabled: true,
+      /* Sent, or the switch comes on and the saved setting does not. */
+      thinking: bestThinking,
       specId: ui.specSelect ? String(ui.specSelect.value) : undefined
     }).then(function (res) {
       if (btn) { btn.disabled = false; }

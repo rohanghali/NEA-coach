@@ -2346,9 +2346,21 @@ section('11t. Structural checks on a PDF');
       skipped.includes('text-overflow') && skipped.includes('off-canvas'));
     ok('a PDF runs FEWER rules than the same deck as a PowerPoint',
       pdfRun.ruleCount < pptxRun.ruleCount);
-    ok('the totals are reported so the UI can explain the gap',
-      pdfRun.totalRules === pptxRun.totalRules && pdfRun.totalRules === 18,
-      String(pdfRun.totalRules));
+    /*
+     * The totals are the rules that can ACTUALLY run. Two rules are switched off
+     * ('low-res-image', 'image-too-small') and are skipped by an early continue that never reaches
+     * the skipped list, so they used to be counted as having run: the UI claimed "all 18 free
+     * checks" when only 16 can execute, and told the student their image resolution was checked.
+     */
+    ok('the totals exclude the rules that are switched off',
+      pptxRun.totalRules === 16 && pdfRun.totalRules === 16,
+      'got pptx ' + pptxRun.totalRules + ' and pdf ' + pdfRun.totalRules + ', expected 16');
+    ok('and the count of what ran excludes them too',
+      pptxRun.ruleCount === 16 && pdfRun.ruleCount === 11,
+      'got pptx ' + pptxRun.ruleCount + ' and pdf ' + pdfRun.ruleCount + ', expected 16 and 11');
+    ok('so the parts add up to the whole',
+      pdfRun.ruleCount + pdfRun.skippedRules.length === pdfRun.totalRules,
+      pdfRun.ruleCount + ' ran + ' + pdfRun.skippedRules.length + ' skipped != ' + pdfRun.totalRules);
     ok('rules that read only words DO run', !skipped.includes('common-misspellings')
       && !skipped.includes('duplicate-pages') && !skipped.includes('near-empty-page'));
   } else {
@@ -6378,6 +6390,226 @@ section('12ak. A running header is not a slide title');
     'on three pages a repeated line is as likely to be a real title');
   ok('and a one-off line is never treated as a header',
     pdfdeck.runningHeaders(['Intro\nA', 'Middle\nB', 'End\nC', 'More\nD', 'Last\nE']).size === 0);
+}
+
+section('12al. Findings that say different things are not merged away');
+{
+  /*
+   * A systematic audit found these. Both were false findings reaching the student, which is the
+   * worst failure this app has.
+   */
+  const checks = require(path.join(ROOT, 'lib', 'checks.js'));
+
+  const slide = (i, text) => ({
+    index: i, fingerprint: 'fp' + i, archivePath: null, title: null, hasTitle: false,
+    hasTitlePlaceholder: false, text, textShapes: [], shapes: [],
+    wordCount: text.split(/\s+/).filter(Boolean).length, longestParagraphWords: 6,
+    images: [], imageCount: 0, hasImages: false, notesWordCount: 0,
+  });
+  const deckOf = (texts) => ({
+    source: 'pptx', fileName: 'audit.pptx', slides: texts.map((x, i) => slide(i + 1, x)),
+  });
+  const run = (texts) => checks.runLocalChecks(deckOf(texts), { source: 'pptx' }).findings;
+
+  /* ---- terminology: a word that CONTAINS one of the pair is not the pair ---- */
+  /*
+   * The patterns were anchored only at the start, so \bcolor matched "colorimeter". A student
+   * writing about a colorimeter was told they had mixed in American spelling they never used.
+   */
+  const col = run(['I checked the colorimeter and the colour of the fabric.'])
+    .filter((f) => f.rule === 'terminology-inconsistency');
+  ok('a word merely CONTAINING a US spelling is not evidence of one',
+    col.length === 0, 'got ' + col.length + ' finding(s): ' + col.map((f) => f.title).join('; '));
+
+  const lic = run(['I used licensed software under my site licence.'])
+    .filter((f) => f.rule === 'terminology-inconsistency');
+  ok('licence/license is not reported, because BOTH are correct British English',
+    lic.length === 0, 'noun vs verb, not a misspelling: ' + lic.map((f) => f.title).join('; '));
+
+  const met = run(['The meter reading was taken with a metre rule.'])
+    .filter((f) => f.rule === 'terminology-inconsistency');
+  ok('nor is metre/meter, which is a unit against a measuring instrument',
+    met.length === 0, met.map((f) => f.title).join('; '));
+
+  /* ---- and it still catches a genuine mix ---- */
+  const mix = run(['The colour of the fabric.', 'The color of the dye.'])
+    .filter((f) => f.rule === 'terminology-inconsistency');
+  ok('but a genuine colour/color mix IS still reported', mix.length === 1,
+    'got ' + mix.length);
+  ok('and it names only the pages that carry one of the two forms',
+    mix.length === 1 && mix[0].slides.join(',') === '1,2', mix.length ? mix[0].slides.join(',') : 'none');
+
+  /* ---- two different misspellings are two different findings ---- */
+  /*
+   * The merge key was `rule|slide`, and deck-level rules carry no slide number — so every
+   * misspelling collided under one key, all but the first were DELETED, and the survivor listed the
+   * union of every page number. The report named one typo and pointed at pages containing others.
+   */
+  const spell = run(['I recieved the wood.', 'I seperate the parts.'])
+    .filter((f) => f.rule === 'common-misspellings');
+  ok('each misspelling is its own row, rather than all but one being deleted',
+    spell.length === 2, 'got ' + spell.length + ': ' + spell.map((f) => f.title).join(' | '));
+
+  const wrong = spell.filter((f) => {
+    const quoted = /"([^"]+)"/.exec(f.title);
+    if (!quoted) { return false; }
+    const word = quoted[1];
+    const pages = f.slides || [];
+    return pages.some((p) => !deckOf(['I recieved the wood.', 'I seperate the parts.'])
+      .slides[p - 1].text.toLowerCase().includes(word.toLowerCase()));
+  });
+  ok('and no row lists a page that does not contain the typo it names',
+    wrong.length === 0, wrong.map((f) => f.title + ' -> ' + f.slides.join(',')).join(' | '));
+}
+
+section('12am. A replaced picture is a changed page');
+{
+  /*
+   * The fingerprint pushed the image's archive PATH and nothing else, so replacing or recompressing a
+   * picture left it identical — as long as the part kept its name, which it does. The app then
+   * reported no changed pages and served the previous AI review of the OLD image from the batch
+   * cache: a new photo was never looked at, and the verdict about the old one stayed on screen.
+   *
+   * The central directory already records a CRC-32 and the stored sizes for every entry, so the
+   * content is known without inflating anything.
+   */
+  const zipread = require(path.join(ROOT, 'lib', 'zipread.js'));
+  const file = path.join(ROOT, 'sample', 'AQA-GCSE-Portfolio-SAMPLE.pptx');
+  const original = fs.readFileSync(file);
+  // parsePresentation takes a PATH — it opens the archive itself.
+  const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'nea-img-'));
+
+  const before = parsePresentation(file);
+  const again = parsePresentation(file);
+  ok('the same file gives the same fingerprints twice',
+    before.slides.every((s, i) => s.fingerprint === again.slides[i].fingerprint));
+
+  const zip = zipread.open(file);
+  const image = zip.list().filter((n) => /^ppt\/media\//.test(n))[0];
+  ok('the sample has an image to test with', !!image, 'no ppt/media entry found');
+
+  if (image) {
+    const entry = zip.entries.get(image);
+    ok('and the archive records a CRC for it, which is what makes this free',
+      typeof entry.crc === 'number' && entry.crc > 0, 'crc was ' + entry.crc);
+
+    /*
+     * Change what the archive says is in that image, in place, without touching any inflatable data:
+     * rewrite its CRC-32 in the central directory. That is exactly the signal a repacked picture
+     * would change, and the reader never verifies it, so the file still parses.
+     */
+    const nameAt = original.lastIndexOf(Buffer.from(image, 'utf8'));
+    ok('the central directory entry for it was found', nameAt > 46);
+    const edited = Buffer.from(original);
+    if (nameAt > 46) {
+      const crcAt = nameAt - 46 + 16;
+      edited.writeUInt32LE((entry.crc ^ 0x5a5a5a5a) >>> 0, crcAt);
+
+      const editedPath = path.join(tmp, 'edited.pptx');
+      fs.writeFileSync(editedPath, edited);
+      const after = parsePresentation(editedPath);
+      const moved = after.slides.filter((s, i) => s.fingerprint !== before.slides[i].fingerprint);
+      ok('changing what the archive says is in the image changes a page fingerprint',
+        moved.length > 0,
+        'every fingerprint was identical, so the changed picture would be reported as unchanged');
+      ok('and it changes the fingerprint of the page that USES it, not all of them',
+        moved.length > 0 && moved.length < before.slides.length,
+        moved.length + ' of ' + before.slides.length + ' pages moved');
+    }
+  }
+
+  ok('zipread exposes the crc it now parses',
+    /this\.entries\.set\(name, \{ name, crc,/.test(fs.readFileSync(path.join(ROOT, 'lib', 'zipread.js'), 'utf8')));
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+
+section('12an. Settings that are shown must be settings that are saved');
+{
+  /*
+   * A systematic audit found these. Each one is a case of the screen and the saved state disagreeing,
+   * which is the kind of bug a student cannot diagnose.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+
+  /* ---- Deep thinking ---- */
+  /*
+   * The switch was wired to a handler that only re-priced the cost hint. cfg.thinking therefore stayed
+   * false for ever, so the front page said "Deep thinking is off" while the switch said on, the choice
+   * was lost on reload, and automatic re-scans ran without it.
+   */
+  ok('the Deep thinking switch saves the setting when it changes',
+    /on\(ui\.thinkingToggle, 'change',[\s\S]{0,400}saveSetting\(\{ thinking:/.test(html),
+    'it only re-priced the hint, so the setting never reached the server');
+  ok('and the switch is restored from the saved setting when Settings is drawn',
+    /if \(ui\.thinkingToggle\) \{ ui\.thinkingToggle\.checked = !!\(config && config\.thinking\); \}/.test(html),
+    'without this the switch shows off on every reload');
+  ok('and "set up for best marks" sends it with the rest of its batch',
+    /thinking: bestThinking/.test(html),
+    'it turned the switch on but posted only the model, the mark flag and the board');
+
+  /* ---- deckName ---- */
+  /*
+   * The wizard asks whether a portfolio has been added, reading cfg.deckName — a field the server has
+   * never sent. pdfName is null for a .pptx-only portfolio, so a returning student with one was told
+   * they had not added a portfolio while one was loaded.
+   */
+  /* ---- the page count belongs to the file that is chosen ---- */
+  /*
+   * state.data.deck is the last COMPLETED scan's deck. After choosing a different portfolio the two
+   * disagree until the next check, so the cost hints quoted the old count: swapping a 60-page PDF for
+   * a shorter one still read "on your 60 pages" and priced the check on the wrong document. One of
+   * them also defaulted to 60 pages when it knew nothing at all, which is a number nobody checked.
+   */
+  ok('every cost hint takes its page count from the chosen file, not the last scan',
+    /function scannedPageCount\(\)/.test(html)
+    && (html.match(/scannedPageCount\(\)/g) || []).length >= 4,
+    'found ' + (html.match(/scannedPageCount\(\)/g) || []).length + ' uses');
+  ok('and it returns nothing rather than guessing when the file has changed',
+    /scannedPdf !== chosenPdf\) \{ return null; \}/.test(html)
+    && /scannedPptx !== chosenPptx\) \{ return null; \}/.test(html));
+  /* ---- the empty grid must not send a student down a dead end ---- */
+  /*
+   * The copy said "drop the specification PDF", and the loader pushes every .pdf to its skipped list
+   * with the reason "PDF — convert to text or .md for now". A student who followed the instruction
+   * exactly got an empty grid and no explanation, while the server held the reason and nothing read it.
+   */
+  ok('the coverage empty state does not recommend a PDF',
+    !/Drop the specification PDF/.test(html) && /plain text file of the criteria \(\.txt or \.md\)/.test(html),
+    'the loader skips every .pdf, so that instruction leads nowhere');
+  ok('and it surfaces why a file that WAS found was not used',
+    /config\.specSkipped/.test(html) && /Found but not used/.test(html),
+    'specSkipped has been sent by the server all along and nothing displayed it');
+
+  ok('the old "assume 60 pages" default is gone',
+    !/slideCount === 'number'\s*\n\s*\? state\.data\.deck\.slideCount : 60;/.test(html));
+  ok('and each of the three says so in words when the count is not known yet',
+    /The number of pages is worked out at the next check/.test(html)
+    && /estimate the cost from their count/.test(html));
+
+  ok('the server sends deckName, which the client has always read',
+    /deckName: cfg\.deckFile \? path\.basename\(cfg\.deckFile\) : null,/.test(server)
+    && /cfg\.deckName/.test(html));
+
+  /* ---- show() and the hidden attribute ---- */
+  /*
+   * An element hidden with a bare `hidden` attribute could never be shown, because clearing the
+   * inline display leaves the attribute's UA rule in force wherever no author rule overrides it.
+   */
+  ok('show() clears the hidden attribute as well as the inline style',
+    /function show\(node, visible\) \{[\s\S]{0,600}node\.hidden = !visible;/.test(html),
+    'the welcome-back note was written into an element that stayed invisible for ever');
+
+  /* ---- aria-controls ---- */
+  /*
+   * The panels are panelOverview, panelSettings... and every tab pointed at panel-overview.
+   */
+  const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]);
+  const wanted = ['overview', 'fixlist', 'suggest', 'predicted', 'coverage', 'since', 'slides',
+    'history', 'stats', 'info', 'settings'].map((x) => 'panel' + x.charAt(0).toUpperCase() + x.slice(1));
+  ok('every tab controls a panel that exists',
+    wanted.every((id) => controls.includes(id)) && !controls.some((c) => /^panel-/.test(c)),
+    'dangling IDREFs: ' + controls.filter((c) => !wanted.includes(c)).join(', '));
 }
 
 })().then(summary, (err) => {

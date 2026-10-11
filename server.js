@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.59';
+const VERSION = '1.0.60';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -778,6 +778,15 @@ function publicConfig(cfg, readingSample) {
      * keys is now routine, and two keys look identical until one runs out.
      */
     keyTail: cfg.apiKey ? String(cfg.apiKey).trim().slice(-4) : null,
+    /*
+     * The .pptx file's name.
+     *
+     * The client reads cfg.deckName in four places — the first-run wizard's "have you added a
+     * portfolio?" test and its welcome-back note — and the server has never sent it. pdfName is null
+     * for a PowerPoint-only portfolio, so a returning student with only a .pptx was told they had
+     * not added one, while one was loaded.
+     */
+    deckName: cfg.deckFile ? path.basename(cfg.deckFile) : null,
     /*
      * What a check WOULD do right now, from the live settings rather than from the last report.
      *
