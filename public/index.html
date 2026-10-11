@@ -1004,6 +1004,216 @@
   .show-more-wrap { margin: 14px 0 4px; text-align: center; }
   .show-more { margin-right: 8px; }
 
+  /* ---------- first-run setup (the wizard) ----------
+
+     Shown once, to a brand-new user, over the top of everything. The app has
+     seventeen sections and handing all of them to someone who has never seen it
+     is the single most overwhelming thing about opening it. This walks them
+     through one decision at a time, and every screen can be left.
+
+     z-index 1000 sits above the drag-and-drop message (999) on purpose: a file
+     dropped mid-wizard falls through to the wizard's own drop zone, which is the
+     step they are actually looking at. */
+
+  .intro-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+    background: rgba(16, 24, 40, 0.55);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    animation: intro-fade 160ms ease-out;
+  }
+  @keyframes intro-fade { from { opacity: 0; } to { opacity: 1; } }
+  .intro-overlay[hidden] { display: none; }
+
+  .intro-card {
+    width: 100%;
+    max-width: 620px;
+    margin: auto;
+    background: var(--card);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    /* The one place a real shadow earns its keep: this floats above the app. */
+    box-shadow: 0 24px 60px rgba(16, 24, 40, 0.28), 0 2px 8px rgba(16, 24, 40, 0.12);
+    animation: intro-pop 200ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  @keyframes intro-pop {
+    from { transform: translateY(10px) scale(0.985); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+
+  .intro-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px 0;
+  }
+  .intro-steps { display: flex; align-items: center; gap: 6px; }
+  .intro-dot {
+    width: 26px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    transition: background 180ms ease;
+  }
+  .intro-dot.is-now { background: var(--accent); }
+  .intro-dot.is-done { background: var(--accent-soft); }
+  .intro-skip {
+    appearance: none;
+    background: none;
+    border: 0;
+    padding: 6px 4px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .intro-skip:hover { color: var(--ink); }
+
+  .intro-body { padding: 10px 26px 4px; }
+  .intro-icon {
+    width: 44px;
+    height: 44px;
+    margin: 6px 0 14px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .intro-body h2 {
+    margin: 0 0 10px;
+    font-size: 23px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+  .intro-body p { margin: 0 0 12px; color: var(--ink-2); line-height: 1.55; }
+  .intro-body ul { margin: 0 0 14px; padding-left: 20px; color: var(--ink-2); }
+  .intro-body li { margin-bottom: 6px; line-height: 1.5; }
+  .intro-body strong { color: var(--ink); }
+  .intro-note {
+    font-size: 13.5px;
+    color: var(--muted);
+    background: var(--fill-soft);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 0 0 14px;
+  }
+
+  /* Board + choice cards, reused by the wizard and by Settings. */
+  .choice-grid { display: grid; gap: 10px; margin: 4px 0 14px; }
+  .choice-card {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    background: var(--card);
+    border: 1.5px solid var(--line-strong);
+    border-radius: 12px;
+    padding: 13px 15px;
+    transition: border-color 140ms ease, background 140ms ease;
+  }
+  .choice-card:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .choice-card.is-picked { border-color: var(--accent); background: var(--accent-soft); }
+  .choice-card .choice-title { display: block; font-weight: 650; margin-bottom: 3px; }
+  .choice-card .choice-sub { display: block; font-size: 13.5px; color: var(--muted); line-height: 1.45; }
+
+  .intro-drop {
+    border: 1.5px dashed var(--line-strong);
+    border-radius: 12px;
+    padding: 22px 16px;
+    text-align: center;
+    background: var(--fill-soft);
+    transition: border-color 140ms ease, background 140ms ease;
+    margin-bottom: 12px;
+  }
+  .intro-drop.is-over { border-color: var(--accent); background: var(--accent-soft); }
+  .intro-drop.is-done { border-style: solid; border-color: var(--good); background: var(--good-soft); }
+  .intro-drop-main { font-weight: 600; margin-bottom: 4px; }
+  .intro-drop-sub { font-size: 13.5px; color: var(--muted); }
+
+  .intro-field {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    padding: 11px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--fill-faint);
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .intro-field:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+  .intro-steps-list { list-style: none; margin: 0 0 16px; padding: 0; counter-reset: introstep; }
+  .intro-steps-list li {
+    position: relative;
+    padding: 0 0 14px 34px;
+    color: var(--ink-2);
+    line-height: 1.5;
+    counter-increment: introstep;
+  }
+  .intro-steps-list li::before {
+    content: counter(introstep);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .intro-steps-list li:last-child { padding-bottom: 0; }
+  .intro-steps-list a { color: var(--accent-dark); }
+
+  .intro-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 26px 18px;
+    border-top: 1px solid var(--line);
+    margin-top: 8px;
+  }
+  .intro-foot-right { display: flex; align-items: center; gap: 10px; }
+
+  /* The wizard's own feedback line, for the key test and uploads. */
+  .intro-status { font-size: 13.5px; margin: 0 0 10px; min-height: 18px; }
+  .intro-status.is-good { color: var(--good); }
+  .intro-status.is-bad { color: var(--critical); }
+
+  @media (max-width: 700px) {
+    .intro-overlay { padding: 0; align-items: flex-start; }
+    .intro-card { max-width: none; min-height: 100%; border-radius: 0; border: 0; box-shadow: none; }
+    .intro-body { padding: 8px 18px 0; }
+    .intro-foot { padding: 14px 18px 18px; flex-direction: column-reverse; align-items: stretch; }
+    .intro-foot-right { flex-direction: column; }
+    .intro-foot .btn, .intro-foot-right .btn { width: 100%; }
+  }
+
   /* ---------- drag and drop ---------- */
 
   /* Only present while a file is being dragged over the page. */
@@ -1172,6 +1382,101 @@
 </style>
 </head>
 <body>
+
+<!-- First-run setup. Hidden by default and revealed by the script only when the
+     user has never finished it, so a returning user never sees a flash of it. -->
+<div class="intro-overlay" id="introOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
+  <div class="intro-card">
+    <div class="intro-head">
+      <div class="intro-steps" id="introDots" aria-hidden="true"></div>
+      <button type="button" class="intro-skip" id="introSkip">Skip setup</button>
+    </div>
+
+    <div class="intro-body">
+
+      <!-- 1. Welcome -->
+      <section class="intro-step" id="introStep0">
+        <div class="intro-icon">N</div>
+        <h2 id="introTitle">Let's get you set up</h2>
+        <p>NEA Coach reads your Design &amp; Technology portfolio and tells you what to fix,
+           in the order that costs you the most marks.</p>
+        <p>About a minute of setup. Three things to decide, and you can skip any of them.</p>
+        <div class="intro-note" id="introWelcomeBack" hidden></div>
+        <ul>
+          <li><strong>Your work stays yours.</strong> Your PowerPoint file is never changed, and
+              nothing leaves this computer except the pages a check sends to Google.</li>
+          <li><strong>The structural checks are free</strong> and work with no account at all.</li>
+        </ul>
+      </section>
+
+      <!-- 2. Exam board -->
+      <section class="intro-step" id="introStep1" hidden>
+        <h2>Which exam board are you on?</h2>
+        <p>Your work is judged against that board's mark scheme. Getting this right matters —
+           the two boards disagree about things like whether every image needs a caption.</p>
+        <div class="choice-grid" id="introBoards"></div>
+        <div class="intro-status" id="introBoardStatus"></div>
+      </section>
+
+      <!-- 3. Portfolio -->
+      <section class="intro-step" id="introStep2" hidden>
+        <h2>Add your portfolio</h2>
+        <p>A PDF export is best, because that is what a moderator actually sees.
+           A <code>.pptx</code> works too.</p>
+        <div class="intro-drop" id="introDrop">
+          <div class="intro-drop-main" id="introDropMain">Drop your file here</div>
+          <div class="intro-drop-sub" id="introDropSub">PDF or PowerPoint &middot; nothing is uploaded anywhere but this computer</div>
+        </div>
+        <input type="file" id="introFile" accept=".pdf,.pptx" hidden>
+        <div class="intro-status" id="introFileStatus"></div>
+      </section>
+
+      <!-- 4. API key -->
+      <section class="intro-step" id="introStep3" hidden>
+        <h2>Add a free AI key</h2>
+        <p>This is the part people find fiddly, so here it is properly. It is free,
+           takes about two minutes, and <strong>needs no bank card</strong>.</p>
+        <ol class="intro-steps-list">
+          <li>Open <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a>
+              in a new tab and sign in with any Google account.</li>
+          <li>Click <strong>Create API key</strong>. If it asks you to pick a project,
+              let it create one.</li>
+          <li>Copy the key it shows you — it starts with <code>AIza</code>.</li>
+          <li>Paste it below and press <strong>Test this key</strong>.</li>
+        </ol>
+        <input type="password" class="intro-field" id="introKey" placeholder="AIza…"
+               autocomplete="off" spellcheck="false" aria-label="Your Google API key">
+        <div class="intro-status" id="introKeyStatus"></div>
+        <div class="actions-row">
+          <button type="button" class="btn btn-secondary" id="introKeyTest">Test this key</button>
+          <button type="button" class="btn btn-quiet" id="introKeySkip">I'll add the key later</button>
+        </div>
+        <div class="intro-note">The free tier allows roughly two full checks a day and resets at
+          midnight US Pacific time. The app shows you how much of the day's allowance you have
+          used, as a percentage, so you are never guessing.</div>
+      </section>
+
+      <!-- 5. First check -->
+      <section class="intro-step" id="introStep4" hidden>
+        <h2 id="introDoneTitle">You're ready</h2>
+        <p id="introDoneBody">That is everything. Run your first check now, or look around first —
+           you can start one any time from the Check now button.</p>
+        <div class="intro-note" id="introDoneNote"></div>
+        <ul id="introDoneList"></ul>
+      </section>
+
+    </div>
+
+    <div class="intro-foot">
+      <button type="button" class="btn btn-quiet" id="introBack">Back</button>
+      <div class="intro-foot-right">
+        <button type="button" class="btn btn-quiet" id="introLater" hidden>I'll do this later</button>
+        <button type="button" class="btn btn-primary btn-lg" id="introNext">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="page">
 
   <header class="topbar">
@@ -1320,6 +1625,13 @@
             <option value="dark">Dark</option>
           </select>
         </label>
+      </div>
+
+      <h3 class="sub">Getting started</h3>
+      <p class="muted small">Walk through the setup again, one question at a time. Nothing is
+         changed until you choose it.</p>
+      <div class="actions-row">
+        <button class="btn btn-secondary" id="btnShowSetup" type="button">Show setup again</button>
       </div>
 
       <h3 class="sub">Use it on your phone</h3>
@@ -2576,7 +2888,6 @@
     if (ui.btnCheck) { ui.btnCheck.disabled = busy; }
     if (ui.btnRecheck) { ui.btnRecheck.disabled = busy; }
     if (ui.thinkingToggle) { ui.thinkingToggle.disabled = busy; }
-    if (ui.recheckToggle) { ui.recheckToggle.disabled = busy; }
     show(ui.checkSpinner, busy);
     setText(ui.btnCheckLabel, busy ? 'Checking…' : 'Check now');
   }
@@ -2752,7 +3063,10 @@
      */
     var model = (ui.modelSelect && ui.modelSelect.value) ? String(ui.modelSelect.value) : (cfg.model || '');
     var thinking = !!(ui.thinkingToggle && ui.thinkingToggle.checked);
-    var recheck = !!(ui.recheckToggle && ui.recheckToggle.checked);
+    // Nothing forces a full re-read from this hint any more: the element that
+    // used to carry that choice no longer exists. A full re-read is the Check
+    // again button, which passes force through to startScan.
+    var recheck = false;
 
     // Pages changed since the last AI run. 0 means a repeat check is free.
     var changed = data && data.deck && Object.prototype.toString.call(data.deck.changedPages) === '[object Array]'
@@ -5445,6 +5759,9 @@
       }
 
       renderAll();
+      // First run only, and only once the config is in hand: the board list and
+      // the "already set up" summary both come from this payload.
+      maybeShowIntro();
       return data;
     }).catch(function (err) {
       if (window.console && window.console.warn) { window.console.warn(err); }
@@ -5533,7 +5850,7 @@
      * priceable.
      */
     var thinking = !!(ui.thinkingToggle && ui.thinkingToggle.checked);
-    var recheckAll = !!(ui.recheckToggle && ui.recheckToggle.checked) || !!force;
+    var recheckAll = !!force;
     state.scanning = true;
     state.progress = {
       running: true, phase: 'start', progress: null,
@@ -5805,7 +6122,8 @@
     var ids = [
       'deckName', 'banners', 'ringValue', 'scoreNumber', 'ringOutOf', 'verdict', 'lastChecked', 'deckMeta',
       'progressBox', 'progressPhase', 'progressPct', 'progressBar', 'progressBarFill', 'progressMsg', 'progressEta',
-      'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'recheckToggle', 'checkCoverage',
+      'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
+      'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
@@ -5815,7 +6133,10 @@
       'uploadInput', 'uploadStatus', 'uploadProgress', 'uploadBarFill', 'uploadHeading', 'uploadHelp', 'uploadCurrent',
       'pdfInput', 'pdfStatus', 'pdfProgress', 'pdfBarFill', 'pdfCurrent', 'btnClearPdf', 'btnClearDeck',
       'markToggle', 'visionModelSelect', 'themeSelect', 'compareCard', 'compareBody', 'compareWhen', 'connectBody', 'connectNote', 'historyCard', 'historyBody', 'historyNote', 'quotaWhen', 'reviewedName', 'reviewedHow', 'reviewedWarn', 'statsDetails', 'statsBody', 'statsSummary', 'infoDetails',
-      'appVersion', 'footerDeck'
+      'appVersion', 'footerDeck',
+      'introOverlay', 'introDots', 'introSkip', 'introBack', 'introNext', 'introLater',
+      'introBoards', 'introBoardStatus', 'introDrop', 'introDropMain', 'introDropSub', 'introFile', 'introFileStatus',
+      'introKey', 'introKeyStatus', 'introKeyTest', 'introKeySkip', 'btnShowSetup'
     ];
     for (var i = 0; i < ids.length; i++) { ui[ids[i]] = byId(ids[i]); }
   }
@@ -5871,7 +6192,6 @@
      * never a surprise after the fact.
      */
     on(ui.thinkingToggle, 'change', function () { renderScanCostHint(); });
-    on(ui.recheckToggle, 'change', function () { renderScanCostHint(); });
     /*
      * Re-price as soon as a different model is picked, so the cost of a change is
      * visible before Save settings is pressed rather than after.
@@ -5941,6 +6261,14 @@
 
     window.addEventListener('drop', function (e) {
       if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) { return; }
+      /*
+       * While the first-run wizard is open it owns the drop. Without this the file
+       * would be taken twice — once by the wizard and once by this handler, which
+       * also opens Settings behind the overlay. The wizard stops propagation from
+       * its own drop zone, so reaching here with it open means the file was
+       * released somewhere else on the page, and the right answer is to ignore it.
+       */
+      if (ui.introOverlay && !ui.introOverlay.hidden) { return; }
       e.preventDefault();
       document.body.classList.remove('is-dropping');
       var file = e.dataTransfer.files[0];
@@ -5985,10 +6313,351 @@
    * Start
    * ------------------------------------------------------------------ */
 
+  /* ------------------------------------------------------------------ *
+   * First-run setup
+   *
+   * One decision per screen, and every screen can be left. The finished flag
+   * lives in localStorage rather than the server config on purpose: it is a
+   * property of THIS browser, not of the portfolio, so opening the app in a
+   * second browser should offer the tour again.
+   * ------------------------------------------------------------------ */
+
+  var INTRO_KEY = 'neaCoach.intro.v1';
+  var introStep = 0;
+  var introTotal = 5;
+  var introChosenSpec = null;
+  var introHavePortfolio = false;
+  var introKeyOk = false;
+
+  /** localStorage can throw in private mode; the wizard must never break the app. */
+  function introIsDone() {
+    try { return window.localStorage.getItem(INTRO_KEY) === 'done'; } catch (e) { return false; }
+  }
+  function introMarkDone() {
+    try { window.localStorage.setItem(INTRO_KEY, 'done'); } catch (e) { /* fine */ }
+  }
+  function introForget() {
+    try { window.localStorage.removeItem(INTRO_KEY); } catch (e) { /* fine */ }
+  }
+
+  function introShow(step) {
+    introStep = Math.max(0, Math.min(introTotal - 1, step));
+    for (var i = 0; i < introTotal; i++) {
+      var panel = document.getElementById('introStep' + i);
+      if (panel) { panel.hidden = i !== introStep; }
+    }
+    var dots = document.getElementById('introDots');
+    if (dots) {
+      // Remove children explicitly. Setting innerHTML to '' is not reliable once
+      // nodes have been appended by removeChild-able API in every engine.
+      while (dots.firstChild) { dots.removeChild(dots.firstChild); }
+      for (var d = 0; d < introTotal; d++) {
+        var dot = document.createElement('span');
+        dot.className = 'intro-dot' + (d === introStep ? ' is-now' : (d < introStep ? ' is-done' : ''));
+        dots.appendChild(dot);
+      }
+    }
+    var isLast = introStep === introTotal - 1;
+    if (ui.introBack) { show(ui.introBack, introStep > 0); }
+    // "I'll do this later" only makes sense on the final screen, where it means
+    // "open the app" rather than "skip a decision I have not made yet".
+    if (ui.introLater) { show(ui.introLater, isLast); }
+    if (ui.introNext) {
+      setText(ui.introNext, isLast ? 'Open NEA Coach' : 'Next');
+      ui.introNext.className = isLast ? 'btn btn-primary btn-lg' : 'btn btn-primary btn-lg';
+    }
+    if (introStep === 1) { introRenderBoards(); }
+    if (introStep === 4) { introRenderDone(); }
+    // Move focus to the card so a keyboard user is not left behind the overlay.
+    var card = document.querySelector('.intro-card');
+    if (card && card.focus) { card.setAttribute('tabindex', '-1'); card.focus(); }
+  }
+
+  function introRenderBoards() {
+    var host = document.getElementById('introBoards');
+    if (!host) { return; }
+    var presets = (state.data && state.data.config && state.data.config.specPresets) || [];
+    if (!introChosenSpec) {
+      introChosenSpec = (state.data && state.data.config && state.data.config.specId) || (presets[0] && presets[0].id) || null;
+    }
+    host.innerHTML = '';
+    while (host.firstChild) { host.removeChild(host.firstChild); }    for (var i = 0; i < presets.length; i++) {
+      var p = presets[i];
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-card' + (p.id === introChosenSpec ? ' is-picked' : '');
+      var title = document.createElement('span');
+      title.className = 'choice-title';
+      setText(title, p.label);
+      var sub = document.createElement('span');
+      sub.className = 'choice-sub';
+      setText(sub, String(p.label).indexOf('AQA') === 0
+        ? 'GCSE (8552). Captions on your images are expected.'
+        : 'A-level. Annotation throughout is not required.');
+      btn.appendChild(title);
+      btn.appendChild(sub);
+      btn.setAttribute('data-spec', p.id);
+      btn.addEventListener('click', (function (id) {
+        return function () { introChosenSpec = id; introRenderBoards(); };
+      }(p.id)), false);
+      host.appendChild(btn);
+    }
+  }
+
+  /** The board's full name, for the summary. Falls back through what the server sends. */
+  function introBoardLabel() {
+    var cfg = (state.data && state.data.config) || {};
+    if (cfg.specLabel) { return String(cfg.specLabel); }
+    if (cfg.specName) { return String(cfg.specName); }
+    var presets = cfg.specPresets || [];
+    for (var i = 0; i < presets.length; i++) {
+      if (presets[i].id === cfg.specId) { return String(presets[i].label); }
+    }
+    return 'not set';
+  }
+
+  function introRenderDone() {
+    var cfg = (state.data && state.data.config) || {};
+    var title = document.getElementById('introDoneTitle');
+    var body = document.getElementById('introDoneBody');
+    var note = document.getElementById('introDoneNote');
+    var list = document.getElementById('introDoneList');
+    var hasPortfolio = !!(cfg.pdfName || cfg.deckName || introHavePortfolio);
+    var hasKey = !!cfg.apiKeySet || introKeyOk;
+    if (list) { while (list.firstChild) { list.removeChild(list.firstChild); } }
+    if (!hasPortfolio) {
+      if (title) { setText(title, 'One thing left'); }
+      if (body) { setText(body, 'You have not added a portfolio yet. You can do that from Settings at any time — nothing else is blocked.'); }
+      if (note) { show(note, false); }
+      return;
+    }
+    if (title) { setText(title, 'You\u2019re ready'); }
+    if (body) {
+      setText(body, hasKey
+        ? 'Everything is set up. Run your first check now, or look around first.'
+        : 'Your portfolio is ready and the free structural checks will run without any key.');
+    }
+    if (list) {
+      var items = [];
+      items.push('Exam board: ' + introBoardLabel());
+      items.push('Portfolio: ' + (cfg.pdfName || cfg.deckName || 'added'));
+      items.push(hasKey ? 'Free AI key: saved' : 'Free AI key: not added yet — the AI review will be off');
+      for (var i = 0; i < items.length; i++) {
+        var li = document.createElement('li');
+        setText(li, items[i]);
+        if (list) { list.appendChild(li); }
+      }
+    }
+    if (note) {
+      if (hasKey) { show(note, false); }
+      else {
+        show(note, true);
+        setText(note, 'Without a key you still get every structural check — small text, spelling, '
+          + 'duplicate pages, missing titles. The AI review and the predicted mark need the key.');
+      }
+    }
+  }
+
+  /** Persist the board choice, then move on. Never blocks the flow on failure. */
+  function introSaveBoard(next) {
+    var status = document.getElementById('introBoardStatus');
+    var chosen = introChosenSpec;
+    var already = state.data && state.data.config && state.data.config.specId;
+    if (!chosen || chosen === already) { next(); return; }
+    if (status) { setText(status, 'Saving…'); }
+    apiPost('/api/config', { specId: chosen }).then(function (res) {
+      if (res && res.config && state.data) { state.data.config = res.config; }
+      if (status) { setText(status, ''); }
+      next();
+    }).catch(function () {
+      // The choice is only a preference; not saving it is not worth stopping for.
+      if (status) { setText(status, 'Could not save that just now — you can set it again in Settings.'); }
+      next();
+    });
+  }
+
+  function introUpload(file) {
+    if (!file) { return; }
+    var status = document.getElementById('introFileStatus');
+    var drop = document.getElementById('introDrop');
+    var main = document.getElementById('introDropMain');
+    var sub = document.getElementById('introDropSub');
+    var isPdf = /\.pdf$/i.test(file.name);
+    var isPptx = /\.pptx$/i.test(file.name);
+    if (!isPdf && !isPptx) {
+      if (status) { setText(status, 'That needs to be a PDF or a .pptx. In PowerPoint use File \u2192 Save As for .pptx, or File \u2192 Export for a PDF.'); }
+      if (status) { status.className = 'intro-status is-bad'; }
+      return;
+    }
+    if (status) { setText(status, 'Sending ' + file.name + ' (' + formatBytes(file.size) + ')\u2026'); }
+    if (status) { status.className = 'intro-status'; }
+    if (main) { setText(main, 'Uploading\u2026'); }
+    if (sub) { setText(sub, file.name); }
+
+    postFile({
+      file: file,
+      endpoint: isPdf ? '/api/upload-pdf' : '/api/upload',
+      mime: isPdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      status: status,
+      progress: null,
+      barFill: null,
+      onOk: function (body) {
+        introHavePortfolio = true;
+        if (drop) { drop.className = 'intro-drop is-done'; }
+        if (main) { setText(main, 'Added \u2014 ' + file.name); }
+        if (sub) { setText(sub, 'You can replace this any time in Settings.'); }
+        if (status) { setText(status, isPdf ? 'That is the file you will be marked on.' : 'Added. For the most accurate review, also export a PDF.'); }
+        if (status) { status.className = 'intro-status is-good'; }
+        loadState();
+      }
+    });
+  }
+
+  function introTestKey() {
+    var input = document.getElementById('introKey');
+    var status = document.getElementById('introKeyStatus');
+    var key = input ? String(input.value || '').replace(/^\s+|\s+$/g, '') : '';
+    if (!key) {
+      if (status) { setText(status, 'Paste the key first.'); status.className = 'intro-status is-bad'; }
+      return;
+    }
+    if (status) { setText(status, 'Asking Google\u2026'); status.className = 'intro-status'; }
+    apiPost('/api/test-key', { apiKey: key }).then(function (body) {
+      if (body && body.ok) {
+        introKeyOk = true;
+        // Save straight away: a key that works and is not saved is the most
+        // annoying possible outcome of this screen.
+        apiPost('/api/config', { apiKey: key }).then(function () {
+          if (input) { input.value = ''; }
+          if (status) { setText(status, 'That key works and has been saved' + (body.tail ? ' (ends ' + body.tail + ')' : '') + '.'); }
+          if (status) { status.className = 'intro-status is-good'; }
+          loadState();
+        });
+      } else {
+        introKeyOk = false;
+        if (status) { setText(status, (body && body.error) || 'That key did not work. Copy it again from aistudio.google.com — it starts with AIza.'); }
+        if (status) { status.className = 'intro-status is-bad'; }
+      }
+    }).catch(function () {
+      if (status) { setText(status, 'Could not reach the app. Is NEA Coach still running?'); }
+      if (status) { status.className = 'intro-status is-bad'; }
+    });
+  }
+
+  function introSkipKey() {
+    introKeyOk = false;
+    introShow(4);
+  }
+
+  function introStartCheck() {
+    var btn = ui.introNext;
+    if (btn) { btn.disabled = true; }
+    apiPost('/api/scan', { recheckAll: false, thinking: false }).then(function () {
+      introMarkDone();
+      if (ui.introOverlay) { show(ui.introOverlay, false); }
+      // Show the run in the app itself rather than hiding it behind the wizard.
+      loadState();
+      beginPolling();
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; }
+      setBanner('intro', 'error', friendlyError(err, 'The check could not be started. Is NEA Coach still running?'), true);
+      if (ui.introOverlay) { show(ui.introOverlay, false); }
+    });
+  }
+
+  function introClose() {
+    introMarkDone();
+    if (ui.introOverlay) { show(ui.introOverlay, false); }
+  }
+
+  function introNext() {
+    if (introStep === 1) { introSaveBoard(function () { introShow(2); }); return; }
+    if (introStep === 3) { introShow(4); return; }
+    if (introStep === introTotal - 1) { introClose(); return; }
+    introShow(introStep + 1);
+  }
+
+  function wireIntro() {
+    if (ui.introNext) { ui.introNext.addEventListener('click', introNext, false); }
+    if (ui.introBack) { ui.introBack.addEventListener('click', function () { introShow(introStep - 1); }, false); }
+    if (ui.introSkip) { ui.introSkip.addEventListener('click', introClose, false); }
+    if (ui.introLater) { ui.introLater.addEventListener('click', introClose, false); }
+
+    if (ui.introFile) {
+      ui.introFile.addEventListener('change', function () {
+        introUpload(ui.introFile.files && ui.introFile.files[0]);
+      }, false);
+    }
+    if (ui.introDrop) {
+      ui.introDrop.addEventListener('click', function () { if (ui.introFile) { ui.introFile.click(); } }, false);
+      ui.introDrop.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        // Keep the window-level handler from showing the page-wide "drop here"
+        // overlay on top of the wizard.
+        e.stopPropagation();
+        ui.introDrop.className = 'intro-drop is-over';
+      }, false);
+      ui.introDrop.addEventListener('dragleave', function () { ui.introDrop.className = 'intro-drop'; }, false);
+      ui.introDrop.addEventListener('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        ui.introDrop.className = 'intro-drop';
+        var dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length) { introUpload(dt.files[0]); }
+      }, false);
+    }
+    if (ui.introKeyTest) { ui.introKeyTest.addEventListener('click', introTestKey, false); }
+    if (ui.introKeySkip) { ui.introKeySkip.addEventListener('click', introSkipKey, false); }
+
+    // Re-openable from Settings. Re-run start to finish so a returning user can
+    // re-read the explanations rather than being dropped at the last screen.
+    if (ui.btnShowSetup) {
+      ui.btnShowSetup.addEventListener('click', function () {
+        introForget();
+        introStep = 0;
+        if (ui.settingsDetails) { ui.settingsDetails.open = false; }
+        show(ui.introOverlay, true);
+        introShow(0);
+      }, false);
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (!ui.introOverlay || ui.introOverlay.hidden) { return; }
+      if (e.key === 'Escape') { introClose(); }
+    }, false);
+  }
+
+  /**
+   * Called once the state has loaded, because the board list and the "already
+   * set up" summary both come from the server config.
+   */
+  function maybeShowIntro() {
+    if (!ui.introOverlay) { return; }
+    if (introIsDone()) { return; }
+    // Always start at the beginning. The state load that calls this can run more
+    // than once, and resuming at the last screen would look like a broken wizard.
+    introStep = 0;
+    var cfg = (state.data && state.data.config) || {};
+    var welcome = document.getElementById('introWelcomeBack');
+    if (welcome && (cfg.pdfName || cfg.deckName || cfg.apiKeySet)) {
+      var bits = [];
+      if (cfg.pdfName || cfg.deckName) { bits.push('a portfolio (' + (cfg.pdfName || cfg.deckName) + ')'); }
+      if (cfg.apiKeySet) { bits.push('a saved AI key'); }
+      if (bits.length) {
+        show(welcome, true);
+        setText(welcome, 'You already have ' + bits.join(' and ') + ' set up, so you can skip straight to the end.');
+      }
+    }
+    if (cfg.specId) { introChosenSpec = cfg.specId; }
+    show(ui.introOverlay, true);
+    introShow(0);
+  }
+
   function init() {
     cacheElements();
     buildChips();
     wireEvents();
+    wireIntro();
     if (ui.themeSelect) { ui.themeSelect.value = currentTheme(); }
     applyFilterFolding();
     loadModelChoices();

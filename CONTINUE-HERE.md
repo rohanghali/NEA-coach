@@ -397,6 +397,66 @@ the Eduqas criteria, and only once the AI has actually run.
 
 ---
 
+## 6b. First-run setup (the wizard) — added, Phase 1 of 3
+
+A stranger opening the app used to meet all seventeen sections at once: a status ring
+reading "Loading…", an empty fix list, a filter bar, tabs. The wizard replaces that
+first impression with **one decision per screen**, and every screen can be left.
+
+Five steps: welcome → exam board → portfolio → free AI key → first check.
+
+**Where it lives.** All in `public/index.html`, in three pieces:
+
+| Piece | Location | Notes |
+|---|---|---|
+| Markup | `#introOverlay` immediately after `<body>`, before `.page` | Hidden by default; the script reveals it |
+| Styles | `/* first-run setup (the wizard) */` just after the drag-drop block | `z-index: 1000`, above the drop overlay's 999 |
+| Logic | The `First-run setup` block immediately before `init()` | `introShow`, `introRenderBoards`, `introRenderDone`, `introUpload`, `introTestKey`, `introStartCheck`, `maybeShowIntro` |
+
+**When it shows.** `maybeShowIntro()` is called from `loadState()` once the config is
+in hand — the board list and the "already set up" summary both come from that payload.
+`localStorage['neaCoach.intro.v1'] === 'done'` suppresses it forever after. The flag is
+deliberately per-browser, not server config: opening the app in a second browser should
+offer the tour again. It is re-openable from **Settings → Getting started → Show setup
+again**, which clears the flag and restarts from step 0.
+
+**Skipping, at every level.** An X-equivalent "Skip setup" link is on every screen and
+marks it done. "I'll add the key later" skips only the key. Step 5 can be left with
+"I'll do this later". Skipping the board still saves nothing and defaults to whatever
+`specId` the server already has.
+
+**Reused rather than duplicated.** The wizard calls the same functions the settings page
+does: `postFile` for uploads, `/api/test-key` for the key (a plain `models` GET, so
+testing costs no generation quota), `/api/config` for the board and the key, and
+`/api/scan` for the first check. Nothing about the wizard can spend a request by itself.
+
+**Two real bugs fixed on the way**, both found by the mapping pass:
+
+1. **A double drop.** The wizard's drop zone and the window-level drop handler both
+   fired, so dropping onto the wizard uploaded the file twice *and* opened Settings
+   behind the overlay. The window handler now returns early while the overlay is open,
+   and the wizard's zone stops propagation.
+2. **Two dead references.** `ui.recheckToggle` was referenced in four places but no
+   such element exists (the old toggle became `#btnRecheck`), and `ui.apiKeyFeedback`
+   was written to but never cached, so **API-key feedback never appeared on screen**.
+   Both removed/fixed.
+
+**How this was tested without a browser.** A DOM-stub harness runs the page's real
+`<script>` in a `vm` context and drives the wizard: it confirms all five steps show in
+isolation, the two board cards render, the summary is three rows, and a full
+Next-through-the-flow closes the overlay after six presses with zero runtime errors.
+The harness models `hidden` as `display:none` with inline style overriding it — until it
+did, it produced a **false failure** that looked exactly like a bug in the page. Keep
+that in mind before trusting any future stub result. 547 tests still pass.
+
+**Not yet done (Phases 2 and 3, agreed with the user).** Settings is still one flat
+list of twelve controls and needs splitting into Portfolio / Exam board / AI key /
+Advanced, with a "best marks" preset. And the visual pass — depth, type scale, one
+clear primary action — has not been started. Phase 3 changes how the whole app looks
+and still needs a human to look at it.
+
+---
+
 ## 7. Still to do
 
 ### Already built, waiting on a Gemini API key
