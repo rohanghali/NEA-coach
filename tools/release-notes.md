@@ -18,17 +18,18 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Fixed: the Fix list's filters were showing at the top of "Things to add" and "Coverage grid"** —
-  the severity chips (Critical 2, High 5, Medium 20…), the page box, the search box and "Showing 30
-  of 30 findings". The filter card had no id of its own, so the app was hiding its *heading* and
-  leaving the card on screen. It has an id now, and goes away with the Fix list.
-- **"Things to add" is ranked, with no severities on it.** The list is ordered by how much each idea
-  would help for the time it takes, and the numbers down the side are that ranking. What has gone is
-  the **graded badge** that used to sit on every suggestion — "Would help a lot" or "Small gain", in
-  the same greens and greys the Fix list uses for severity. The data was never severity (the prompt
-  is explicit that it is how much fixing something would *gain*), but a colour-coded rating at the
-  end of every row reads as one whatever it is called. Suggestions are not faults. The time estimate
-  stays, because that is effort and not a grade.
+- **The tab strip has a proper scroller you can drag.** The two little arrows are gone: they moved
+  the strip by a fixed amount per press, which was never quite the amount you wanted, and each was a
+  small target to hit. There is now a long bar underneath — **16px tall**, with a grab handle at
+  least 52px wide — and you drag it to move the tabs. It shows how much of the strip is on screen,
+  so you can see at a glance that there is more, and it disappears entirely when everything already
+  fits.
+- Dragging keeps working if your finger or cursor strays off the bar, which it will, since the bar
+  is only 16px tall.
+- **"Start setup" now sits above "Check now"**, and is **teal** rather than a second blue. Two blues
+  of different weights side by side read as a mistake; teal says "a different kind of thing" while
+  staying in the same cool family as the rest of the app. It flips for dark mode like everything
+  else.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

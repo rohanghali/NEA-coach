@@ -6114,16 +6114,54 @@ section('12aj. Every section is a tab');
         && settings > scrollEnd;
     })(),
     'inside the scroller either of them is exactly as hard to reach as everything else');
-  ok('there are arrows, because an invisible scroller is a strip with missing tabs',
-    /id="topTabsPrev"/.test(html) && /id="topTabsNext"/.test(html)
-    && /function nudgeTabs\(direction\)/.test(html));
-  ok('and they switch off at each end rather than looking live when they do nothing',
-    /renderTabArrows/.test(html) && /topTabsPrev\.disabled = left <= 1/.test(html)
-    && /topTabsNext\.disabled = left >= max - 1/.test(html));
-  ok('the scrollbar is visible, so a mouse user can see there is more to the right',
-    /\.toptabs-scroll \{[\s\S]{0,500}scrollbar-width: thin/.test(css));
-  ok('but on a phone the arrows and the scrollbar go, because a swipe is the natural gesture',
-    /@media \(max-width: 700px\) \{[\s\S]{0,200}\.toptabs-arrow \{ display: none; \}/.test(css));
+  /*
+   * "The scroller bar is difficult to use. Please use a scroller long bar underneath that can be
+   * dragged ... make it easy to use and not hard to click on."
+   *
+   * The arrows moved the strip by a fixed amount per press — never quite the amount you wanted —
+   * and each one was a 30px target. This is the control everyone already knows: grab it and drag.
+   */
+  ok('there is a draggable scroller under the strip, not a pair of small arrows',
+    /id="topTabsRail"/.test(html) && /id="topTabsThumb"/.test(html)
+    && /function dragTabsTo\(clientX\)/.test(html) && /pointerdown/.test(html));
+  ok('and the drag survives the pointer leaving the bar',
+    /setPointerCapture/.test(html) && /on\(window, 'pointerup', endDrag\)/.test(html),
+    'a drag that dies the moment the cursor strays off a 16px bar is unusable');
+  ok('the bar and its thumb are big enough to hit',
+    /\.toptabs-rail \{[\s\S]{0,260}height: 16px/.test(css) && /\.toptabs-thumb \{[\s\S]{0,200}min-width: 52px/.test(css),
+    'a thin, small scroller is the thing that was too hard to use');
+  ok('and it hides itself when there is nothing to scroll',
+    /rail\.hidden = true/.test(html), 'a dead bar under a strip that already fits is a lie');
+  ok('the native scrollbar is gone, so there is one scroller and not two',
+    /\.toptabs-scroll \{[\s\S]{0,600}scrollbar-width: none/.test(css));
+  ok('the thumb is sized and placed by how far through the strip you are',
+    /range\.view \/ range\.wide/.test(html) && /parseInt|Number\(ui\.topTabsScroll\.scrollLeft\)/.test(html),
+    'a scroller that does not track the thing it scrolls is decoration');
+  ok('the bar is the visible cue that there is more to the right',
+    /\.toptabs-rail \{[\s\S]{0,300}background: var\(--fill-soft\)/.test(css));
+  ok('on a phone the strip hides its native scrollbar, since the bar is the scroller there',
+    // Gathered here rather than reusing the later variable: this runs before it is declared.
+    (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')
+      .indexOf('.toptabs-scroll { scrollbar-width: none; }') >= 0);
+
+  /* ---- "Start setup" ------------------------------------------------------------ */
+  /*
+   * Asked for above Check now in the header, in "a nice shade of green/turquoise". It sits directly
+   * beside a blue button, and two blues of different weights read as a mistake, so teal says "a
+   * different kind of thing" while staying in the same cool family.
+   */
+  ok('Start setup comes before Check now in the header',
+    html.indexOf('id="btnShowSetup"') < html.indexOf('id="btnCheckTop"'),
+    'in a column layout the first one is the one on top');
+  ok('it is teal rather than a second blue',
+    /\.btn-setup \{[\s\S]{0,200}background: var\(--setup\)/.test(css));
+  ok('and every one of its colours is a token, in all three themes',
+    (html.match(/--setup:/g) || []).length === 3
+    && (html.match(/--setup-dark:/g) || []).length === 3
+    && (html.match(/--setup-ink:/g) || []).length === 3,
+    'a literal here is how the dark-mode contrasts broke twice before');
+  ok('with an ink colour that flips, because a bright teal needs dark text',
+    /--setup-ink: #04231f/.test(html));
 
   /* ---- and nothing folds away any more ------------------------------------------ */
   /*
@@ -6170,8 +6208,8 @@ section('12aj. Every section is a tab');
   ok('the floating shortcut also appears whenever Overview is closed',
     /getElementById\('panelOverview'\)[\s\S]{0,300}var gone = !overviewOpen/.test(html),
     'a hidden button measures zero, so "still visible" was the wrong answer in every other section');
-  ok('and it is re-checked when the section changes',
-    /renderTabArrows\(\);[\s\S]{0,200}renderDock\(\);/.test(html));
+  ok('and both are re-checked when the section changes',
+    /renderTabRail\(\);[\s\S]{0,200}renderDock\(\);/.test(html));
 
   ok('the open tab is scrolled into view, since the strip is one scrolling row',
     /strip\.scrollLeft = Math\.max\(0, offset/.test(html),

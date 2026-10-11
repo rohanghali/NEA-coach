@@ -1139,8 +1139,8 @@
 
   .toptabs {
     display: flex;
-    align-items: center;
-    gap: 4px;
+    flex-direction: column;
+    gap: 7px;
     margin: 0 0 14px;
     padding: 4px;
     background: var(--card);
@@ -1161,34 +1161,68 @@
     min-width: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    /* A visible one, because an invisible scroller is a strip with tabs you cannot find. */
-    scrollbar-width: thin;
-    scrollbar-color: var(--line-strong) transparent;
+    /*
+     * No native scrollbar. The rail underneath IS the scroller now, and two of them stacked is one
+     * too many — the thin one is harder to hit and says less about how much is hidden.
+     */
+    scrollbar-width: none;
   }
-  .toptabs-scroll::-webkit-scrollbar { height: 5px; }
-  .toptabs-scroll::-webkit-scrollbar-track { background: transparent; }
-  .toptabs-scroll::-webkit-scrollbar-thumb {
-    background: var(--line-strong);
-    border-radius: 3px;
-  }
+  .toptabs-scroll::-webkit-scrollbar { display: none; }
 
-  .toptabs-arrow {
-    flex: 0 0 auto;
-    width: 30px;
-    height: 34px;
-    padding: 0;
-    background: var(--accent-soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    color: var(--accent-dark);
-    font-family: inherit;
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1;
-    cursor: pointer;
+  /*
+   * "Start setup".
+   *
+   * Teal rather than the blue the primary button uses: it sits directly beside "Check now" in the
+   * header, and two blue buttons of different weights read as a mistake. Teal says "a different
+   * kind of thing" while staying in the same cool family as the rest of the app.
+   *
+   * The shade is dark enough for white text to pass contrast in light mode (about 5:1), and in dark
+   * mode it lightens and takes dark text instead — the same flip the accent makes elsewhere.
+   */
+  .btn-setup {
+    background: var(--setup);
+    border-color: var(--setup-dark);
+    color: var(--setup-ink);
   }
-  .toptabs-arrow:hover:not([disabled]) { background: var(--accent); color: var(--card); }
-  .toptabs-arrow[disabled] { opacity: 0.35; cursor: default; }
+  .btn-setup:hover { background: var(--setup-dark); border-color: var(--setup-dark); }
+
+  .toptabs-row { display: flex; align-items: center; gap: 4px; }
+
+  /*
+   * The scroller. 16px tall on purpose: a scrollbar you have to aim at is worse than no
+   * scrollbar. Dragging works from anywhere on it, and the thumb is at least 52px wide so there
+   * is always something substantial to grab.
+   */
+  .toptabs-rail {
+    position: relative;
+    height: 16px;
+    margin: 0 2px;
+    border-radius: 8px;
+    background: var(--fill-soft);
+    border: 1px solid var(--line);
+    /* The rail is a control, not a text surface: a drag on it must scroll the strip, never the
+       page, and it must not select anything. */
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .toptabs-rail.is-dragging { cursor: grabbing; }
+  /* Nothing to scroll: the bar goes, rather than sitting there dead. */
+  .toptabs-rail[hidden] { display: none; }
+
+  .toptabs-thumb {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    min-width: 52px;
+    border-radius: 8px;
+    background: var(--accent);
+    transition: background 140ms var(--ease-out);
+  }
+  .toptabs-rail:hover .toptabs-thumb,
+  .toptabs-rail.is-dragging .toptabs-thumb { background: var(--accent-dark); }
 
   /* Overview at the start and Settings at the end, both outside the scroller, each marked apart
      from the nine that scroll between them. */
@@ -1251,7 +1285,8 @@
   /* On a phone the arrows are noise: a swipe is the natural gesture, and they would take 60px of
      a narrow strip away from the tabs themselves. */
   @media (max-width: 700px) {
-    .toptabs-arrow { display: none; }
+    /* The strip itself still swipes; the rail gives the same drag on a narrow screen, under the
+       thumb rather than across the page. */
     .toptabs-scroll { scrollbar-width: none; }
     .toptabs-scroll::-webkit-scrollbar { display: none; }
   }
@@ -2258,6 +2293,10 @@
        colours, which the static wash no longer needs. */
     --mote: rgba(120, 148, 200, 0.55);
     --streak: rgba(160, 190, 240, 0.9);
+    /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
+    --setup: #0b7d72;
+    --setup-dark: #086158;
+    --setup-ink: #ffffff;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -2282,6 +2321,10 @@
          colours, which the static wash no longer needs. */
       --mote: rgba(150, 178, 224, 0.42);
       --streak: rgba(126, 158, 214, 0.55);
+      /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
+      --setup: #12a193;
+      --setup-dark: #0e8579;
+      --setup-ink: #04231f;
     }
   }
   :root[data-theme="dark"] {
@@ -2306,6 +2349,10 @@
        colours, which the static wash no longer needs. */
     --mote: rgba(150, 178, 224, 0.42);
     --streak: rgba(126, 158, 214, 0.55);
+    /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
+    --setup: #12a193;
+    --setup-dark: #0e8579;
+    --setup-ink: #04231f;
   }
 
   /* ---------- ambient background ---------- */
@@ -2983,8 +3030,8 @@
         Overview first. This mirrors that button exactly — same words, same enabled state, same
         function — rather than deciding anything for itself.
       -->
+      <button class="btn btn-setup btn-sm" id="btnShowSetup" type="button">Start setup</button>
       <button class="btn btn-primary btn-sm" id="btnCheckTop" type="button">Check now</button>
-      <button class="btn btn-secondary btn-sm" id="btnShowSetup" type="button">Start setup</button>
       <div class="badge-readonly">Read-only — your PowerPoint is never changed</div>
     </div>
   </header>
@@ -3004,27 +3051,35 @@
 -->
 <nav class="toptabs" id="topTabs" role="tablist" aria-label="Sections">
   <!--
-    Overview and Settings sit OUTSIDE the scrolling middle, one at each end.
-
-    Overview because it is where you land and where "Check now" lives, and Settings because it
-    is what you reach for when something is wrong. Both were reachable only by scrolling the
-    strip, which is the worst time to have to hunt for them. The nine in between scroll.
+    Overview and Settings sit OUTSIDE the scrolling middle, one at each end: they are the two
+    you need without hunting. The nine in between scroll.
   -->
-  <button class="toptab toptab-start" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview" type="button">Overview</button>
-  <button class="toptabs-arrow" id="topTabsPrev" type="button" aria-label="Scroll the tabs left">&#8249;</button>
-  <div class="toptabs-scroll" id="topTabsScroll">
-    <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panel-fixlist" data-tab="fixlist" type="button">Fix list</button>
-    <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panel-suggest" data-tab="suggest" type="button">Things to add</button>
-    <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panel-predicted" data-tab="predicted" type="button">Predicted mark</button>
-    <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panel-coverage" data-tab="coverage" type="button">Coverage grid</button>
-    <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panel-since" data-tab="since" type="button">Since your last check</button>
-    <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panel-slides" data-tab="slides" type="button">Slides</button>
-    <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-tab="stats" type="button">Statistics</button>
-    <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" type="button">Past checks</button>
-    <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panel-info" data-tab="info" type="button">Information</button>
+  <div class="toptabs-row">
+    <button class="toptab toptab-start" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview" type="button">Overview</button>
+    <div class="toptabs-scroll" id="topTabsScroll">
+      <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panel-fixlist" data-tab="fixlist" type="button">Fix list</button>
+      <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panel-suggest" data-tab="suggest" type="button">Things to add</button>
+      <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panel-predicted" data-tab="predicted" type="button">Predicted mark</button>
+      <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panel-coverage" data-tab="coverage" type="button">Coverage grid</button>
+      <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panel-since" data-tab="since" type="button">Since your last check</button>
+      <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panel-slides" data-tab="slides" type="button">Slides</button>
+      <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-tab="stats" type="button">Statistics</button>
+      <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" type="button">Past checks</button>
+      <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panel-info" data-tab="info" type="button">Information</button>
+    </div>
+    <button class="toptab toptab-end" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" type="button">Settings</button>
   </div>
-  <button class="toptabs-arrow" id="topTabsNext" type="button" aria-label="Scroll the tabs right">&#8250;</button>
-  <button class="toptab toptab-end" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" type="button">Settings</button>
+  <!--
+    The scroller: a long bar you drag, rather than two small arrows.
+    
+    The arrows were hard to hit and hard to aim - each press moved the strip by a fixed
+    amount whether that was the right amount or not. This is the standard thing a person
+    already knows how to use: grab it anywhere and drag. It is 16px tall, which is a real
+    target, and it scrolls the strip proportionally so the two stay in step.
+  -->
+  <div class="toptabs-rail" id="topTabsRail">
+    <div class="toptabs-thumb" id="topTabsThumb"></div>
+  </div>
 </nav>
 
   <!--
@@ -4066,7 +4121,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.55';
+  var PAGE_BUILD = '1.0.56';
 
   var state = {
     data: null,
@@ -5588,7 +5643,7 @@
       if (TOP_TABS[m].id === id && TOP_TABS[m].inner) { setTab(TOP_TABS[m].inner, false); }
     }
 
-    renderTabArrows();
+    renderTabRail();
     /* The shortcut depends on whether the Overview section is open, so it is re-checked here. */
     if (typeof renderDock === 'function') { renderDock(); }
 
@@ -5598,42 +5653,106 @@
     return id;
   }
 
-  /*
-   * The arrows light up only when there is somewhere to go. A permanently live arrow that does
-   * nothing at the end of the strip is the same lie as a dead button.
-   */
-  function renderTabArrows() {
+  var tabDrag = null;
+
+  /** How far the strip can travel, and how much of it is on screen. */
+  function tabScrollRange() {
     var strip = ui.topTabsScroll;
-    if (!strip) { return; }
-    var max = 0;
+    if (!strip) { return null; }
     var wide = Number(strip.scrollWidth);
     var view = Number(strip.clientWidth);
-    if (isFinite(wide) && isFinite(view)) { max = Math.max(0, wide - view); }
-    var left = Number(strip.scrollLeft) || 0;
-    if (ui.topTabsPrev) { ui.topTabsPrev.disabled = left <= 1; }
-    if (ui.topTabsNext) { ui.topTabsNext.disabled = left >= max - 1; }
+    if (!isFinite(wide) || !isFinite(view) || view <= 0) { return null; }
+    return { max: Math.max(0, wide - view), view: view, wide: wide };
   }
 
-  /** Scroll the strip by most of a screenful. */
-  function nudgeTabs(direction) {
-    var strip = ui.topTabsScroll;
-    if (!strip) { return; }
-    var view = Number(strip.clientWidth) || 240;
-    strip.scrollLeft = (Number(strip.scrollLeft) || 0) + (direction * view * 0.7);
-    renderTabArrows();
+  /**
+   * Put the rail in step with the strip.
+   *
+   * The thumb's width is the visible FRACTION of the strip and its position is how far through it
+   * we are, which is what makes it readable as well as draggable: you can see at a glance how much
+   * of the strip is on screen.
+   */
+  function renderTabRail() {
+    var rail = ui.topTabsRail;
+    var thumb = ui.topTabsThumb;
+    var range = tabScrollRange();
+    if (!rail || !thumb) { return; }
+    if (!range || range.max <= 1) {
+      rail.hidden = true;
+      return;
+    }
+    rail.hidden = false;
+    var railWidth = Number(rail.clientWidth);
+    if (!isFinite(railWidth) || railWidth <= 0) { return; }
+    var travel = Math.max(0, railWidth - 0);
+    var frac = Math.min(1, range.view / range.wide);
+    var width = Math.max(52, Math.round(travel * frac));
+    var room = Math.max(1, travel - width);
+    var left = Math.round((range.max ? (Number(ui.topTabsScroll.scrollLeft) || 0) / range.max : 0) * room);
+    thumb.style.width = width + 'px';
+    thumb.style.left = Math.max(0, Math.min(room, left)) + 'px';
+  }
+
+  /** Move the strip to wherever a drag has put the thumb. */
+  function dragTabsTo(clientX) {
+    var rail = ui.topTabsRail;
+    var thumb = ui.topTabsThumb;
+    var range = tabScrollRange();
+    if (!rail || !thumb || !range || range.max <= 1) { return; }
+    var railWidth = Number(rail.clientWidth);
+    if (!isFinite(railWidth) || railWidth <= 0) { return; }
+    var box = rail.getBoundingClientRect ? rail.getBoundingClientRect() : null;
+    if (!box) { return; }
+    var width = Number(thumb.offsetWidth) || 52;
+    var room = Math.max(1, railWidth - width);
+    // Centre the thumb on the pointer, then clamp to the rail.
+    var left = Math.max(0, Math.min(room, (clientX - box.left) - width / 2));
+    ui.topTabsScroll.scrollLeft = (left / room) * range.max;
+    renderTabRail();
   }
 
   /** Put the tab strip on screen in whatever state the page is already in. */
   function wireTopTabs() {
     var host = ui.topTabs;
     if (!host) { return; }
-    on(ui.topTabsPrev, 'click', function () { nudgeTabs(-1); });
-    on(ui.topTabsNext, 'click', function () { nudgeTabs(1); });
     if (ui.topTabsScroll) {
-      on(ui.topTabsScroll, 'scroll', renderTabArrows);
-      renderTabArrows();
+      on(ui.topTabsScroll, 'scroll', renderTabRail);
+      renderTabRail();
     }
-    window.addEventListener('resize', renderTabArrows, false);
+    window.addEventListener('resize', renderTabRail, false);
+
+    /*
+     * The drag. Pointer events with capture, so it keeps working when the pointer leaves the rail —
+     * which it does, because the rail is only 16px tall and nobody drags in a straight line. Without
+     * the capture the drag would stop the moment the finger or cursor strayed off it.
+     */
+    var rail = ui.topTabsRail;
+    if (rail && rail.addEventListener) {
+      on(rail, 'pointerdown', function (event) {
+        if (event.button !== undefined && event.button !== 0) { return; }
+        tabDrag = true;
+        rail.className = 'toptabs-rail is-dragging';
+        if (rail.setPointerCapture && event.pointerId !== undefined) {
+          try { rail.setPointerCapture(event.pointerId); } catch (err) { /* fine without it */ }
+        }
+        dragTabsTo(event.clientX);
+        if (event.preventDefault) { event.preventDefault(); }
+      });
+      on(rail, 'pointermove', function (event) {
+        if (!tabDrag) { return; }
+        dragTabsTo(event.clientX);
+        if (event.preventDefault) { event.preventDefault(); }
+      });
+      var endDrag = function () {
+        if (!tabDrag) { return; }
+        tabDrag = false;
+        rail.className = 'toptabs-rail';
+      };
+      on(rail, 'pointerup', endDrag);
+      on(rail, 'pointercancel', endDrag);
+      /* A pointerup outside the rail still ends the drag, or it would follow the cursor for ever. */
+      on(window, 'pointerup', endDrag);
+    }
     on(host, 'click', function (event) {
       var node = event.target;
       while (node && node !== host) {
@@ -8660,7 +8779,7 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'topTabsScroll', 'topTabsPrev', 'topTabsNext',
+      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'btnCheckTop', 'topTabsScroll', 'topTabsRail', 'topTabsThumb',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
