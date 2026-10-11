@@ -1004,6 +1004,51 @@
   .show-more-wrap { margin: 14px 0 4px; text-align: center; }
   .show-more { margin-right: 8px; }
 
+  /* ---------- settings groups ----------
+
+     Settings used to be eleven unrelated blocks stacked in one open list, which is
+     what made it feel overwhelming. They are now collapsible groups under a short
+     heading, so the page opens with three obvious choices instead of a wall. */
+
+  .settings-lede {
+    margin: 2px 0 14px;
+    color: var(--ink-2);
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  .settings-group {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    background: var(--fill-faint);
+    overflow: hidden;
+  }
+  .settings-group > summary {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 13px 15px;
+    cursor: pointer;
+    list-style: none;
+    background: var(--card);
+    transition: background 140ms ease;
+  }
+  .settings-group > summary::-webkit-details-marker { display: none; }
+  .settings-group > summary:hover { background: var(--accent-soft); }
+  .group-title { font-weight: 650; font-size: 15.5px; }
+  .group-note { font-size: 13.5px; }
+  .group-body { padding: 4px 15px 16px; }
+  /* The first heading inside a group needs no extra air above it. */
+  .group-body > .sub:first-child { margin-top: 8px; }
+  .settings-note {
+    margin: 8px 0 12px;
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
   /* ---------- first-run setup (the wizard) ----------
 
      Shown once, to a brand-new user, over the top of everything. The app has
@@ -1568,99 +1613,69 @@
   <details class="card details-card" id="settingsDetails">
     <summary>
       <span class="summary-title">Settings</span>
-      <span class="summary-note muted">portfolio, exam board and model</span>
+      <span class="summary-note muted">your portfolio, exam board and AI key</span>
     </summary>
     <div class="details-body">
-      <h3 class="sub">Current setup</h3>
+
+      <p class="settings-lede">Everything essential is here. The options further down are only worth
+         changing if you want to tune how the marking works.</p>
+
       <dl class="facts" id="settingsFacts"></dl>
 
-      <h3 class="sub" id="uploadHeading">Get started — choose your portfolio</h3>
-      <!--
-        The easiest way in. The alternative is finding your own file's path in
-        Finder or Explorer and pasting it into the box further down, which is the
-        step people get wrong. This copies the file into the app's own state
-        folder and points the app at that copy. Your original is never touched.
-      -->
-      <p class="upload-help" id="uploadHelp">Choose your PowerPoint file below. The app copies it into its own
-        folder and reads that copy, so the file you pick is never changed or moved.</p>
-      <!-- Says which file is already set, so the section stops looking like it
-           has forgotten the upload on every reload. -->
-      <p class="upload-current" id="uploadCurrent"></p>
-      <div class="upload-row">
-        <input type="file" id="uploadInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation">
-        <button class="btn btn-quiet btn-sm" id="btnClearDeck" type="button" style="display:none">Remove PowerPoint</button>
-      </div>
-      <p class="upload-status muted small" id="uploadStatus"></p>
-      <div class="progress" id="uploadProgress" style="display:none">
-        <div class="bar"><div class="bar-fill" id="uploadBarFill"></div></div>
-      </div>
+      <!-- ================= 1. Portfolio ================= -->
+      <details class="settings-group" open>
+        <summary>
+          <span class="group-title">Your portfolio</span>
+          <span class="group-note muted">what the app reads</span>
+        </summary>
+        <div class="group-body">
 
-      <h3 class="sub">Visual review (makes the marks much more accurate)</h3>
-      <!--
-        The AI can only read text out of a .pptx. In Design and Technology most
-        marks live in sketches, photographs and CAD, so without this the review
-        cannot see most of the work: a portfolio that really scored 99/100 was
-        predicted at 75% text-only and 88% once the pages could be seen.
-      -->
-      <p class="upload-help">
-        Export your portfolio as a PDF (PowerPoint: <em>File → Export → Create PDF/XPS</em>) and add it
-        here. The AI then looks at every page instead of only reading the words, which is the
-        difference between a guess and a real judgement. Costs a penny or two per full check.
-      </p>
-      <p class="upload-current" id="pdfCurrent"></p>
-      <div class="upload-row">
-        <input type="file" id="pdfInput" accept=".pdf,application/pdf">
-        <button class="btn btn-quiet btn-sm" id="btnClearPdf" type="button" style="display:none">Remove PDF</button>
-      </div>
-      <p class="upload-status muted small" id="pdfStatus"></p>
-      <div class="progress" id="pdfProgress" style="display:none">
-        <div class="bar"><div class="bar-fill" id="pdfBarFill"></div></div>
-      </div>
+          <h4 class="sub" id="uploadHeading">Your PowerPoint</h4>
+          <p class="upload-help" id="uploadHelp">Choose your .pptx. The app copies it into its own folder
+            and reads that copy, so your original file is never changed or moved.</p>
+          <p class="upload-current" id="uploadCurrent"></p>
+          <div class="upload-row">
+            <input type="file" id="uploadInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+            <button class="btn btn-quiet btn-sm" id="btnClearDeck" type="button" style="display:none">Remove PowerPoint</button>
+          </div>
+          <p class="upload-status muted small" id="uploadStatus"></p>
+          <div class="progress" id="uploadProgress" style="display:none">
+            <div class="bar"><div class="bar-fill" id="uploadBarFill"></div></div>
+          </div>
 
-      <h3 class="sub">Appearance</h3>
-      <div class="fields">
-        <label class="field" for="themeSelect">
-          <span class="field-label">Colour theme</span>
-          <select id="themeSelect" name="theme">
-            <option value="system">Match my Mac / PC (recommended)</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
-      </div>
+          <h4 class="sub">The PDF the AI actually looks at</h4>
+          <!--
+            The AI can only read text out of a .pptx. In Design and Technology most
+            marks live in sketches, photographs and CAD, so without this the review
+            cannot see most of the work: a portfolio that really scored 99/100 was
+            predicted at 75% text-only and 88% once the pages could be seen.
+          -->
+          <p class="upload-help">Export your portfolio as a PDF — in PowerPoint,
+            <em>File → Export → Create PDF/XPS</em> — and add it here. The AI then looks at every page
+            instead of only reading the words, which is the difference between a guess and a real
+            judgement.</p>
+          <p class="upload-current" id="pdfCurrent"></p>
+          <div class="upload-row">
+            <input type="file" id="pdfInput" accept=".pdf,application/pdf">
+            <button class="btn btn-quiet btn-sm" id="btnClearPdf" type="button" style="display:none">Remove PDF</button>
+          </div>
+          <p class="upload-status muted small" id="pdfStatus"></p>
+          <div class="progress" id="pdfProgress" style="display:none">
+            <div class="bar"><div class="bar-fill" id="pdfBarFill"></div></div>
+          </div>
 
-      <h3 class="sub">Getting started</h3>
-      <p class="muted small">Walk through the setup again, one question at a time. Nothing is
-         changed until you choose it.</p>
-      <div class="actions-row">
-        <button class="btn btn-secondary" id="btnShowSetup" type="button">Show setup again</button>
-      </div>
+        </div>
+      </details>
 
-      <h3 class="sub">Use it on your phone</h3>
-      <!--
-        The address a phone must use changes whenever the router reassigns it.
-        The only record used to be the launcher's terminal output, which is easy
-        to lose and impossible to read from the phone — so a day when the address
-        changed looked exactly like the app being broken. Shown here instead,
-        from the Mac's own network interfaces, so it is always current.
-      -->
-      <p class="upload-help">
-        Open this address in Safari or Chrome on your phone. Both devices must be on the same Wi-Fi.
-        The <code>?key=</code> part is the password — without it, the app refuses any device that is
-        not this Mac.
-      </p>
-      <p class="upload-current" id="connectBody"><span class="muted">Open this section to see the address…</span></p>
-      <p class="upload-status muted small" id="connectNote"></p>
-
-      <h3 class="sub">Change setup</h3>
-      <form class="settings-form" id="settingsForm" autocomplete="off">
-        <div class="fields">
-          <label class="field field-grow" for="deckDirInput">
-            <span class="field-label">Deck folder path</span>
-            <input id="deckDirInput" name="deckDir" type="text" spellcheck="false" placeholder="/Users/you/Documents/DT portfolio">
-          </label>
+      <!-- ================= 2. Mark scheme ================= -->
+      <details class="settings-group" open>
+        <summary>
+          <span class="group-title">Exam board</span>
+          <span class="group-note muted">what your work is judged against</span>
+        </summary>
+        <div class="group-body">
           <label class="field field-grow" for="specSelect">
-            <span class="field-label">Exam board and qualification</span>
+            <span class="field-label">Board and qualification</span>
             <!--
               The mark scheme the AI judges against. Only ONE board is loaded at
               a time: sending both would double the cost of every scan and fill
@@ -1668,103 +1683,36 @@
             -->
             <select id="specSelect" name="specId"></select>
             <span class="field-hint muted small">
-              This decides which mark scheme your work is measured against. Changing it
-              clears the AI's previous judgement, so the next check re-reads your pages
+              Changing this clears the AI's previous judgement, so the next check re-reads your pages
               against the new criteria.
             </span>
           </label>
-          <label class="field field-grow" for="modelSelect">
-            <span class="field-label">Model</span>            <!--
-              A real dropdown, not a datalist.
-              
-              This was previously a text box with a <datalist>, capped at twelve
-              entries. A datalist shows nothing at all until you start typing, and
-              with a dozen options the model the student wanted was simply not in
-              it — the exact complaint: "3.8 isnt showing up in the options now".
-              A <select> lists everything, always, and cannot be silently capped.
-              The list is filled from GET /api/models, so it reflects what the key
-              can really reach.
-            -->
-            <select id="modelSelect" name="model"></select>
-            <span id="modelNote"></span>
-            <span class="field-hint muted small">
-              Prices are for a full scan of your whole deck. A cheaper model is less
-              detailed but still catches weak reasoning and informal wording.
-            </span>
-          </label>
+          <div class="form-row">
+            <button class="btn btn-primary" id="btnSaveBoard" type="button">Save exam board</button>
+            <span class="muted small" id="boardSaveNote"></span>
+          </div>
         </div>
+      </details>
 
-        <!--
-          The mark is the only part of the report that is asked for more than
-          once, so that a single odd answer cannot decide the number. Measured on
-          four repeats of one portfolio the spread was only 2 marks, so this is a
-          guard rather than a necessity — which is why it can be switched off, at
-          about a third less per check, without losing the fix list.
-        -->
-        <label class="switch" for="markToggle">
-          <input type="checkbox" id="markToggle">
-          <span class="switch-track"><span class="switch-knob"></span></span>
-          <span class="switch-text"><strong>Predict a mark</strong>
-            <span class="muted">your pages are reviewed three times and the median taken, so one odd answer cannot decide the
-            mark. Switching this off makes a check cheaper and still gives you the full fix list.</span></span>
-        </label>
-
-    <!--
-      Deep thinking moved here from the Checks section: it is a setting about HOW
-      the AI answers, not a button you press, so it sat oddly among the Check now
-      controls. It now lives beside the other switch, described in plain terms.
-    -->
-    <label class="switch" for="thinkingToggle">
-      <input type="checkbox" id="thinkingToggle">
-      <span class="switch-track"><span class="switch-knob"></span></span>
-      <span class="switch-text"><strong>Deep thinking</strong>
-        <span class="muted">the model works through your pages before answering. Better on judgement calls such as
-        whether an evaluation is genuinely critical; no help on mechanical faults. Slower, and it uses more of the
-        daily allowance. It does not change the predicted mark. The full explanation is under
-        &ldquo;Information&rdquo; at the bottom of this page.</span></span>
-    </label>
-
-        <div class="fields">
-          <label class="field field-grow" for="visionModelSelect">
-            <span class="field-label">Stronger model for marking (optional)</span>
-            <!--
-              A targeted upgrade: marking benefits from a stronger model more than
-              the finding-by-finding review does, and the marking call is a small
-              share of the total cost, so this is affordable in a way that
-              upgrading everything would not be.
-            -->
-            <select id="visionModelSelect" name="visionModel"></select>
-            <span class="field-hint muted small">
-              Used only for the marking runs. A stronger model here can make the predicted mark
-              considerably more accurate: measured on a portfolio that really scored 96/100, the
-              cheap default model said 70–81 while a Flash model said 86–92. It swings the number
-              more than any wording ever did. Costs a few pence more per check, and only for the
-              marking calls.
-            </span>
-          </label>
-        </div>
-
-        <!--
-          The API key, changeable from the interface.
-
-          It used to say the key was "never shown or typed here", which meant
-          swapping it meant hand-editing config.json. The free tier runs out, so
-          swapping the key is a routine thing to do — it needs to take seconds, from
-          the app, and the student needs to be able to tell WHICH key is loaded.
-        -->
-        <h3 class="sub">Your Google API key</h3>
-        <p class="muted small" id="apiKeyStatus"></p>
-        <div class="fields">
+      <!-- ================= 3. AI key ================= -->
+      <details class="settings-group" open>
+        <summary>
+          <span class="group-title">Free AI key</span>
+          <span class="group-note muted">for the marking and the review</span>
+        </summary>
+        <div class="group-body">
+          <!--
+            This used to say the key was "never shown or typed here", which meant
+            swapping it meant hand-editing config.json. The free tier runs out, so
+            swapping the key is a routine thing to do — it needs to take seconds, from
+            the app, and the student needs to be able to tell WHICH key is loaded.
+          -->
+          <p class="muted small" id="apiKeyStatus"></p>
           <label class="field">
             <span class="field-label">Paste a key</span>
             <textarea id="apiKeyInput" class="key-input" rows="2" spellcheck="false"
               autocomplete="off" autocapitalize="off" autocorrect="off"
               placeholder="Paste your Google API key here (it starts with AIza…)"></textarea>
-            <span class="field-hint muted small">
-              Get one free at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>
-              — no card needed. Each key has its own daily allowance, so when one runs out you can paste another.
-              The key is stored only on this computer, in <code>config.json</code>, and is never sent anywhere except Google.
-            </span>
           </label>
           <div class="key-actions">
             <button class="btn btn-secondary" id="btnTestKey" type="button">Test key</button>
@@ -1772,12 +1720,166 @@
             <button class="btn btn-quiet btn-sm" id="btnForgetKey" type="button" style="display:none">Forget key</button>
             <span class="muted small" id="apiKeyFeedback"></span>
           </div>
+          <p class="field-hint muted small">
+            Free from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>
+            — no card needed. Each key has its own daily allowance, so paste a new one when it runs out.
+            The key is stored only on this computer and is never sent anywhere except Google.
+          </p>
         </div>
+      </details>
 
-        <div class="form-row">
-          <button class="btn btn-primary" id="btnSaveSettings" type="submit">Save settings</button>
+      <!-- ================= 4. Advanced ================= -->
+      <details class="settings-group">
+        <summary>
+          <span class="group-title">Advanced</span>
+          <span class="group-note muted">only if you want to tune the marking</span>
+        </summary>
+        <div class="group-body">
+          <!--
+            One form for the advanced controls only, so pressing Enter in a text box
+            saves them and cannot submit anything outside this group.
+          -->
+          <form class="settings-form" id="settingsForm" autocomplete="off">
+
+          <p class="settings-note">The defaults are chosen to be the best balance of accuracy and
+             daily allowance. Nothing here needs changing to get a useful report.</p>
+
+          <div class="actions-row">
+            <button class="btn btn-secondary" id="btnBestMarks" type="button">Set up for the best possible marks</button>
+          </div>
+          <p class="field-hint muted small" id="bestMarksNote">
+            Turns on the predicted mark, uses the strongest model for marking, and reviews each page
+            three times. It is the most accurate setup and it uses the most of your daily allowance.
+          </p>
+
+          <h4 class="sub">Appearance</h4>
+          <div class="fields">
+            <label class="field" for="themeSelect">
+              <span class="field-label">Colour theme</span>
+              <select id="themeSelect" name="theme">
+                <option value="system">Match my Mac / PC (recommended)</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+          </div>
+
+          <h4 class="sub">Starting over</h4>
+          <p class="field-hint muted small">Walk through the setup again, one question at a time.
+             Nothing changes unless you choose it.</p>
+          <div class="actions-row">
+            <button class="btn btn-secondary" id="btnShowSetup" type="button">Show setup again</button>
+          </div>
+
+          <h4 class="sub">Use it on your phone</h4>
+          <!--
+            The address a phone must use changes whenever the router reassigns it.
+            The only record used to be the launcher's terminal output, which is easy
+            to lose and impossible to read from the phone — so a day when the address
+            changed looked exactly like the app being broken. Shown here instead,
+            from the Mac's own network interfaces, so it is always current.
+          -->
+          <p class="field-hint muted small">
+            Open this address in Safari or Chrome on your phone. Both devices must be on the same
+            Wi-Fi. The <code>?key=</code> part is the password — without it, the app refuses any
+            device that is not this Mac.
+          </p>
+          <p class="upload-current" id="connectBody"><span class="muted">Open Settings to see the address…</span></p>
+          <p class="upload-status muted small" id="connectNote"></p>
+
+          <h4 class="sub">How the marking runs</h4>
+          <div class="fields">
+            <label class="field field-grow" for="visionModelSelect">
+              <span class="field-label">Model used for marking</span>
+              <!--
+                A targeted upgrade: marking benefits from a stronger model more than
+                the finding-by-finding review does, and the marking call is a small
+                share of the total cost, so this is affordable in a way that
+                upgrading everything would not be.
+              -->
+              <select id="visionModelSelect" name="visionModel"></select>
+              <span class="field-hint muted small">
+                Used only for the marking runs. This swings the predicted mark more than any wording
+                ever did: on one portfolio that really scored 96/100, the cheap model said 70–81 and a
+                Flash model said 86–92.
+              </span>
+            </label>
+          </div>
+
+          <!--
+            The mark is the only part of the report that is asked for more than
+            once, so that a single odd answer cannot decide the number. Measured on
+            four repeats of one portfolio the spread was only 2 marks, so this is a
+            guard rather than a necessity — which is why it can be switched off, at
+            about a third less per check, without losing the fix list.
+          -->
+          <label class="switch" for="markToggle">
+            <input type="checkbox" id="markToggle">
+            <span class="switch-track"><span class="switch-knob"></span></span>
+            <span class="switch-text"><strong>Predict a mark</strong>
+              <span class="muted">Reviews your pages three times and takes the median, so one odd
+              answer cannot decide the mark. Switching this off costs less of your daily allowance and
+              still gives you the full fix list.</span></span>
+          </label>
+
+          <!--
+            Deep thinking moved here from the Checks section: it is a setting about HOW
+            the AI answers, not a button you press, so it sat oddly among the Check now
+            controls. It now lives beside the other switch, described in plain terms.
+          -->
+          <label class="switch" for="thinkingToggle">
+            <input type="checkbox" id="thinkingToggle">
+            <span class="switch-track"><span class="switch-knob"></span></span>
+            <span class="switch-text"><strong>Deep thinking</strong>
+              <span class="muted">The model works through your pages before answering. Better on
+              judgement calls such as whether an evaluation is genuinely critical; no help on mechanical
+              faults. Slower, and it uses more of the daily allowance. It does not change the predicted mark.</span></span>
+          </label>
+
+          <h4 class="sub">Model used to read your pages</h4>
+          <div class="fields">
+            <label class="field field-grow" for="modelSelect">
+              <span class="field-label">Page-reading model</span>
+              <!--
+                A real dropdown, not a datalist.
+
+                This was previously a text box with a <datalist>, capped at twelve
+                entries. A datalist shows nothing at all until you start typing, and
+                with a dozen options the model the student wanted was simply not in
+                it — the exact complaint: "3.8 isnt showing up in the options now".
+                A <select> lists everything, always, and cannot be silently capped.
+                The list is filled from GET /api/models, so it reflects what the key
+                can really reach.
+              -->
+              <select id="modelSelect" name="model"></select>
+              <span id="modelNote"></span>
+              <span class="field-hint muted small">
+                Reads the pages and writes the fix list. A cheaper model is less detailed but still
+                catches weak reasoning and informal wording.
+              </span>
+            </label>
+          </div>
+
+          <h4 class="sub">Where your files live</h4>
+          <div class="fields">
+            <label class="field field-grow" for="deckDirInput">
+              <span class="field-label">Portfolio folder</span>
+              <input id="deckDirInput" name="deckDir" type="text" spellcheck="false" placeholder="/Users/you/Documents/DT portfolio">
+              <span class="field-hint muted small">
+                Only used when you have not uploaded a file — the app reads the newest .pptx it finds
+                here.
+              </span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <button class="btn btn-primary" id="btnSaveSettings" type="submit">Save advanced settings</button>
+          </div>
+
+          </form>
         </div>
-      </form>
+      </details>
+
     </div>
   </details>
 
@@ -6171,7 +6273,7 @@
       'settingsDetails', 'settingsFacts', 'settingsForm', 'deckDirInput', 'modelSelect', 'btnSaveSettings',
       'uploadInput', 'uploadStatus', 'uploadProgress', 'uploadBarFill', 'uploadHeading', 'uploadHelp', 'uploadCurrent',
       'pdfInput', 'pdfStatus', 'pdfProgress', 'pdfBarFill', 'pdfCurrent', 'btnClearPdf', 'btnClearDeck',
-      'markToggle', 'visionModelSelect', 'themeSelect', 'compareCard', 'compareBody', 'compareWhen', 'connectBody', 'connectNote', 'historyCard', 'historyBody', 'historyNote', 'quotaWhen', 'reviewedName', 'reviewedHow', 'reviewedWarn', 'statsDetails', 'statsBody', 'statsSummary', 'infoDetails',
+      'markToggle', 'visionModelSelect', 'themeSelect', 'btnSaveBoard', 'boardSaveNote', 'btnBestMarks', 'bestMarksNote', 'compareCard', 'compareBody', 'compareWhen', 'connectBody', 'connectNote', 'historyCard', 'historyBody', 'historyNote', 'quotaWhen', 'reviewedName', 'reviewedHow', 'reviewedWarn', 'statsDetails', 'statsBody', 'statsSummary', 'infoDetails',
       'appVersion', 'footerDeck',
       'introOverlay', 'introDots', 'introSkip', 'introBack', 'introNext', 'introLater',
       'introBoards', 'introBoardStatus', 'introDrop', 'introDropMain', 'introDropSub', 'introFile', 'introFileStatus',
@@ -6231,6 +6333,12 @@
      * never a surprise after the fact.
      */
     on(ui.thinkingToggle, 'change', function () { renderScanCostHint(); });
+
+    // Exam board and the best-marks preset save on their own, so neither is
+    // bundled into the "Save advanced settings" form.
+    on(ui.btnSaveBoard, 'click', saveBoard);
+    on(ui.btnBestMarks, 'click', applyBestMarks);
+
     /*
      * Re-price as soon as a different model is picked, so the cost of a change is
      * visible before Save settings is pressed rather than after.
@@ -6495,6 +6603,100 @@
           + 'duplicate pages, missing titles. The AI review and the predicted mark need the key.');
       }
     }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Settings actions that are not the big form
+   *
+   * The exam board and the "best marks" preset each have their own button. The
+   * board used to be inside the one giant form, so changing it meant pressing a
+   * button labelled "Save settings" and silently saving five other things too.
+   * ------------------------------------------------------------------ */
+
+  /** Save just the exam board. */
+  function saveBoard() {
+    var note = ui.boardSaveNote;
+    var specId = ui.specSelect ? String(ui.specSelect.value).replace(/^\s+|\s+$/g, '') : '';
+    var current = state.data && state.data.config ? state.data.config.specId : null;
+    if (!specId || specId === current) {
+      setText(note, 'That is already the saved choice.');
+      return;
+    }
+    var btn = ui.btnSaveBoard;
+    if (btn) { btn.disabled = true; }
+    setText(note, 'Saving…');
+    apiPost('/api/config', { specId: specId }).then(function (res) {
+      if (btn) { btn.disabled = false; }
+      if (res && res.config && state.data) { state.data.config = res.config; }
+      state.settingsFilled = false;
+      setText(note, '');
+      setBanner('config', 'good',
+        'Exam board saved. The AI\u2019s previous judgement was made against the old mark scheme, '
+        + 'so press Check now to judge your pages against the new one.', true);
+      loadState();
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; }
+      setText(note, '');
+      setBanner('config', 'error', friendlyError(err,
+        'The exam board could not be saved. Is NEA Coach still running?'), true);
+    });
+  }
+
+  /**
+   * Choose the strongest available model for marking.
+   *
+   * "Strongest" is decided from the same list the dropdown is built from, rather
+   * than hard-coded, so this keeps working when Google rename or retire a model.
+   * Lite is the cheap page-reader, which under-marks, so it is never chosen.
+   */
+  function bestMarkingModel() {
+    var select = ui.visionModelSelect;
+    if (!select || !select.options) { return null; }
+    var best = null;
+    var bestScore = -1;
+    for (var i = 0; i < select.options.length; i++) {
+      var value = String(select.options[i].value || '');
+      if (!value || /lite/i.test(value)) { continue; }
+      var version = /(\d+)[.\-](\d+)/.exec(value);
+      var score = version ? (Number(version[1]) * 100) + Number(version[2]) : 0;
+      if (/flash/i.test(value)) { score += 1000; }
+      if (score > bestScore) { bestScore = score; best = value; }
+    }
+    return best;
+  }
+
+  function applyBestMarks() {
+    var note = ui.bestMarksNote;
+    var model = bestMarkingModel();
+    if (ui.markToggle) { ui.markToggle.checked = true; }
+    if (ui.visionModelSelect && model) { ui.visionModelSelect.value = model; }
+    if (ui.thinkingToggle) { ui.thinkingToggle.checked = true; }
+
+    var btn = ui.btnBestMarks;
+    if (btn) { btn.disabled = true; }
+    if (note) { setText(note, 'Saving…'); }
+
+    apiPost('/api/config', {
+      visionModel: ui.visionModelSelect ? String(ui.visionModelSelect.value) : '',
+      markEnabled: true,
+      specId: ui.specSelect ? String(ui.specSelect.value) : undefined
+    }).then(function (res) {
+      if (btn) { btn.disabled = false; }
+      if (res && res.config && state.data) { state.data.config = res.config; }
+      state.settingsFilled = false;
+      if (note) {
+        setText(note, 'Done. Marking now uses ' + (model || 'the strongest available model')
+          + ' and reviews each page three times. Press Check now to use it.');
+      }
+      setBanner('config', 'good', 'Set up for the best possible marks. This uses the most of your '
+        + 'daily allowance, so check your remaining percentage before a full re-check.', true);
+      loadState();
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; }
+      if (note) { setText(note, ''); }
+      setBanner('config', 'error', friendlyError(err,
+        'That could not be saved. Is NEA Coach still running?'), true);
+    });
   }
 
   /**

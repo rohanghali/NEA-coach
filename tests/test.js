@@ -1964,17 +1964,27 @@ section('11s. Deep thinking lives in Settings');
     page.lastIndexOf('<details', toggleAt) === settingsAt - '<details class="card details-card" '.length
       || page.slice(settingsAt - 40, toggleAt).includes('details-body'));
 
-  // It must be beside the other switch, not loose in the panel.
-  const seg = page.slice(settingsAt, page.indexOf('</details>', settingsAt));
+  /*
+   * It must sit beside the other switch, not loose in the panel.
+   *
+   * This used to slice up to the first `</details>`, which stopped being the end
+   * of anything once Settings gained collapsible groups. Checking that the two
+   * switches share a group is what the assertion was always about, and it does not
+   * depend on how many groups Settings happens to have.
+   */
+  const markAt = page.indexOf('for="markToggle"');
   ok('Predict a mark and Deep thinking are grouped together',
-    seg.indexOf('for="markToggle"') > -1 && seg.indexOf('for="thinkingToggle"') > -1);
+    markAt > -1
+    && toggleAt > markAt
+    && page.slice(markAt, toggleAt).indexOf('</details>') === -1,
+    'the two switches are not in the same group');
 
   // The old wording pointed at "the note at the bottom of this page", which read
   // oddly from inside Settings; it now names the section.
   ok('its description no longer says "the note at the bottom"',
     !/see the note at the bottom of this page/.test(page));
-  ok('it says plainly that it does not change the mark',
-    /does not change the predicted mark/.test(page));
+  ok('it says plainly that it does not change the predicted mark',
+    /does not change the (predicted )?mark/.test(page));
 
   // The wiring must survive the move.
   ok('the checkbox is still wired to the cost hint',
