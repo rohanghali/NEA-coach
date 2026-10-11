@@ -5812,10 +5812,27 @@ section('12ah. The allowance counts the right model, and the tab has colour');
   ok('the open tab is washed with the accent so the row looks like choices',
     /\.tab\[aria-selected="true"\] \{[\s\S]{0,160}background: var\(--accent-soft\)/.test(css));
   ok('the suggestions panel has its own colour rather than the fix list severity colours',
-    /\.suggestion-card \{ border-left: 3px solid var\(--accent\)/.test(css)
+    /\.suggestion-card \{[\s\S]{0,120}border-left: 3px solid var\(--accent\)/.test(css)
+    && /\.suggestion-card \{[\s\S]{0,200}background: var\(--accent-soft\)/.test(css)
     && /\.suggest-heading \{[^}]*color: var\(--accent-dark\)/.test(css));
   ok('and its grey intro paragraph became a tinted note',
     /\.suggest-intro \{/.test(css) && !/Things you could add[\s\S]{0,40}cls: 'muted small'/.test(html));
+  /*
+   * And the cards themselves, not just the tab. The panel was a white card of grey text with three
+   * small pills on it; the parts that give a suggestion its structure now carry the accent.
+   */
+  ok('the number badge is solid accent rather than the fix list grey',
+    /\.suggestion-card \.rank \{[\s\S]{0,120}background: var\(--accent\)/.test(css)
+    && /\.suggestion-card \.rank \{[\s\S]{0,160}color: var\(--card\)/.test(css),
+    'the badge text colour has to flip with the theme, which var(--card) does and #fff does not');
+  ok('and the two structural labels are accented',
+    /\.suggestion-card \.finding-block strong \{[^}]*color: var\(--accent-dark\)/.test(css));
+  /*
+   * .finding-block is emitted by the JavaScript and had NO rule at all — a class the stylesheet had
+   * never heard of — so "Why it is worth it" and "What to do" were plain bold text.
+   */
+  ok('the block class it emits is actually styled now, rather than being a class with no rule',
+    /\.suggestion-card \.finding-block \{[^}]*font-size/.test(css));
   ok('every colour added here is a theme token',
     (() => {
       /*

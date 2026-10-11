@@ -426,7 +426,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.47';
+const VERSION = '1.0.48';
 const DEFAULT_PORT = 4173;
 
 /*

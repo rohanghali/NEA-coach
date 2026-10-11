@@ -858,7 +858,38 @@
     font-size: 13.5px;
     color: var(--ink-2);
   }
-  .suggestion-card { border-left: 3px solid var(--accent); }
+  /*
+   * The suggestions panel, in the accent colour.
+   *
+   * Suggestions are not mistakes, so they do not wear the fix list's severity colours. Without
+   * this the section was a white card of grey text with three small pills on it — which is what
+   * made it read as the drab one. The card carries a pale accent wash, the number badge is solid
+   * accent, and the two structural labels are accented.
+   *
+   * Every value is a theme token, including the badge's text colour: var(--card) is white in light
+   * mode and near-black in dark, so the badge stays legible without a second rule.
+   */
+  .suggestion-card {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* The number: accent, rather than the fix list's grey. */
+  .suggestion-card .rank {
+    background: var(--accent);
+    color: var(--card);
+  }
+
+  /*
+   * "Why it is worth it" and "What to do" had NO styling at all — .finding-block is a class the
+   * JavaScript emits and the stylesheet had never heard of — so the two labels that give the card
+   * its structure were plain bold text in grey. They carry the accent now, and the body text
+   * beside them stays ink so it is still the easiest thing to read.
+   */
+  .suggestion-card .finding-block { margin: 0 0 8px; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); }
+  .suggestion-card .finding-block strong { color: var(--accent-dark); }
+  .suggestion-card .finding-title { color: var(--ink); }
+  .suggestion-card .finding-evidence { color: var(--ink-2); }
   .finding-pages { display: inline-block; margin: 2px 0 6px; }
 
   .tag {
@@ -3613,7 +3644,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.47';
+  var PAGE_BUILD = '1.0.48';
 
   var state = {
     data: null,
