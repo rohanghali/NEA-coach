@@ -4566,6 +4566,71 @@ section('12t. When the marking model is busy, the review moves to another one');
   ok('no PDF at all is not treated as a failure', !/never saw your pages/.test(noPdf));
 }
 
+section('12u. Using it on a phone is its own section, not an advanced setting');
+{
+  /*
+   * Requested: "make the how to use it on your phone a new section at the bottom instead of
+   * in settings".
+   *
+   * It was in the wrong place twice over. It is not an option to tune, so it did not belong
+   * among the advanced ones — and it was the one part of the page a phone user could not find
+   * on the phone they were holding, which is exactly who needs it.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const settingsStart = html.indexOf('<details class="card details-card" id="settingsDetails"');
+  const settingsEnd = html.indexOf('</details>', html.indexOf('infoDetails'));
+  const cardAt = html.indexOf('id="connectCard"');
+  const footerAt = html.indexOf('<footer class="footer">');
+
+  ok('there is a phone section', cardAt > -1);
+  ok('it has been taken out of Settings',
+    !/Use it on your phone/.test(html.slice(settingsStart, settingsEnd)),
+    'the phone instructions are still inside the settings group');
+  ok('it sits below the settings block', cardAt > settingsEnd);
+  ok('and above the footer, so it is the last thing on the page', cardAt < footerAt);
+  ok('it is a card with its own heading',
+    /<section class="card" id="connectCard" aria-labelledby="connectHeading">/.test(html));
+  ok('the heading is a real one for the accessibility tree',
+    /<h2 class="card-title" id="connectHeading">/.test(html));
+
+  // The stale placeholder from when it lived in Settings must be gone with it.
+  ok('no leftover "open Settings" placeholder',
+    !/Open Settings to see the address/.test(html),
+    'the placeholder still tells the reader to go to Settings');
+
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  ok('the page loads with the card in place', page.errors.length === 0, JSON.stringify(page.errors));
+  ok('every element of it is cached, so none of it is an undefined ui.* reference',
+    !!page.ui.connectCard && !!page.ui.connectBody && !!page.ui.connectNote && !!page.ui.btnConnectAgain,
+    [page.ui.connectCard, page.ui.connectBody, page.ui.connectNote, page.ui.btnConnectAgain].map(Boolean).join(','));
+
+  const connectCalls = () => page.fetchCalls.filter((c) => String(c && c.url ? c.url : c).includes('/api/connect')).length;
+  /*
+   * Filled in on its own rather than on a click. The card is at the very bottom of the page,
+   * so making the reader scroll to it and then press something before there is anything to
+   * read would be a worse trade than one small request.
+   */
+  const onLoad = connectCalls();
+  ok('the address is looked up as soon as the page is up', onLoad >= 1, onLoad + ' lookups');
+  /*
+   * And it can be looked up AGAIN. The address changes whenever the router reassigns it, so
+   * "come back here and copy the new one" is useless without a way to come back — the flag
+   * that stops the automatic load repeating must not stop a deliberate one.
+   */
+  page.ui.btnConnectAgain.click();
+  ok('and Check again forces a fresh lookup, rather than being swallowed by the once-only flag',
+    connectCalls() > onLoad, connectCalls() + ' lookups after pressing it');
+  /*
+   * The phone is the one device that cannot be told the address from a phone, so the message
+   * it gets must point at the Mac, not at a Settings section the address has left.
+   */
+  ok('the message a phone gets points at the Mac, not at Settings',
+    !/shown on the Mac, in Settings/.test(html),
+    'the phone is still told to look in Settings');
+  ok('and it is still told where to look', /shown on the Mac/.test(html));
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();

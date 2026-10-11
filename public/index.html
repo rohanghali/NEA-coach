@@ -2441,22 +2441,6 @@
             </label>
           </div>
 
-          <h4 class="sub">Use it on your phone</h4>
-          <!--
-            The address a phone must use changes whenever the router reassigns it.
-            The only record used to be the launcher's terminal output, which is easy
-            to lose and impossible to read from the phone — so a day when the address
-            changed looked exactly like the app being broken. Shown here instead,
-            from the Mac's own network interfaces, so it is always current.
-          -->
-          <p class="field-hint muted small">
-            Open this address in Safari or Chrome on your phone. Both devices must be on the same
-            Wi-Fi. The <code>?key=</code> part is the password — without it, the app refuses any
-            device that is not this Mac.
-          </p>
-          <p class="upload-current" id="connectBody"><span class="muted">Open Settings to see the address…</span></p>
-          <p class="upload-status muted small" id="connectNote"></p>
-
           <h4 class="sub">How the marking runs</h4>
           <div class="fields">
             <label class="field field-grow" for="visionModelSelect">
@@ -2806,6 +2790,34 @@
     </div>
     <div class="cost-body" id="costBody"></div>
     <p class="cost-note muted" id="costNote"></p>
+  </section>
+
+  <!--
+    Using it from a phone.
+
+    This lived inside Settings, under the advanced options, which was the wrong place twice
+    over: it is not an option to tune, it is a thing to do, and it was the one part of the
+    page a phone user could not find on the phone they were holding. It is its own section at
+    the foot of the page now, where a student who wants it will scroll looking for it.
+
+    The address a phone must use changes whenever the router reassigns it. The only record
+    used to be the launcher's terminal output, which is easy to lose and impossible to read
+    from the phone — so a day when the address changed looked exactly like the app being
+    broken. It is read from this Mac's own network interfaces instead, so it is always current.
+  -->
+  <section class="card" id="connectCard" aria-labelledby="connectHeading">
+    <h2 class="card-title" id="connectHeading">Use it on your phone</h2>
+    <p class="field-hint muted small">
+      Open one of these in Safari or Chrome on your phone. Both devices must be on the same
+      Wi&#8209;Fi. The <code>?key=</code> part is the password — without it the app refuses any
+      device that is not this Mac. Once it opens, use <em>Add to Home Screen</em> so it sits
+      there like an app.
+    </p>
+    <p class="upload-current" id="connectBody"><span class="muted">Looking up this Mac&rsquo;s address…</span></p>
+    <p class="upload-status muted small" id="connectNote"></p>
+    <div class="actions-row">
+      <button class="btn btn-secondary btn-sm" id="btnConnectAgain" type="button">Check again</button>
+    </div>
   </section>
 
   <footer class="footer">
@@ -7225,18 +7237,26 @@
   function openSettings() {
     if (ui.settingsDetails && !ui.settingsDetails.open) {
       ui.settingsDetails.open = true;
-      loadConnectInfo();
     }
     if (ui.settingsDetails && ui.settingsDetails.scrollIntoView) {
       try { ui.settingsDetails.scrollIntoView({ block: 'start' }); } catch (err) { ui.settingsDetails.scrollIntoView(); }
     }
   }
 
-  function loadConnectInfo() {
+  /**
+   * Look up the address a phone should use.
+   *
+   * @param {boolean} [again] force a fresh lookup. The card is loaded once on its own, and
+   *   the address can be reassigned by the router at any time, so "come back here and copy
+   *   the new one" needs a way to actually come back — which is the Check again button.
+   */
+  function loadConnectInfo(again) {
     var host = ui.connectBody;
-    if (!host || connectLoaded) { return; }
+    if (!host) { return; }
+    if (connectLoaded && !again) { return; }
     connectLoaded = true;
     setText(host, 'Looking up this Mac\'s address…');
+    setText(ui.connectNote, '');
 
     apiGet('/api/connect').then(function (res) {
       if (!res || !res.ok || !res.hosts || !res.hosts.length) {
@@ -7260,7 +7280,7 @@
       connectLoaded = false;
       var msg = err && err.message ? String(err.message) : '';
       setText(host, /403|access code|Mac itself/i.test(msg)
-        ? 'You are looking at this on the phone. The address is shown on the Mac, in Settings.'
+        ? 'You are looking at this on the phone. The address is shown on the Mac — open this same section there.'
         : 'Could not reach the app to look up its address. Is it still running?');
     });
   }
@@ -7284,7 +7304,7 @@
       'settingsDetails', 'settingsFacts', 'settingsForm', 'deckDirInput', 'modelSelect', 'btnSaveSettings',
       'uploadInput', 'uploadStatus', 'uploadProgress', 'uploadBarFill', 'uploadHeading', 'uploadHelp', 'uploadedWhat',
       'pdfStatus', 'pdfProgress', 'pdfBarFill', 'btnClearPdf', 'btnClearDeck',
-      'markToggle', 'visionModelSelect', 'themeSelect', 'btnSaveBoard', 'boardSaveNote', 'btnBestMarks', 'bestMarksNote', 'compareCard', 'compareBody', 'compareWhen', 'connectBody', 'connectNote', 'historyCard', 'historyBody', 'historyNote', 'quotaWhen', 'reviewedName', 'reviewedHow', 'reviewedWarn', 'statsDetails', 'statsBody', 'statsSummary', 'infoDetails',
+      'markToggle', 'visionModelSelect', 'themeSelect', 'btnSaveBoard', 'boardSaveNote', 'btnBestMarks', 'bestMarksNote', 'compareCard', 'compareBody', 'compareWhen', 'connectCard', 'connectBody', 'connectNote', 'btnConnectAgain', 'historyCard', 'historyBody', 'historyNote', 'quotaWhen', 'reviewedName', 'reviewedHow', 'reviewedWarn', 'statsDetails', 'statsBody', 'statsSummary', 'infoDetails',
       'appVersion', 'footerDeck',
       'introOverlay', 'introDots', 'introSkip', 'introBack', 'introNext', 'introLater',
       'introBoards', 'introBoardStatus', 'introDrop', 'introDropMain', 'introDropSub', 'introFile', 'introFileStatus',
@@ -7412,10 +7432,6 @@
       compareOpenDecided = true;
       lsSet(LS_COMPARE_OPEN, ui.compareCard.open ? 'open' : 'closed');
     });
-    on(ui.settingsDetails, 'toggle', function () {
-      // Fetch the phone address the first time Settings is opened.
-      if (ui.settingsDetails && ui.settingsDetails.open) { loadConnectInfo(); }
-    });
     on(ui.settingsForm, 'submit', saveSettings);
     on(ui.uploadInput, 'change', function (event) {
       var file = event.target && event.target.files && event.target.files[0] ? event.target.files[0] : null;
@@ -7491,6 +7507,7 @@
       lsSet(LS_THEME, choice);
       applyTheme(choice);
     });
+    on(ui.btnConnectAgain, 'click', function () { loadConnectInfo(true); });
     on(ui.btnClearPdf, 'click', clearPdf);
     on(ui.btnClearDeck, 'click', clearDeck);
     on(ui.btnTestKey, 'click', testApiKey);
@@ -8251,6 +8268,12 @@
       return;
     }
     loadState();
+    /*
+     * Filled in straight away rather than on a click. It is one small request, and the card
+     * sits at the very bottom of the page — making the student scroll there and then press
+     * something before it has any content would be a worse trade than the request.
+     */
+    loadConnectInfo();
   }
 
   // Keep the phone layout correct if the window is resized or the device is

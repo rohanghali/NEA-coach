@@ -414,7 +414,11 @@ Most settings are changed in the app itself, under **Settings**:
 - **Colour theme** — match your computer, or force Light or Dark.
 - **Your Google API key** — paste a new one, test it, or remove it. Testing a key uses no
   allowance, so it is safe when you have run out.
-- **Use it on your phone** — the current address to type on the phone, including the access
+- **Use it on your phone** — its own section at the foot of the page, with the current address
+  to type on the phone including the access key, and a "Check again" button for when the router
+  has reassigned it. It was previously buried in the advanced settings, which is the wrong place
+  for it twice over: it is not an option to tune, and it was the one part of the page a phone
+  user could not find on the phone they were holding.
   code. Shown only on the computer running the app, never sent to another device.
 - **Deck folder path** — only needed if you would rather keep your file where it
   is than let the app copy it in.
@@ -582,7 +586,9 @@ the `*.json` files in it.
 
 **Putting it on a phone, or on the desktop**
 
-- **Phone.** Open the app on your phone at the address printed in the NEA Coach window, then
+- **Phone.** Scroll to **Use it on your phone** at the bottom of the page, and open that address
+  on the phone — the app works it out from the Mac's own network interfaces, so it is always
+  current. Then
   use your browser's *Add to Home Screen*. The name and icon come from the app itself, so it
   looks like an app rather than a bookmark. On iOS use **Safari** — Chrome and Firefox on iOS
   cannot add to the home screen.

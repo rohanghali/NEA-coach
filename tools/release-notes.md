@@ -18,27 +18,20 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Fixed the big one: a portfolio can no longer be marked low just because the marking model
-  was busy.** Google occasionally returns "this model is currently experiencing high demand".
-  When that happened, the app gave up on looking at your pages entirely and reported a
-  **text-only** figure as though it were a mark — 74 out of 100 for a portfolio that really
-  scored **99**. It now moves to a different model and looks at the pages anyway.
-- **It can only move to a model it has been checked against.** The app has compared itself with
-  three real marked portfolios per model, and it will only fall back to one of those — because a
-  model with no measured error cannot be corrected, and an uncorrected number is exactly what
-  went wrong here.
-- **If a review still cannot happen, it now says so next to the number.** It names the cause
-  ("the marking model was busy", "you have used the daily free allowance"), says plainly that the
-  figure comes from your text alone and is not a judgement of the work, and tells you to press
-  Check now again. A plausible-looking wrong number was worse than an honest gap.
-- **The correction now follows the model that actually did the marking.** Previously it used the
-  model you had *chosen*; if a fallback had been used, the wrong line — or none at all — would
-  have been applied.
+- **"Use it on your phone" is now its own section at the bottom of the page**, instead of being
+  buried in the advanced settings. It was in the wrong place twice over: it is not an option to
+  tune, and it was the one part of the page a phone user could not find on the phone they were
+  holding. It now says to use *Add to Home Screen* once it opens.
+- **A "Check again" button on it.** The address changes whenever your router reassigns it, so
+  "come back here and copy the new one" needed a way to actually come back. It also fills itself
+  in as soon as the page loads, rather than waiting to be asked.
 
-**In v1.0.29**
+**In v1.0.30**
 
-- **An icon**, in the browser tab, on a phone home screen, and on the desktop, plus a real
-  `NEA Coach.app` for macOS and a Desktop shortcut on Windows.
+- **A busy marking model can no longer turn a 99/100 portfolio into 74.** When Google returned
+  "this model is experiencing high demand", the app gave up on reading your pages and reported a
+  text-only figure as a mark. It now moves to a different model and looks at the pages anyway —
+  and only ever to one it has been calibrated against, so the result can still be corrected.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.
