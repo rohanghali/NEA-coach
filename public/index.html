@@ -568,6 +568,23 @@
   .upload-row input[type="file"] { max-width: 100%; font-size: 14px; }
   .upload-status { margin: 0 0 12px; }
   .upload-current { margin: 0 0 10px; font-size: 14px; }
+  /*
+   * What each format is good for. A quiet box rather than more paragraph of help text,
+   * because it is reference material: read once, by someone wondering which file to add.
+   */
+  .upload-limits {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--fill-soft);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .upload-limits p { margin: 0 0 7px; }
+  .upload-limits p:last-child { margin-bottom: 0; }
   .connect-row { margin: 0 0 6px; overflow-wrap: anywhere; }
   .chip-cell { font-size: 12px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line-strong); white-space: nowrap; }
   .chip-new { background: var(--accent-soft); color: var(--accent-dark); border-color: var(--accent-soft); }
@@ -2186,12 +2203,23 @@
         </summary>
         <div class="group-body">
 
-          <h4 class="sub" id="uploadHeading">Your PowerPoint</h4>
-          <p class="upload-help" id="uploadHelp">Choose your .pptx. The app copies it into its own folder
-            and reads that copy, so your original file is never changed or moved.</p>
+          <h4 class="sub" id="uploadHeading">Your portfolio</h4>
+          <p class="upload-help" id="uploadHelp">Add your PDF export, your PowerPoint file, or both.
+            The box below takes either, and the note at the bottom of this section says what each one
+            is good for. The app copies what you add into its own folder and reads that copy, so your
+            original is never changed or moved.</p>
           <p class="upload-current" id="uploadCurrent"></p>
+          <p class="upload-current" id="pdfCurrent"></p>
           <div class="upload-row">
-            <input type="file" id="uploadInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+            <!--
+              ONE picker, two formats. There used to be a separate box for each, which read as though
+              the student was expected to supply both. The wizard has always used a single picker and
+              this now matches it. The file itself decides what happens, through fileKind() below —
+              the same predicate drag-and-drop uses, so a chosen file and a dropped file cannot be
+              treated differently.
+            -->
+            <input type="file" id="uploadInput" accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+            <button class="btn btn-quiet btn-sm" id="btnClearPdf" type="button" style="display:none">Remove PDF</button>
             <button class="btn btn-quiet btn-sm" id="btnClearDeck" type="button" style="display:none">Remove PowerPoint</button>
           </div>
           <p class="upload-status muted small" id="uploadStatus"></p>
@@ -2199,25 +2227,29 @@
             <div class="bar"><div class="bar-fill" id="uploadBarFill"></div></div>
           </div>
 
-          <h4 class="sub">The PDF the AI actually looks at</h4>
           <!--
-            The AI can only read text out of a .pptx. In Design and Technology most
-            marks live in sketches, photographs and CAD, so without this the review
-            cannot see most of the work: a portfolio that really scored 99/100 was
-            predicted at 75% text-only and 88% once the pages could be seen.
+            A PDF upload has its own endpoint and its own progress, so its status lines stay their
+            own elements. They now sit in the same box rather than behind a second heading.
           -->
-          <p class="upload-help">Export your portfolio as a PDF — in PowerPoint,
-            <em>File → Export → Create PDF/XPS</em> — and add it here. The AI then looks at every page
-            instead of only reading the words, which is the difference between a guess and a real
-            judgement.</p>
-          <p class="upload-current" id="pdfCurrent"></p>
-          <div class="upload-row">
-            <input type="file" id="pdfInput" accept=".pdf,application/pdf">
-            <button class="btn btn-quiet btn-sm" id="btnClearPdf" type="button" style="display:none">Remove PDF</button>
-          </div>
           <p class="upload-status muted small" id="pdfStatus"></p>
           <div class="progress" id="pdfProgress" style="display:none">
             <div class="bar"><div class="bar-fill" id="pdfBarFill"></div></div>
+          </div>
+
+          <!--
+            What each format is actually good for. The two are not interchangeable and the app uses
+            them for different jobs: the PDF is what the AI LOOKS at, the PowerPoint is what the free
+            layout checks can MEASURE. Saying so here is the difference between a student adding the
+            right one, adding neither, and expecting layout advice a PDF cannot give.
+          -->
+          <div class="upload-limits" id="uploadLimits">
+            <p><strong>PDF</strong> — the AI reads every page of it, including your sketches and
+              photographs, which is where most of the marks in Design and Technology are. The app can
+              also check your writing and count your pages, but it cannot measure your layout.</p>
+            <p><strong>PowerPoint</strong> — adds the layout checks a PDF cannot support: uncaptioned
+              images, text running off the page, text shrunk to fit, and speaker notes. The AI reads
+              its text only, so drawn and photographed work is missed.</p>
+            <p>If you have both, add both.</p>
           </div>
 
         </div>
@@ -6319,18 +6351,24 @@
     var set = !!(name && (config && config.deckFile || inUploadFolder));
 
     if (ui.uploadHeading) {
-      setText(ui.uploadHeading, set ? 'Choose a different portfolio' : 'Get started — choose your portfolio');
+      setText(ui.uploadHeading, set ? 'Choose a different portfolio' : 'Get started — add your portfolio');
     }
     if (ui.uploadHelp) {
       setText(ui.uploadHelp, set
         ? 'Choosing a file here REPLACES the portfolio being marked — it becomes the one at the top of this page. Your file is copied into the app\u2019s own folder and read there, so the original is never changed or moved.'
-        : 'Choose your PowerPoint file below. It becomes the portfolio being marked, shown at the top of this page. The app copies it into its own folder and reads that copy, so the file you pick is never changed or moved.');
+        : 'Add a PDF, a PowerPoint file, or both — the box below takes either. Whatever you add becomes the portfolio being marked, shown at the top of this page, and the app copies it into its own folder and reads that copy, so the file you pick is never changed or moved.');
     }
     if (ui.uploadCurrent) {
       var size = deck && deck.fileSizeBytes ? formatBytes(deck.fileSizeBytes) : '';
+      /*
+       * Shown only when there IS a PowerPoint. It used to announce "No PowerPoint file
+       * chosen" whenever one was absent, which in a box that also takes a PDF read as a
+       * fault the student was supposed to fix.
+       */
       setText(ui.uploadCurrent, set
         ? 'PowerPoint file: ' + name + (size ? ' (' + size + ')' : '') + (deck && typeof deck.slideCount === 'number' ? ', ' + plural(deck.slideCount, 'page') : '')
-        : 'No PowerPoint file chosen. If you added a PDF, that is the portfolio being marked — see the top of this page.');
+        : '');
+      show(ui.uploadCurrent, !!set);
     }
     if (ui.uploadInput) {
       ui.uploadInput.setAttribute('aria-label', set ? 'Choose a different portfolio file' : 'Choose your portfolio file');
@@ -6895,6 +6933,22 @@
     xhr.send(opts.file);
   }
 
+  /*
+   * Which of the two things is this file?
+   *
+   * ONE predicate, used by the upload box and by drag-and-drop. They used to decide
+   * separately, and a chosen file and a dropped file going to different endpoints would
+   * not be cosmetic: the PDF is what the AI looks at and the PowerPoint is what the
+   * layout checks measure, so sending one where the other belongs answers the wrong
+   * question about the work.
+   */
+  function fileKind(file) {
+    var name = String((file && file.name) || '').toLowerCase();
+    if (/\.pdf$/.test(name)) { return 'pdf'; }
+    if (/\.pptx$/.test(name)) { return 'pptx'; }
+    return 'other';
+  }
+
   function uploadPortfolio(file) {
     if (!file) { return; }
     if (!/\.pptx$/i.test(file.name)) {
@@ -7069,7 +7123,7 @@
       'coverageBody', 'slidesDetails', 'slidesSummaryLabel', 'slidesHead', 'slidesBody',
       'settingsDetails', 'settingsFacts', 'settingsForm', 'deckDirInput', 'modelSelect', 'btnSaveSettings',
       'uploadInput', 'uploadStatus', 'uploadProgress', 'uploadBarFill', 'uploadHeading', 'uploadHelp', 'uploadCurrent',
-      'pdfInput', 'pdfStatus', 'pdfProgress', 'pdfBarFill', 'pdfCurrent', 'btnClearPdf', 'btnClearDeck',
+      'pdfStatus', 'pdfProgress', 'pdfBarFill', 'pdfCurrent', 'btnClearPdf', 'btnClearDeck',
       'markToggle', 'visionModelSelect', 'themeSelect', 'btnSaveBoard', 'boardSaveNote', 'btnBestMarks', 'bestMarksNote', 'compareCard', 'compareBody', 'compareWhen', 'connectBody', 'connectNote', 'historyCard', 'historyBody', 'historyNote', 'quotaWhen', 'reviewedName', 'reviewedHow', 'reviewedWarn', 'statsDetails', 'statsBody', 'statsSummary', 'infoDetails',
       'appVersion', 'footerDeck',
       'introOverlay', 'introDots', 'introSkip', 'introBack', 'introNext', 'introLater',
@@ -7205,7 +7259,13 @@
     on(ui.settingsForm, 'submit', saveSettings);
     on(ui.uploadInput, 'change', function (event) {
       var file = event.target && event.target.files && event.target.files[0] ? event.target.files[0] : null;
-      uploadPortfolio(file);
+      if (!file) { return; }
+      var kind = fileKind(file);
+      if (kind === 'pdf') { uploadPdf(file); return; }
+      if (kind === 'pptx') { uploadPortfolio(file); return; }
+      // Say which file was refused and why, rather than appearing to ignore the choice.
+      setBanner('upload', 'error',
+        '"' + file.name + '" is not a file NEA Coach can read. Choose the .pptx of your portfolio, or a PDF export of it.', true);
     });
     /*
      * Drag and drop.
@@ -7245,14 +7305,14 @@
       e.preventDefault();
       document.body.classList.remove('is-dropping');
       var file = e.dataTransfer.files[0];
-      var name = String(file.name || '').toLowerCase();
-      if (/\.pdf$/.test(name)) {
+      var kind = fileKind(file);
+      if (kind === 'pdf') {
         // A PDF is the portfolio itself, so no deck is needed alongside it.
         openSettings();
         uploadPdf(file);
         return;
       }
-      if (/\.pptx$/.test(name)) { openSettings(); uploadPortfolio(file); return; }
+      if (kind === 'pptx') { openSettings(); uploadPortfolio(file); return; }
       /*
        * A .ppt, .key or .zip is not accepted. Say which file was refused and why,
        * rather than appearing to ignore the drop.
@@ -7270,10 +7330,6 @@
       var choice = String((event.target && event.target.value) || 'system');
       lsSet(LS_THEME, choice);
       applyTheme(choice);
-    });
-    on(ui.pdfInput, 'change', function (event) {
-      var file = event.target && event.target.files && event.target.files[0] ? event.target.files[0] : null;
-      uploadPdf(file);
     });
     on(ui.btnClearPdf, 'click', clearPdf);
     on(ui.btnClearDeck, 'click', clearDeck);
@@ -7591,9 +7647,16 @@
     var drop = document.getElementById('introDrop');
     var main = document.getElementById('introDropMain');
     var sub = document.getElementById('introDropSub');
-    var isPdf = /\.pdf$/i.test(file.name);
-    var isPptx = /\.pptx$/i.test(file.name);
-    if (!isPdf && !isPptx) {
+    /*
+     * The same predicate the picker and the drop handler use. This is the THIRD place
+     * that used to work the format out for itself, and it is the one that picks the
+     * endpoint — so three copies of one rule meant a PDF could be validated as accepted
+     * in one place and posted to the PowerPoint endpoint by another. One function, one
+     * answer.
+     */
+    var kind = fileKind(file);
+    var isPdf = kind === 'pdf';
+    if (kind === 'other') {
       if (status) { setText(status, 'That needs to be a PDF or a .pptx. In PowerPoint use File \u2192 Save As for .pptx, or File \u2192 Export for a PDF.'); }
       if (status) { status.className = 'intro-status is-bad'; }
       return;

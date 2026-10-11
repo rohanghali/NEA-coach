@@ -18,34 +18,27 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Removed a warning that was not true.** If you supplied only a PDF, the app used to
-  say that "the free structural checks have nothing to read and the pages cannot be
-  counted". It does not: a PDF is read into a real document with its page count and the
-  text of every page, so those checks run and the pages are counted. What a PDF genuinely
-  cannot supply — image resolution, shape geometry, speaker notes — is already named
-  check by check in the coverage panel, which is the right place for it.
+- **One box for your portfolio instead of two.** Settings used to offer a PowerPoint box and a
+  PDF box side by side, which read as though you were meant to supply both. There is now a single
+  picker that takes either, and a short note underneath saying what each one is actually good for:
+  the **PDF** is what the AI reads — every page, including your sketches and photographs — while
+  the **PowerPoint** adds the layout checks a PDF cannot support (uncaptioned images, text running
+  off the page, text shrunk to fit, speaker notes). If you have both, add both.
 
-**In the previous version (v1.0.25)**
+**In the previous version (v1.0.26)**
 
-- **A "Top" button.** Once you are a few screens down a report a small floating button
-  appears in the bottom corner and takes you back to the top. It is not there until it is
-  useful, and it cannot be reached by keyboard while it is invisible.
+- **Removed a warning that was not true.** With only a PDF, the app used to say the free
+  structural checks had nothing to read and the pages could not be counted. They can and are: a
+  PDF is read into a real document with its page count and every page's text.
+
+**In v1.0.25**
+
+- **A "Top" button** in the bottom corner, once you are far enough down a report for it to help.
 
 **In v1.0.24**
 
-- **The smallest font the app will complain about is now 10pt, down from 12pt.** On one
-  real portfolio awarded 90/100, the *only* two mechanical complaints the app made were
-  two pages set at 10.6pt. Both are gone.
-
-**In v1.0.23**
-
-- **Nothing is reviewed until you have chosen a portfolio.** Pressing Check now with
-  nothing added used to secretly review whatever PowerPoint it found lying around.
-- **Your settings, your key and your portfolio now live outside the app folder**, so
-  unzipping a newer version keeps all of them.
-- **It looks the way it works.** Translucent cards, a glass header bar, buttons that
-  spring and ripple where you press, and a small burst of colour when you tick a finding
-  off. All of it is off if you have asked your system for reduced motion.
+- **The smallest font the app complains about is now 10pt, down from 12pt.** On one real
+  portfolio awarded 90/100, the only two mechanical complaints it made were two pages at 10.6pt.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

@@ -290,7 +290,7 @@ function loadPage(appRoot) {
     // The feel layer, so a test can fire a ripple or a burst and inspect the DOM
     // it produces instead of only being able to see that the page loaded.
     'spawnRipple', 'celebrate', 'rollFigure', 'rolledFigure', 'sparkLayer',
-    'renderToTop', 'wireToTop',
+    'renderToTop', 'wireToTop', 'fileKind',
   ];
   const marker = '}());';
   const at = script.lastIndexOf(marker);

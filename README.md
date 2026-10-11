@@ -401,7 +401,10 @@ To pin a specific model, set `"model"` in `<your data folder>/config.json`.
 
 Most settings are changed in the app itself, under **Settings**:
 
-- **Your portfolio** — choose a `.pptx`, or a PDF export for the visual review.
+- **Your portfolio** — one picker that takes a `.pptx`, a PDF export, or both. They are not
+  interchangeable: the PDF is what the AI looks at (every page, including drawn work), and the
+  `.pptx` is what the layout checks can measure (uncaptioned images, text off the page, speaker
+  notes). The section itself says which is which.
 - **Exam board and qualification** — which mark scheme to judge against.
 - **Model** — which AI model reads your work, with the requests per check beside each.
 - **Predict a mark** — on by default. Off makes a check about a third cheaper and

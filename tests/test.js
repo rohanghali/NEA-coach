@@ -3974,6 +3974,100 @@ section('12p. The app no longer claims a PDF leaves it nothing to check');
     'a limitation must stay attached to the check it affects');
 }
 
+section('12q. One picker for the portfolio, and what each format is good for');
+{
+  /*
+   * Requested: merge the two upload boxes, with a concise note on the limitations of each.
+   *
+   * Settings had a box for a PowerPoint and a box for a PDF, side by side, which read as
+   * though the student was expected to supply both. The wizard has always used a single
+   * picker. The formats are NOT interchangeable, though — the PDF is what the AI looks at
+   * and the PowerPoint is what the layout checks can measure — so the capability stayed and
+   * only the second box went.
+   */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  const source = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const live = source.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  ok('the page still loads with one picker', page.errors.length === 0, JSON.stringify(page.errors));
+
+  // One input, taking both.
+  ok('the separate PDF input is gone', !/id="pdfInput"/.test(source), 'a second picker is still in the markup');
+  ok('and nothing still expects it to exist',
+    !/ui\.pdfInput/.test(live) && !/'pdfInput'/.test(live));
+  const accept = String(page.ui.uploadInput.getAttribute('accept') || '');
+  ok('the one picker accepts a PDF', /\.pdf/.test(accept), accept);
+  ok('and a PowerPoint', /\.pptx/.test(accept), accept);
+  /*
+   * Styled selectors are stripped first: `input[type="file"]` appears in the stylesheet,
+   * and counting that as a control is how a test starts lying. Two real inputs are
+   * expected — the wizard's picker and this one.
+   */
+  const markup = live.replace(/<style>[\s\S]*?<\/style>/g, '');
+  const inputs = markup.match(/type="file"/g) || [];
+  eq('there are two pickers in the whole page: the wizard\'s and this one', inputs.length, 2);
+  eq('and only one of them is the portfolio picker',
+    (markup.match(/id="uploadInput"/g) || []).length, 1);
+
+  // The decision itself, which is the part that can silently send a file to the wrong place.
+  const kind = (name) => page.T.fileKind(name === null ? null : { name });
+  eq('a .pdf is a pdf', kind('Portfolio.pdf'), 'pdf');
+  eq('capitalisation does not change that', kind('PORTFOLIO.PDF'), 'pdf');
+  eq('a .pptx is a pptx', kind('Portfolio.pptx'), 'pptx');
+  eq('and so is a capitalised one', kind('Portfolio.PPTX'), 'pptx');
+  eq('a .ppt is neither, since it is not the format the app reads', kind('Portfolio.ppt'), 'other');
+  eq('a file with no name is neither', kind(''), 'other');
+  eq('and so is no file at all', kind(null), 'other');
+
+  /*
+   * One rule, three callers — the picker, drag-and-drop, and the uploader that picks the
+   * endpoint. They each used to work the format out with their own regex, so a PDF could be
+   * accepted in one place and posted to the PowerPoint endpoint by another.
+   */
+  const uses = (live.match(/fileKind\(/g) || []).length;
+  ok('the picker, drag-and-drop and the uploader all ask the same question',
+    uses >= 4, uses + ' uses of fileKind (1 definition + 3 callers expected)');
+  ok('the picker routes by that answer',
+    /on\(ui\.uploadInput, 'change'[\s\S]{0,400}kind === 'pdf'[\s\S]{0,200}kind === 'pptx'/.test(live),
+    'the picker does not dispatch on the file type');
+  ok('and so does drag-and-drop',
+    /var kind = fileKind\(file\);[\s\S]{0,300}kind === 'pdf'[\s\S]{0,160}kind === 'pptx'/.test(live));
+  /*
+   * The only other format tests allowed are the two guards inside uploadPortfolio and
+   * uploadPdf, which assert their own precondition rather than deciding anything.
+   */
+  const formatTests = (live.match(/\.pdf\$|\.pptx\$/g) || []).length;
+  eq('the format is worked out in one place, not four', formatTests, 4);
+
+  // The note: concise, and it must name the limitation of EACH format, not just one.
+  const note = /<div class="upload-limits"[\s\S]*?<\/div>/.exec(source);
+  ok('there is a note about what each format is good for', !!note);
+  // Whitespace is collapsed, because the markup wraps mid-phrase and "uncaptioned
+  // images" would otherwise fail to match across a newline.
+  const noteText = note ? note[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') : '';
+  ok('it names the PDF', /PDF/.test(noteText));
+  ok('and the PowerPoint', /PowerPoint/.test(noteText));
+  ok('it says the PDF is what the AI reads, including drawn work',
+    /sketches|photographs/.test(noteText), noteText.slice(0, 120));
+  ok('it says what a PDF CANNOT do — measure the layout',
+    /cannot measure your layout/i.test(noteText), 'the PDF limitation is missing');
+  ok('and what a PowerPoint misses — drawn and photographed work',
+    /text only/i.test(noteText), 'the PowerPoint limitation is missing');
+  ok('it says what a PowerPoint adds', /uncaptioned images/.test(noteText));
+  ok('it tells the student what to do when they have both',
+    /add both/i.test(noteText));
+  ok('and it is a note, not an essay', noteText.replace(/\s+/g, ' ').trim().length < 760,
+    noteText.replace(/\s+/g, ' ').trim().length + ' characters');
+
+  /*
+   * The line announcing "No PowerPoint file chosen" used to be shown whenever a
+   * PowerPoint was absent. In a box that also takes a PDF that read as a fault to fix.
+   */
+  ok('the absent-PowerPoint line is hidden rather than announced',
+    /show\(ui\.uploadCurrent, !!set\)/.test(live), 'the negative line would still be shown');
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();
