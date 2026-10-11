@@ -58,16 +58,41 @@ unset TOKEN
 # user had no launcher to double-click and nothing to download, which is exactly the
 # question this answers.
 ASSETS=(dist/NEA-Coach-windows.zip dist/NEA-Coach-mac.zip)
-MISSING=0
-for z in "${ASSETS[@]}"; do [ -f "$z" ] || MISSING=1; done
-if [ "$MISSING" = "1" ]; then
-  say "Packages not built. Building for both platforms first..."
-  ./tools/package.sh both || exit 1
-fi
+
+# The packages are ALWAYS rebuilt, and never reused just because dist/ is not empty.
+#
+# They used to be built only when the zips were missing. Releasing v1.0.22 while
+# v1.0.21 zips were still sitting in dist/ therefore uploaded v1.0.21 to the v1.0.22
+# release. Nothing failed and the log looked clean - the only hint was a "0 MB" line
+# that was itself a bug (integer division of a 343 KB file). Worse, the launcher
+# compares its own version against the server it starts, so a wrong-but-consistent
+# package reports no mismatch and the student silently gets the old build. That is
+# the exact failure the versioned folders were introduced to kill.
+say "Building both packages from the current source..."
+rm -f "${ASSETS[@]}"
+./tools/package.sh both || exit 1
+
+APP_VERSION="$(sed -n "s/^const VERSION = '\([0-9.]*\)'.*/\1/p" server.js | head -1)"
+EXPECT_VERSION="${TAG#v}"
 for z in "${ASSETS[@]}"; do
   [ -f "$z" ] || { say "Package $z is still missing after building."; exit 1; }
-  say "Package: $z ($(( $(wc -c < "$z") / 1048576 )) MB)"
+  say "Package: $z ($(( $(wc -c < "$z") / 1024 )) KB)"
 done
+
+# The version is baked into the folder name inside each zip, and that folder name is
+# the one thing a stale build cannot fake. If it does not match the tag being
+# released, the release does not go out.
+for z in "${ASSETS[@]}"; do
+  ROOT_DIR="$(unzip -Z1 "$z" 2>/dev/null | head -1)"
+  ROOT_DIR="${ROOT_DIR%%/*}"
+  case "$ROOT_DIR" in
+    *-"$EXPECT_VERSION") ;;
+    *) say "REFUSING TO RELEASE: $z contains '$ROOT_DIR', which is not a $EXPECT_VERSION package."
+       say "  server.js currently says $APP_VERSION."
+       exit 1 ;;
+  esac
+done
+say "Both packages contain a $EXPECT_VERSION build."
 
 # --- check the tag is free ----------------------------------------------------------
 RESP_FILE="$(mktemp)"
@@ -79,70 +104,14 @@ if [ "$CODE" = "200" ]; then
 fi
 
 # --- create the release -------------------------------------------------------------
-BODY='Reviews a D&T NEA portfolio and tells you what to fix, in order of what is costing you marks.
-
-**To use it:**
-
-**Windows** — download `NEA-Coach-windows.zip`, unzip it, then double-click
-`Start NEA Coach.bat` inside the folder it creates.
-
-**Mac** — download `NEA-Coach-mac.zip`, unzip it, then double-click
-`Start NEA Coach.command` inside the folder it creates.
-(The first run downloads Node.js automatically; after that it opens instantly.)
-
-Each download unzips into a folder named after its version, so unzipping a newer one
-never lands beside an older one or overwrites it.
-
-Nothing needs installing by hand, and no bank card is needed.
-
-Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the folder.
-
-**New in this version**
-
-- The portfolio statistics are back. They had silently disappeared from the app
-  AND from the exported feedback file.
-- Expanding "Show mechanical checks" no longer throws you back to the top of the page.
-- The predicted mark is no longer inflated by a correction that made it less
-  accurate. On one portfolio it showed 98 against a real mark of 90, when the
-  AI's own reading of 81 had been closer. The adjustment is now applied only when
-  the app's measured error is tight enough for it to be worth applying, and the
-  long explanation of it has been removed.
-- Choosing your exam board during the setup walkthrough now updates the board
-  dropdown in Settings. It used to save correctly but leave the dropdown showing
-  the old value.
-- Settings save themselves. Change the model, the marking model or Predict a mark and it is applied immediately, with a "Saved" confirmation - no Save button to forget. The folder path keeps its own button, because that is the one that can be wrong.
-- Marking now uses the wording the exam board itself uses for each criterion,
-  including what AQA says is typically missing at each level, taken from its
-  candidate record form.
-- The predicted mark no longer contradicts itself. It showed a headline of 94 while
-  the criteria beneath added up to 75 with no total and no explanation. Each number
-  is now labelled, the criteria table states its own total, and the reason for the
-  difference is given in marks throughout instead of mixing marks and percentages.
-- The model dropdowns are readable. Every option used to repeat an identical
-  "about 47 requests per check" suffix, so all thirteen rows looked the same apart
-  from the model name. The figure is on the line underneath instead, where it
-  updates with your deck.
-- Settings shows whether your free AI key is saved without opening the group.
-- Fixed Test key, Save key and Forget key in Settings, which silently did nothing.
-- "Start setup" moved to the top of the page. It used to be buried in Settings,
-  which is the wrong place for the one control a new user needs.
-- Downloads now unzip into a VERSIONED folder. Previously every one unzipped to
-  `NEA-Coach-mac`, so a second download became `NEA-Coach-mac 2`, then ` 3`, ` 4`... and
-  the older copy kept the port, leaving you looking at the old build.
-- The setup walkthrough no longer restarts when you do something. Uploading a portfolio
-  or saving a key used to throw you back to the first step.
-- The exam board can be chosen before your first check. It was previously impossible:
-  the board list came back empty until a check had been run.
-- A short setup walkthrough on first run: exam board, portfolio, free AI key, one step at a time. Every screen can be skipped, and it can be replayed from Settings.
-- Settings rebuilt into four groups — Your portfolio, Exam board, Free AI key, and Advanced (collapsed) — instead of one long list.
-- An **Advanced → "Set up for the best possible marks"** button, which turns on the predicted mark and uses the strongest model available.
-- Fewer false alarms: a genuinely good portfolio no longer gets told its cover page is too empty, and near-identical font sizes are no longer counted as different headings.
-- The launcher now checks WHICH copy is running. If an older NEA Coach is still open, it says so and names both versions, instead of quietly opening the old one.
-- Clearer page: card titles, more depth, and a stronger focus ring for keyboard use.
-
-**If you have an older copy already:** quit it first (close the black "NEA Coach server" window) before starting this one, or the old version will keep answering your browser.
-
-It never modifies your original PowerPoint, and nothing leaves your computer except the pages a check sends to Google.'
+# The notes live in tools/release-notes.md and are read in, rather than being a
+# BODY='...' string inside this script.
+#
+# They used to be single-quoted here, and they are prose: they contain an apostrophe
+# ("the AI's own reading") and backticks (for folder names). The apostrophe closed the
+# string early, the rest was executed as shell, and BODY ended up unset - which, under
+# set -u, produced a release with no notes at all and no error worth noticing.
+BODY="$(cat "$APP_DIR/tools/release-notes.md")"
 
 say "Creating release $TAG..."
 CODE=$(curl -s -o "$RESP_FILE" -w '%{http_code}' --max-time 60 \
