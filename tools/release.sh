@@ -99,6 +99,9 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
+- The portfolio statistics are back. They had silently disappeared from the app
+  AND from the exported feedback file.
+- Expanding "Show mechanical checks" no longer throws you back to the top of the page.
 - The predicted mark is no longer inflated by a correction that made it less
   accurate. On one portfolio it showed 98 against a real mark of 90, when the
   AI's own reading of 81 had been closer. The adjustment is now applied only when
