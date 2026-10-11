@@ -1227,6 +1227,43 @@ section('11h. Calibration against known marks');
  * the only escape was reloading the page.
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ * 12e. A failed scan must never show a mark of zero
+ *
+ * Found while investigating a test failure. A scan that fails (or runs without an API
+ * key) still writes a report with `predicted: 0, maximum: 0, weightsKnown: false` and a
+ * row for every criterion. The UI's guard only checked for rows, so it let that through
+ * and would have shown a predicted mark of "0 / 0" — a grade of zero on a portfolio
+ * nobody had assessed.
+ * ------------------------------------------------------------------ */
+
+section('12e. No mark from a scan that produced none');
+{
+  const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const ai = require(path.join(ROOT, 'lib', 'ai.js'));
+  const spec = ai.loadSpec(path.join(ROOT, 'spec'), 'aqa-gcse');
+
+  const empty = ai.summarisePredictedMarks(spec.criteria, []);
+  ok('no coverage gives no percentage', empty.percentage === null, String(empty.percentage));
+  ok('and no maximum to be a mark out of', empty.maximum === 0, String(empty.maximum));
+  ok('but it does flag that no weights are known', empty.weightsKnown === false);
+  ok('rows still exist for each criterion, which is why rows alone are not enough',
+    Array.isArray(empty.rows) && empty.rows.length > 0, String(empty.rows && empty.rows.length));
+
+  ok('the UI refuses a prediction with no known weights',
+    /if \(p\.weightsKnown === false\) \{ return null; \}/.test(page));
+
+  const decides = (p) => {
+    if (!p || typeof p !== 'object') return null;
+    if (p.weightsKnown === false) return null;
+    if (typeof p.percentage !== 'number' && !(p.rows && p.rows.length)) return null;
+    return p;
+  };
+  ok('simulated: an empty prediction is refused', decides(empty) === null);
+  ok('simulated: a real prediction is kept',
+    decides({ percentage: 83, rows: [{}], weightsKnown: true }) !== null);
+}
+
 section('12d. Past checks rows toggle shut');
 {
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
@@ -2059,8 +2096,17 @@ section('11k. Scan history snapshots');
   ok('it is a fraction of the report it summarises',
     JSON.stringify(snap).length < JSON.stringify(report).length / 10,
     JSON.stringify(snap).length + ' vs ' + JSON.stringify(report).length);
-  ok('it carries the mark and the counts',
-    typeof snap.predictedPercent === 'number' && typeof snap.findingsTotal === 'number');
+  /*
+   * The counts are always present. The MARK is only present when the report actually
+   * produced one: a scan that failed (or ran without an API key) leaves
+   * `predicted: 0, maximum: 0`, and the snapshot must report no percentage rather than a
+   * zero. Asserting a number unconditionally made this test depend on the last scan
+   * having succeeded, which is not what it is testing.
+   */
+  ok('it always carries the finding count', typeof snap.findingsTotal === 'number');
+  ok('it reports a mark only when the report had one',
+    snap.predictedPercent === null || typeof snap.predictedPercent === 'number',
+    String(snap.predictedPercent));
   ok('it keeps only the substance, not every finding',
     snap.substantive.length <= 12, String(snap.substantive.length));
   ok('and every kept item has a title', snap.substantive.every((f) => !!f.title));

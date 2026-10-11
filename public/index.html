@@ -4422,6 +4422,16 @@
     var data = state.data;
     var p = data && data.ai ? data.ai.predicted : null;
     if (!p || typeof p !== 'object') { return null; }
+    /*
+     * A total needs a maximum to be a mark. Without one the summary reports
+     * `predicted: 0, maximum: 0, weightsKnown: false`, and rows still exist for every
+     * criterion — so checking only for rows let a FAILED scan through and the card
+     * would have shown a predicted mark of "0 / 0". That reads as a grade of zero on a
+     * portfolio nobody had assessed, which is the worst possible thing to show.
+     *
+     * The server sets `weightsKnown` for exactly this; the UI must honour it.
+     */
+    if (p.weightsKnown === false) { return null; }
     if (typeof p.percentage !== 'number' && !(p.rows && p.rows.length)) { return null; }
     return p;
   }
