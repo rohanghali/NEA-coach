@@ -99,6 +99,8 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
+- "Start setup" moved to the top of the page. It used to be buried in Settings,
+  which is the wrong place for the one control a new user needs.
 - Downloads now unzip into a VERSIONED folder. Previously every one unzipped to
   `NEA-Coach-mac`, so a second download became `NEA-Coach-mac 2`, then ` 3`, ` 4`... and
   the older copy kept the port, leaving you looking at the old build.
