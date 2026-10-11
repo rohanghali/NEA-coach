@@ -1227,11 +1227,16 @@
    */
   .toptabs-rail {
     position: relative;
-    height: 16px;
+    height: 18px;
     margin: 0 2px;
-    border-radius: 8px;
-    background: var(--fill-soft);
-    border: 1px solid var(--line);
+    border-radius: 9px;
+    /*
+     * A shallow sunken track: slightly darker at the top than the bottom, the way a groove catches
+     * light, plus a hairline inset shadow. Both are static — nothing here animates — so this costs
+     * nothing to draw and cannot stutter.
+     */
+    background: linear-gradient(to bottom, var(--rail-track-lo), var(--rail-track-hi));
+    box-shadow: inset 0 1px 2px rgba(16, 24, 40, 0.07);
     /* The rail is a control, not a text surface: a drag on it must scroll the strip, never the
        page, and it must not select anything. */
     cursor: grab;
@@ -1243,24 +1248,42 @@
   /* Nothing to scroll: the bar goes, rather than sitting there dead. */
   .toptabs-rail[hidden] { display: none; }
 
+  /*
+   * The handle.
+   *
+   * It sits INSET in the track and grows as you reach for it — the same thing every touch scrollbar
+   * does, and most of why they feel good: the target tells you it has noticed you before you press.
+   *
+   * The growth is a transform. scaleY is composited, so hovering and dragging never touch layout or
+   * repaint the strip underneath, which is the difference between this feeling smooth and feeling
+   * like it is catching. The colour change from the earlier version is kept as well; the two
+   * together are what makes it read as picked up rather than merely recoloured.
+   */
   .toptabs-thumb {
     position: absolute;
-    top: 0;
-    bottom: 0;
     left: 0;
+    top: 50%;
+    height: 12px;
+    margin-top: -6px;
     min-width: 52px;
-    border-radius: 8px;
-    /*
-     * Transparent blue rather than a solid bar. Opaque, it read as a filled progress bar — a thing
-     * that is telling you something — when it is a handle you are meant to grab. See-through, it
-     * sits ON the rail rather than replacing it, and the track stays visible behind it.
-     */
-    background: var(--rail-thumb);
-    transition: background 140ms var(--ease-out);
+    border-radius: 6px;
+    background: linear-gradient(to bottom, var(--rail-thumb-hi), var(--rail-thumb));
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.14);
+    transform: scaleY(1);
+    transition: transform 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    will-change: transform;
   }
-  /* It firms up under the pointer, so it is obvious you have hold of it. */
-  .toptabs-rail:hover .toptabs-thumb,
-  .toptabs-rail.is-dragging .toptabs-thumb { background: var(--rail-thumb-on); }
+  /* It fills the track under the pointer... */
+  .toptabs-rail:hover .toptabs-thumb { transform: scaleY(1.34); }
+  /*
+   * ...and swells past it with a soft ring once you are actually dragging, so the moment you take
+   * hold of it is unmistakable.
+   */
+  .toptabs-rail.is-dragging .toptabs-thumb {
+    transform: scaleY(1.5);
+    background: linear-gradient(to bottom, var(--accent), var(--accent-dark));
+    box-shadow: 0 0 0 3px var(--rail-glow), 0 2px 6px rgba(16, 24, 40, 0.2);
+  }
 
   /* Overview at the start and Settings at the end, both outside the scroller, each marked apart
      from the nine that scroll between them. */
@@ -1361,7 +1384,19 @@
       /* The swipe is the control. A 3px target is not something to hit. */
       pointer-events: none;
     }
-    .toptabs-thumb { min-width: 20px; border-radius: 2px; }
+    /*
+     * Flat and thin, with none of the desktop handle's scaling: this is an indicator, not something
+     * to take hold of, and a 12px pill on a 3px track would simply bulge out of it.
+     */
+    .toptabs-thumb {
+      min-width: 20px;
+      height: 3px;
+      margin-top: -1.5px;
+      border-radius: 2px;
+      box-shadow: none;
+      transform: none;
+      transition: none;
+    }
     .toptabs-scroll { scrollbar-width: none; }
     .toptabs-scroll::-webkit-scrollbar { display: none; }
   }
@@ -2382,6 +2417,11 @@
     --streak: rgba(160, 190, 240, 0.9);
     /* The tab scroller's handle: blue, but see-through, so the strip reads as one surface. */
     --rail-thumb: rgba(37, 99, 235, 0.24);
+    /* The tab scroller: a soft sunken track, and a handle with a little dimension to it. */
+    --rail-track-lo: rgba(148, 168, 200, 0.18);
+    --rail-track-hi: rgba(148, 168, 200, 0.07);
+    --rail-thumb-hi: rgba(37, 99, 235, 0.38);
+    --rail-glow: rgba(37, 99, 235, 0.16);
     --rail-thumb-on: rgba(37, 99, 235, 0.42);
     /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
     --setup: #0b7d72;
@@ -2413,6 +2453,11 @@
       --streak: rgba(126, 158, 214, 0.55);
       /* The tab scroller's handle: blue, but see-through, so the strip reads as one surface. */
       --rail-thumb: rgba(126, 158, 214, 0.26);
+      /* The tab scroller: a soft sunken track, and a handle with a little dimension to it. */
+      --rail-track-lo: rgba(10, 22, 44, 0.34);
+      --rail-track-hi: rgba(10, 22, 44, 0.16);
+      --rail-thumb-hi: rgba(126, 158, 214, 0.44);
+      --rail-glow: rgba(126, 158, 214, 0.20);
       --rail-thumb-on: rgba(126, 158, 214, 0.46);
       /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
       --setup: #12a193;
@@ -2444,6 +2489,11 @@
     --streak: rgba(126, 158, 214, 0.55);
     /* The tab scroller's handle: blue, but see-through, so the strip reads as one surface. */
     --rail-thumb: rgba(126, 158, 214, 0.26);
+    /* The tab scroller: a soft sunken track, and a handle with a little dimension to it. */
+    --rail-track-lo: rgba(10, 22, 44, 0.34);
+    --rail-track-hi: rgba(10, 22, 44, 0.16);
+    --rail-thumb-hi: rgba(126, 158, 214, 0.44);
+    --rail-glow: rgba(126, 158, 214, 0.20);
     --rail-thumb-on: rgba(126, 158, 214, 0.46);
     /* "Start setup": a turquoise that sits beside the blue rather than competing with it. */
     --setup: #12a193;
@@ -4231,7 +4281,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.63';
+  var PAGE_BUILD = '1.0.64';
 
   var state = {
     data: null,

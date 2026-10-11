@@ -18,12 +18,14 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Checked that the icon really does reach all three places**, rather than assuming it. Mac and
-  Windows were already correct; the phone had one gap.
-- **Fixed: the apple-touch-icon URL returned "not found".** The page names its icon explicitly, so
-  this was a fallback rather than the mechanism — but a 404 on the URL iOS probes by convention is
-  how a home-screen icon ends up blank. That name and the older -precomposed one now serve the 180px
-  icon.
+- **The tab scroller looks and feels better.** It has a shallow sunken track rather than a flat
+  grey bar, and the handle is a rounded pill sitting IN that track with a soft shadow under it.
+- **The handle grows as you reach for it**, and swells past the track with a soft halo once you take
+  hold of it — so you can see it has noticed you before you press, and can tell the moment the drag
+  has started. The cursor changes from an open hand to a closed one as well.
+- It grows by **scaling**, not by changing height, so dragging it cannot make the strip underneath
+  re-layout and stutter.
+- Every colour is a token in both the light and dark themes.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

@@ -6141,7 +6141,7 @@ section('12aj. Every section is a tab');
     /setPointerCapture/.test(html) && /on\(window, 'pointerup', endDrag\)/.test(html),
     'a drag that dies the moment the cursor strays off a 16px bar is unusable');
   ok('the bar and its thumb are big enough to hit',
-    /\.toptabs-rail \{[\s\S]{0,260}height: 16px/.test(css) && /\.toptabs-thumb \{[\s\S]{0,200}min-width: 52px/.test(css),
+    /\.toptabs-rail \{[\s\S]{0,400}height: 18px/.test(css) && /\.toptabs-thumb \{[\s\S]{0,300}min-width: 52px/.test(css),
     'a thin, small scroller is the thing that was too hard to use');
   ok('and it hides itself when there is nothing to scroll',
     /rail\.hidden = true/.test(html), 'a dead bar under a strip that already fits is a lie');
@@ -6151,7 +6151,36 @@ section('12aj. Every section is a tab');
     /range\.view \/ range\.wide/.test(html) && /parseInt|Number\(ui\.topTabsScroll\.scrollLeft\)/.test(html),
     'a scroller that does not track the thing it scrolls is decoration');
   ok('the bar is the visible cue that there is more to the right',
-    /\.toptabs-rail \{[\s\S]{0,300}background: var\(--fill-soft\)/.test(css));
+    /\.toptabs-rail \{[\s\S]{0,400}background: linear-gradient\(to bottom, var\(--rail-track-lo\), var\(--rail-track-hi\)\)/.test(css));
+  /*
+   * The feel. The handle grows as you reach for it — what every touch scrollbar does, and most of why
+   * they feel good: the target says it has noticed you before you press.
+   */
+  ok('the handle grows as you reach for it, and further while you drag it',
+    /\.toptabs-rail:hover \.toptabs-thumb \{ transform: scaleY\(1\.34\); \}/.test(css)
+    && /\.toptabs-rail\.is-dragging \.toptabs-thumb \{[\s\S]{0,120}transform: scaleY\(1\.5\)/.test(css));
+  ok('and it grows by TRANSFORM, so it cannot stutter while you drag it',
+    /\.toptabs-thumb \{[\s\S]{0,700}transform: scaleY\(1\)/.test(css)
+    && /will-change: transform/.test(css),
+    'scaling by height would relayout the strip under your finger');
+  ok('it swells past the track with a ring when you take hold of it',
+    /is-dragging \.toptabs-thumb \{[\s\S]{0,300}0 0 0 3px var\(--rail-glow\)/.test(css));
+  ok('and the cursor says it can be grabbed, then that it has been',
+    /\.toptabs-rail \{[\s\S]{0,1600}cursor: grab/.test(css)
+    && /\.toptabs-rail\.is-dragging \{ cursor: grabbing; \}/.test(css));
+
+  /*
+   * The phone indicator must stay flat and thin: a 12px pill on a 3px track would bulge out of it.
+   */
+  ok('the phone indicator stays flat, with none of that scaling',
+    (() => {
+      const phone = (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n');
+      return phone.indexOf('height: 3px') >= 0 && phone.indexOf('transform: none') >= 0;
+    })());
+  ok('every colour it uses is a token in all three themes',
+    ['--rail-track-lo:', '--rail-track-hi:', '--rail-thumb-hi:', '--rail-glow:', '--rail-thumb:', '--rail-thumb-on:']
+      .every((tok) => (html.split(tok).length - 1) === 3),
+    'a literal is how the dark-mode contrasts broke twice before');
   /*
    * And on a phone there is no bar at all — a finger swiping the tabs is the gesture everyone already
    * makes, and the rail was taking 16px of a narrow screen to offer a worse version of it.
