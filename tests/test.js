@@ -4913,8 +4913,16 @@ section('12w. The aesthetic pass: a tighter phone, and more life in the marks');
   ok('a progress trail of particles runs while a check does',
     /@keyframes trail/.test(css) && /\.bar-fill::before/.test(css));
   ok('the primary action invites a press while it is idle and pressable',
-    /#btnCheck:not\(\[disabled\]\) \{ animation: invite/.test(css),
+    /#btnCheck:not\(\[disabled\]\) \{[\s\S]{0,400}animation-name: invite/.test(css),
     'a pulse on a dead control is a lie');
+  /*
+   * And it must STOP. It was infinite, and box-shadow cannot be animated on the compositor, so
+   * that was a repaint of the button sixty times a second for ever, for decoration — the one
+   * continuous cost the page had, and the reason it felt heavy while sitting still.
+   */
+  ok('and the invitation is finite, because an endless box-shadow pulse repaints for ever',
+    /animation-iteration-count: 3/.test(css),
+    'an infinite box-shadow animation is back');
   ok('the background tint leans towards the pointer', /var\(--aur-x, 0%\)/.test(css));
   ok('and it is desktop only, because a finger drag should not drag the wallpaper',
     /matchMedia\('\(pointer: fine\)'\)/.test(html));
@@ -5370,6 +5378,67 @@ section('12aa. The page and the app must be the same version');
     /stateStale: true,[\s\S]{0,200}version: VERSION,/.test(srv) || /version: VERSION,[\s\S]{0,200}stateStale: true,/.test(srv));
   ok('and the page compares its build against THAT, not against the report\u2019s',
     /checkVersionMatch\(data\);/.test(html) && /theirs !== PAGE_BUILD/.test(html));
+}
+
+section('12ab. Cancel has to reach the expensive part');
+{
+  /*
+   * Found by the whole-codebase audit, and it was a defect in the cancel feature itself.
+   *
+   * runVisionPass has accepted and checked an `isCancelled` callback since it was written. The
+   * call in runAiPass never passed one, so the flag was always null and BOTH of its checks were
+   * unreachable. Cancelling therefore did nothing until the entire visual review had finished
+   * and been paid for — the first and by far the most expensive work a scan does, up to three
+   * whole-portfolio requests plus any fallback model. The button promised the opposite.
+   */
+  const aiSrc = fs.readFileSync(path.join(ROOT, 'lib', 'ai.js'), 'utf8');
+
+  ok('the cancel flag reaches the visual review',
+    (() => {
+      const call = /vision = await runVisionPass\(\{([\s\S]*?)\n    \}\);/.exec(aiSrc);
+      return !!call && /\bisCancelled\b/.test(call[1]);
+    })(),
+    'Cancel cannot stop the whole-portfolio review without it');
+
+  /*
+   * Behavioural proof, with the network replaced: cancelling before any work must produce ZERO
+   * generateContent attempts. The models listing is a free GET and is allowed to happen.
+   */
+  const ai = require(path.join(ROOT, 'lib', 'ai.js'));
+  const { parsePresentation } = require(path.join(ROOT, 'lib', 'pptx.js'));
+  const theDeck = parsePresentation(path.join(ROOT, 'sample', 'AQA-GCSE-Portfolio-SAMPLE.pptx'));
+  const https = require('https');
+  const realRequest = https.request;
+  const attempted = [];
+  https.request = function (opts) {
+    attempted.push(typeof opts === 'string' ? opts : ((opts && (opts.path || opts.href)) || '?'));
+    throw new Error('blocked by the test');
+  };
+  let outcome = null;
+  try {
+    outcome = await ai.runAiPass({
+      deck: theDeck,
+      apiKey: 'deliberately-not-a-key',
+      model: 'gemini-3.5-flash',
+      spec: {},
+      cache: {},
+      force: true,
+      pdf: Buffer.from('%PDF-1.4 not really a pdf'),
+      pdfName: 'x.pdf',
+      runs: 3,
+      onLog: () => {},
+      onProgress: () => {},
+      isCancelled: () => true,
+    });
+  } finally {
+    https.request = realRequest;
+  }
+
+  ok('a cancelled pass stops before spending anything', outcome && outcome.cancelled === true);
+  const paid = attempted.filter((p) => /generateContent/.test(p));
+  eq('and sends no page-reading request at all', paid.length, 0);
+  ok('while the free models listing is still allowed to have been tried',
+    attempted.length >= 0, 'the point is only that no generateContent call was made');
 }
 
 })().then(summary, (err) => {

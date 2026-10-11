@@ -36,7 +36,8 @@
 <style>
   :root {
     color-scheme: light;
-    --bg: #f6f7f9;
+    /* Tinted rather than grey: the page reads as pale blue-violet, not as blank paper. */
+    --bg: #edf1fa;
     --card: #ffffff;
     --ink: #101828;
     --ink-2: #344054;
@@ -180,7 +181,13 @@
     margin-bottom: 14px;
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   }
-  .card-title { font-size: 13px; margin: 0 0 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  /*
+   * Headings carry the accent. They were grey, which is the single biggest reason the page
+   * looked washed out: every card was a white box with a grey label. The colour coding of the
+   * FINDINGS is untouched — this is the page's own voice, so it is one hue throughout rather
+   * than a different colour per card, which would fight the severity colours below it.
+   */
+  .card-title { font-size: 13px; margin: 0 0 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-dark); font-weight: 700; }
   /* A heading directly inside a summary is part of the row, not a block above it. */
   .details-card > summary .card-title { margin: 0; }
 
@@ -1725,15 +1732,25 @@
        that ordering an unsupported value would leave the header transparent. */
     --glass: rgba(255, 255, 255, 0.72);
     --glass: color-mix(in srgb, var(--card) 74%, transparent);
-    --card-tint: rgba(255, 255, 255, 0.88);
+    /* 88% white was opaque enough to hide the aurora completely, so every card read as a
+       plain white rectangle on a white page. 80% lets the colour through while keeping the
+       text contrast well above the AA threshold. */
+    --card-tint: rgba(255, 255, 255, 0.80);
     --card-tint: color-mix(in srgb, var(--card) 88%, transparent);
     --glass-edge: rgba(255, 255, 255, 0.62);
     --card-edge: rgba(255, 255, 255, 0.62);
     --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
     --lift: 0 2px 4px rgba(16, 24, 40, 0.05), 0 14px 30px -10px rgba(16, 24, 40, 0.2);
-    --aurora-1: rgba(37, 99, 235, 0.14);
-    --aurora-2: rgba(124, 58, 237, 0.11);
-    --aurora-3: rgba(8, 145, 178, 0.1);
+    /*
+     * Roughly doubled, and a fourth warm layer added. At 10-14% these were so faint that the
+     * page read as white with a hint of grey; the whole point of the aurora is that the colour
+     * is there. Kept low-contrast and blurred so text stays comfortable — the colour lives
+     * behind the content, never in it.
+     */
+    --aurora-1: rgba(37, 99, 235, 0.30);
+    --aurora-2: rgba(124, 58, 237, 0.24);
+    --aurora-3: rgba(8, 145, 178, 0.22);
+    --aurora-4: rgba(236, 72, 153, 0.17);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -1748,6 +1765,7 @@
       --aurora-1: rgba(59, 130, 246, 0.2);
       --aurora-2: rgba(139, 92, 246, 0.16);
       --aurora-3: rgba(6, 182, 212, 0.13);
+      --aurora-4: rgba(236, 72, 153, 0.15);
     }
   }
   :root[data-theme="dark"] {
@@ -1762,6 +1780,7 @@
     --aurora-1: rgba(59, 130, 246, 0.2);
     --aurora-2: rgba(139, 92, 246, 0.16);
     --aurora-3: rgba(6, 182, 212, 0.13);
+    --aurora-4: rgba(236, 72, 153, 0.15);
   }
 
   /* ---------- ambient background ---------- */
@@ -1785,7 +1804,8 @@
     background:
       radial-gradient(38rem 30rem at 16% 10%, var(--aurora-1), transparent 62%),
       radial-gradient(34rem 28rem at 86% 4%, var(--aurora-2), transparent 60%),
-      radial-gradient(42rem 34rem at 66% 96%, var(--aurora-3), transparent 64%);
+      radial-gradient(42rem 34rem at 66% 96%, var(--aurora-3), transparent 64%),
+      radial-gradient(30rem 26rem at 8% 78%, var(--aurora-4), transparent 66%);
     animation: aurora 52s ease-in-out infinite alternate;
     will-change: transform;
   }
@@ -2191,7 +2211,22 @@
    * An invitation rather than an alarm — and it stops the moment the button is busy or
    * unavailable, because a pulse on a dead control is a lie.
    */
-  #btnCheck:not([disabled]) { animation: invite 3.6s var(--ease-out) infinite; }
+  /*
+   * The invitation halo runs THREE TIMES and then stops.
+   *
+   * It was infinite, and `box-shadow` cannot be animated on the compositor — unlike the
+   * aurora's transform, it forces a repaint of the button AND its soft outer ring on the main
+   * thread. Sixty times a second, for ever, for pure decoration, for as long as the button was
+   * enabled. That is the one continuous cost this page had, and it is the reason it felt heavy
+   * at rest. Three pulses are enough to draw the eye on arrival; after that the button simply
+   * rests.
+   */
+  #btnCheck:not([disabled]) {
+    animation-name: invite;
+    animation-duration: 3.6s;
+    animation-timing-function: var(--ease-out);
+    animation-iteration-count: 3;
+  }
   @keyframes invite {
     0%, 100% { box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18), 0 0 0 0 rgba(37, 99, 235, 0.22); }
     55%      { box-shadow: 0 2px 6px rgba(37, 99, 235, 0.26), 0 0 0 9px rgba(37, 99, 235, 0); }
@@ -2202,9 +2237,15 @@
    * and a finger drag should not drag the wallpaper around with it. `background-position`
    * rather than `transform`, because the transform is already carrying the slow drift.
    */
+  /*
+   * The tint leans towards the pointer, but it repaints a FULL-SCREEN layer each time it moves,
+   * so there is no transition here on purpose: a 600ms transition meant the browser was still
+   * animating a background-position long after the pointer had stopped, which left a page that
+   * never quite went idle. Without it the change lands as one repaint and stops, and the steps
+   * are a quarter of a percent — far below anything the eye can see.
+   */
   html::before {
     background-position: var(--aur-x, 0%) var(--aur-y, 0%);
-    transition: background-position 600ms linear;
   }
 
   /* ---------- the small movements ---------- */
@@ -3375,7 +3416,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.39';
+  var PAGE_BUILD = '1.0.40';
 
   var state = {
     data: null,

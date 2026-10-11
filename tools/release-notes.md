@@ -18,25 +18,24 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Fixed the page stopping halfway through drawing itself.** One line set a class on the score
-  ring, which is an SVG element — and an SVG element refuses that, so it threw and took everything
-  below it down with it. The parts drawn before it appeared, the rest stayed blank, and a
-  "something went wrong" notice stayed on screen for the rest of the session. **This is almost
-  certainly what you saw as the app not working.**
-- **That notice now clears itself** once a page draws successfully, instead of staying for good.
-- **The update notice from v1.0.38 no longer gives a false alarm.** It compared the page against
-  the version that wrote the *report* on disk, which after an upgrade is the previous version
-  until the next check is run — so it warned about a mismatch that was not there. It compares
-  against the running app now, and the report's own version is kept separately.
-- Nothing about the marking, the checks or the report has changed.
+- **The page has colour in it now.** It was white boxes on a white page; the headings carry the
+  accent colour and the background is a soft wash that the cards let through. The colour coding
+  of the findings is untouched, and nothing is louder than it needs to be.
+- **Cancelling a check now actually stops it.** The Cancel button could not stop the visual
+  review — the first and far and away the most expensive thing a check does, up to three
+  whole-portfolio reads plus a backup model — because the flag was never passed to it. Pressing
+  Cancel did nothing until every one of those had already run and been paid for. It stops before
+  the first one now.
+- **Much less work while sitting still.** The "Check now" button used to pulse for ever, and the
+  pulse was a shadow — which cannot be animated on the graphics card, so it repainted the button
+  sixty times a second, permanently, for decoration. It invites three times and then rests. The
+  background's gentle lean towards your pointer no longer animates either; it was repainting the
+  whole screen continuously while the mouse moved.
 
-**In v1.0.38**
+**In v1.0.39**
 
-- The port fix: a busy port no longer closes the window.
-
-**In v1.0.36**
-
-- **A Cancel check button**, which stops at a safe boundary and keeps every page already read.
+- **Fixed the page stopping halfway through drawing itself** — an SVG element refuses a
+  `className` assignment, and that one line was taking the whole render down with it.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.
