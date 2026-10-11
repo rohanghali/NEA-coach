@@ -158,20 +158,23 @@ build_windows() {
     cp "$APP_DIR/runtime/node.exe" "$target/runtime/node.exe"
     say "bundled runtime/node.exe ($(du -h "$target/runtime/node.exe" | cut -f1 | tr -d ' '))"
   else
-    cat > "$target/runtime/PUT-NODE-EXE-HERE.txt" <<'EOF'
-This folder should contain node.exe, the Windows copy of Node.js.
-
-It is missing from this build. Either:
-
-  a) run tools/package.sh windows on a machine with internet access, which fetches
-     it automatically, or
-
-  b) download the Windows .zip from https://nodejs.org, open it, and copy
-     node.exe into this runtime folder.
-
-Windows users otherwise need to install Node.js from https://nodejs.org themselves.
-EOF
-    say "WARNING: runtime/node.exe not present — see the note placed in runtime/"
+    # HARD FAIL. This used to drop a note into runtime/ and carry on, so the zip got built,
+    # release.sh uploaded and PUBLISHED it, and the START HERE.txt inside it promised
+    # "Nothing to install. Node.js is already inside this folder." The recipient's .bat then
+    # found no runtime and either used an arbitrary Node from PATH or told them to install
+    # one — the opposite of what the package claims, discovered only once the release was
+    # public. runtime/ is gitignored, so a fresh clone hits this every time.
+    #
+    # The note also said package.sh "fetches it automatically". It never did: nothing in
+    # this script downloads anything at all.
+    echo "  ERROR: runtime/node.exe is missing, so a Windows build would ship without Node." >&2
+    echo "" >&2
+    echo "  Fetch it first, then run this again:" >&2
+    echo "    curl -fL -o runtime/node.exe https://nodejs.org/dist/v22.14.0/win-x64/node.exe" >&2
+    echo "" >&2
+    echo "  A Windows zip whose README promises Node is inside, and is not, is worse than" >&2
+    echo "  no release at all." >&2
+    exit 1
   fi
 
   # The Mac launcher is noise on Windows.
@@ -266,12 +269,10 @@ build_mac() {
   say "Building for macOS..."
   rm -rf "$target"
   copy_common "$target"
-  /*
-   * NOT write_readme_first: that is the Windows document, and calling it here put
-   * "Double-click Start NEA Coach.bat" at the top of the MAC readme — a file that is then deleted
-   * from the package two lines later, so the very first instruction a Mac user reads is a
-   * File-not-found. write_readme_first_mac writes the whole Mac document instead.
-   */
+  # NOT write_readme_first: that is the Windows document, and calling it here put
+  # "Double-click Start NEA Coach.bat" at the top of the MAC readme — a file that is then
+  # deleted from the package two lines later, so the very first instruction a Mac user reads
+  # is a File-not-found. write_readme_first_mac writes the whole Mac document instead.
   write_readme_first_mac "$target"
   rm -f "$target/Start NEA Coach.bat"
   build_mac_app "$target"
@@ -280,6 +281,14 @@ build_mac() {
   ( cd "$DIST" && zip -qr "NEA-Coach-mac.zip" "NEA-Coach-mac-$APP_VERSION" )
   say "wrote $DIST/NEA-Coach-mac.zip ($(du -h "$DIST/NEA-Coach-mac.zip" | cut -f1 | tr -d ' '))"
 }
+
+# The argument is checked BEFORE anything is deleted. This used to run the wipe and then
+# print a usage message for an unrecognised value, so a typo destroyed every built package
+# in dist/ — including the zips just made for the current release — and then exited.
+case "$WHICH" in
+  windows|mac|both) ;;
+  *) echo "  usage: tools/package.sh [windows|mac|both]"; exit 1 ;;
+esac
 
 mkdir -p "$DIST"
 # Clear unpacked folders from earlier builds ONCE, before either platform runs.
@@ -293,7 +302,6 @@ case "$WHICH" in
   windows) build_windows ;;
   mac) build_mac ;;
   both) build_windows; echo; build_mac ;;
-  *) echo "  usage: tools/package.sh [windows|mac|both]"; exit 1 ;;
 esac
 echo
 say "Done. Nothing in dist/ contains state/, so no report, portfolio or API key is included."

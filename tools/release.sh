@@ -134,7 +134,7 @@ say "Creating release $TAG..."
 CODE=$(curl -s -o "$RESP_FILE" -w '%{http_code}' --max-time 60 \
   --config "$AUTH_FILE" -X POST \
   "https://api.github.com/repos/$REPO/releases" \
-  -d "$(printf '{"tag_name":"%s","name":"NEA Coach %s","body":%s,"draft":false,"prerelease":false}' \
+  -d "$(printf '{"tag_name":"%s","name":"NEA Coach %s","body":%s,"draft":true,"prerelease":false}' \
         "$TAG" "$VERSION" "$(printf '%s' "$BODY" | "${APP_DIR}/runtime/node" -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.stringify(s)))')")")
 
 if [ "$CODE" != "201" ]; then
@@ -169,9 +169,31 @@ for ZIP in "${ASSETS[@]}"; do
     "${APP_DIR}/runtime/node" -e '
       try { const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
         if (j.message) console.log("  " + j.message); } catch (e) {}' "$RESP_FILE"
+    # Deleted, not left behind. The release is created as a DRAFT for exactly this reason: a
+    # failure part-way through the uploads used to leave a PUBLIC release missing one of its
+    # two zips, and since it was then the newest release the browser download link served it,
+    # so every recipient got an incomplete package. Re-running was refused as well, because
+    # the release already existed. Deleting it fixes both.
+    curl -s --config "$AUTH_FILE" -X DELETE \
+      "https://api.github.com/repos/$REPO/releases/$RELEASE_ID" > /dev/null 2>&1
+    say "  Removed the incomplete release, so nothing half-published was left behind."
+    say "  Fix the problem and run this again with the same version."
     exit 1
   fi
 done
+
+# Published only now, with every asset already attached. Creating it public and then
+# uploading meant the first zip was already downloadable while the second was still going.
+CODE=$(curl -s -o "$RESP_FILE" -w '%{http_code}' --max-time 60 \
+  --config "$AUTH_FILE" -X PATCH \
+  "https://api.github.com/repos/$REPO/releases/$RELEASE_ID" \
+  -d '{"draft":false}')
+if [ "$CODE" = "200" ]; then
+  say "  Published."
+else
+  say "  WARNING: everything uploaded, but the release is still a DRAFT (HTTP $CODE)."
+  say "  Publish it on GitHub by hand, or the download link will not work."
+fi
 
 echo
 # Whether the repository is public decides whether that link can work at all, so it is

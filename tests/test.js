@@ -5580,6 +5580,63 @@ section('12ad. Automatic re-checking, and the Mac installer text');
     'the xattr line named 1.0.29 for several releases, so it silently did nothing');
 }
 
+section('12ae. The packaging and release tools');
+{
+  /*
+   * From the second audit pass. These sit on the path between "the code is right" and "the
+   * student receives it", which is where mistakes are most expensive: they are invisible until
+   * someone downloads a broken package.
+   */
+  const pkg = fs.readFileSync(path.join(ROOT, 'tools', 'package.sh'), 'utf8');
+  const rel = fs.readFileSync(path.join(ROOT, 'tools', 'release.sh'), 'utf8');
+
+  /*
+   * A C-style comment in a shell script is NOT a comment — bash glob-expands /* and tries to
+   * EXECUTE it (exit 126). I put one in package.sh myself, and it survived because the script
+   * has no `set -e`, so every Mac build quietly ran a failing command and carried on.
+   */
+  const shellFiles = ['tools/package.sh', 'tools/release.sh', 'tools/get-release.sh', 'Start NEA Coach.command'];
+  shellFiles.forEach((f) => {
+    const full = path.join(ROOT, f);
+    if (!fs.existsSync(full)) { return; }
+    const body = fs.readFileSync(full, 'utf8');
+    ok('no C-style comment in ' + f, !/^\s*\/\*/m.test(body),
+      'bash will try to execute /* as a command');
+  });
+
+  /* ---- a Windows build must not ship without Node ------------------------------ */
+  ok('a Windows build without runtime/node.exe FAILS instead of shipping',
+    /ERROR: runtime\/node\.exe is missing/.test(pkg) && /^\s*exit 1$/m.test(pkg.slice(pkg.indexOf('ERROR: runtime/node.exe is missing'))),
+    'the zip would be built, published, and promise Node is inside it');
+  /*
+   * The old note told the recipient that package.sh "fetches it automatically". It never did —
+   * nothing in this script downloads anything — so the note sent them to look for a feature that
+   * does not exist. Checked against the emitted claim, not the word, so the comment explaining
+   * this does not count as the thing it warns about.
+   */
+  ok('the misleading note is gone rather than reworded',
+    !/which fetches/.test(pkg),
+    'it still tells the reader that package.sh downloads Node for them');
+
+  /* ---- a typo must not destroy the built packages ------------------------------ */
+  const wipe = pkg.indexOf('rm -rf "$DIST"/NEA-Coach-mac*');
+  const check = pkg.indexOf('usage: tools/package.sh');
+  ok('the argument is validated BEFORE dist/ is wiped',
+    check > 0 && wipe > 0 && check < wipe,
+    'a typo deletes every built package and then prints a usage message');
+
+  /* ---- never publish a half-uploaded release ---------------------------------- */
+  ok('the release is created as a DRAFT',
+    /"draft":true,"prerelease":false/.test(rel),
+    'it is public before its packages are attached');
+  ok('and only PUBLISHED once every asset is up',
+    /X PATCH[\s\S]{0,200}"draft":false/.test(rel),
+    'the first zip is downloadable while the second is still uploading');
+  ok('an upload failure deletes the incomplete release rather than leaving it',
+    /X DELETE[\s\S]{0,200}releases\/\$RELEASE_ID/.test(rel),
+    'a public release missing one of its two downloads is served by the /latest link');
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();
