@@ -17,6 +17,23 @@ set -u
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${1:-}"
 
+#
+# The page and the server must name the same version.
+#
+# If they disagree, the app runs happily with two versions in one place: the running process
+# keeps its code in memory while every page it serves is read from disk, so new buttons call
+# endpoints that are not there, and some things work while others silently do not. That is the
+# state v1.0.36 was found in. The test suite checks this too; it is repeated here because a
+# release is the last chance to catch it before it reaches anyone.
+#
+SRV_V="$(grep -m1 "^const VERSION = '" "$APP_DIR/server.js" | sed "s/.*'\(.*\)'.*/\1/")"
+PAGE_V="$(grep -m1 "^  var PAGE_BUILD = '" "$APP_DIR/public/index.html" | sed "s/.*'\(.*\)'.*/\1/")"
+if [ "$SRV_V" != "$PAGE_V" ]; then
+  echo "Refusing to release: server.js is $SRV_V but the page is $PAGE_V." >&2
+  echo "Both must be the same, or the app ships with two versions in one place." >&2
+  exit 1
+fi
+
 say() { printf '  %s\n' "$1"; }
 
 if [ -z "$VERSION" ]; then

@@ -5267,6 +5267,92 @@ section('12z. Starting when the port is already taken');
     /are all in use, so NEA Coach cannot start/.test(src) && /NEA_COACH_PORT/.test(src));
 }
 
+section('12aa. The page and the app must be the same version');
+{
+  /*
+   * Found in the wild: the student had unzipped a newer copy over one that was STILL RUNNING.
+   * The running process keeps its code in memory, while every page it serves is read from the
+   * new files on disk — so the half that draws the screen and the half that answers it were
+   * different versions. The page had a Cancel button whose endpoint did not exist yet.
+   *
+   * It presents as the app being broken with no clue why: some things work and some do not,
+   * and nothing on screen explains it. The fix is not to prevent the situation — that is the
+   * student's filesystem — but to make it VISIBLE.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const sh = fs.readFileSync(path.join(ROOT, 'tools', 'release.sh'), 'utf8');
+
+  const serverVersion = /^const VERSION = '([^']+)';/m.exec(srv)[1];
+  const pageVersion = /^  var PAGE_BUILD = '([^']+)';/m.exec(html);
+  ok('the page states its own build', !!pageVersion, 'the page cannot tell it is stale without one');
+
+  /*
+   * The important one. Forgetting to bump one of the two is exactly how the mismatch would
+   * creep back in, and it would then warn every user about a problem that is not there.
+   */
+  eq('and it matches the version the server reports',
+    pageVersion ? pageVersion[1] : '(none)', serverVersion);
+
+  const guard = /SRV_V="\$\(grep -m1 "\^const VERSION = '" "\$APP_DIR\/server\.js"[\s\S]{0,600}exit 1/.exec(sh);
+  ok('a release is refused outright if the two ever disagree', !!guard,
+    'a mismatched pair could be published again');
+
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  const bannerText = () => {
+    const host = page.els.get('banners');
+    const walk = (n) => {
+      if (!n) { return ''; }
+      let out = n.textContent ? String(n.textContent) : '';
+      for (const k of (n.children || [])) { out += ' ' + walk(k); }
+      return out;
+    };
+    return walk(host);
+  };
+
+  const draw = (version) => {
+    page.state.data = {
+      ok: true, version: version,
+      config: { portfolioChosen: true }, deck: null,
+      local: { findings: [] }, ai: {}, scan: { running: false },
+    };
+    page.call('renderBanners');
+    return bannerText();
+  };
+
+  // A mismatch has to be raised from the load path, so the source is what proves it is wired.
+  ok('the check runs on the load path, where every refresh passes',
+    /checkVersionMatch\(data\);/.test(html),
+    'checked anywhere else and it would be missed on the load that matters');
+  ok('and it is the comparison of the page build against the version reported',
+    /theirs !== PAGE_BUILD/.test(html) && /setBanner\('version'/.test(html));
+  ok('the message says what to do about it, not just that something is wrong',
+    /Quit NEA Coach completely/.test(html) && /open it again/.test(html));
+  ok('and it cannot be dismissed, because it will keep happening until the app is restarted',
+    /setBanner\('version', 'warn',[\s\S]{0,600}, true\)/.test(html));
+  ok('it is cleared once the two agree again', /clearBanner\('version'\)/.test(html));
+
+  /*
+   * Driven through the real function rather than by inspecting the markup, because the whole
+   * value of this guard is that it fires — or does not — on the path every refresh takes.
+   */
+  const agree = page.call('checkVersionMatch', { version: serverVersion });
+  ok('matching versions raise nothing', agree.ok && agree.value === true, JSON.stringify(agree));
+  eq('and no banner is left behind', bannerText(), '');
+  ok('and it clears one that was there', !/version/.test(bannerText()));
+
+  const differ = page.call('checkVersionMatch', { version: '0.0.1-ancient' });
+  ok('a mismatch is reported', differ.ok && differ.value === false, JSON.stringify(differ));
+  const shown = bannerText();
+  ok('the message names both versions', /0\.0\.1-ancient/.test(shown) && shown.indexOf(serverVersion) >= 0, shown);
+  ok('and tells the student to quit it completely and open it again',
+    /Quit NEA Coach completely/.test(shown) && /open it again/.test(shown), shown);
+
+  page.call('checkVersionMatch', { version: serverVersion });
+  eq('and reporting it again with matching versions clears it', bannerText(), '');
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();

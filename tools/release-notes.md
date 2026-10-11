@@ -18,20 +18,27 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Fixed the app appearing not to start at all.** If the port it wants is already taken, the app
-  used to print one line and close — which looks exactly like the app being broken. That happens
-  in the two most ordinary situations there are: opening it twice, and installing an update while
-  the old copy is still running, because every version asks for the same saved port.
-- **Now it works out which case it is.** If NEA Coach is already running, it says so and opens
-  that copy — your work is in the window that is already open, so there is no reason to start a
-  second one. If something *else* is on the port, the app moves to the next free one and
-  remembers it.
-- Nothing about the report, the marking or the checks has changed.
+- **The app now tells you if its page and its brain are different versions.** That happens in one
+  specific way: unzipping a newer copy on top of one that is still running. The running copy
+  keeps its old code in memory while every page it hands out is read from the new files on disk,
+  so half of it is new and half is old — some things work and some do not, and nothing on screen
+  says why. It is now stated plainly, with what to do about it.
+- **Starting the app when its port is busy no longer looks like a crash.** If NEA Coach is
+  already running it says so and opens that copy. If something else has the port, it quietly
+  moves to the next free one and remembers it. Before this, both cases printed one line and
+  closed the window.
+
+**If you are updating: quit NEA Coach completely first** — close its window, or press Control-C
+in it — and then open the new copy. Updating on top of a running copy is the one way to end up
+with two versions running at once, which is what this release is about.
+
+**In v1.0.37**
+
+- The port fix above.
 
 **In v1.0.36**
 
-- **A Cancel check button**, which stops at a safe boundary and keeps every page already read, so
-  the next Check now carries on rather than starting over.
+- **A Cancel check button**, which stops at a safe boundary and keeps every page already read.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

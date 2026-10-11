@@ -3362,6 +3362,21 @@
    * State
    * ------------------------------------------------------------------ */
 
+  /*
+   * The version of THIS FILE, which is not the same thing as the version of the app answering
+   * it, and the difference is worth catching.
+   *
+   * They can disagree, silently, in one specific way: start the app and then unzip a newer
+   * version over the top of it. The running process keeps the old code in memory while every
+   * page it serves is read from the new files on disk — so the half that draws the screen and
+   * the half that answers it are different versions. New buttons call endpoints that do not
+   * exist yet, and it presents as the app being broken with no clue why.
+   *
+   * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
+   * if the two ever disagree, so it cannot quietly go stale.
+   */
+  var PAGE_BUILD = '1.0.38';
+
   var state = {
     data: null,
     progress: null,
@@ -3464,6 +3479,32 @@
   function setBanner(id, kind, text, dismissible) {
     banners[id] = { kind: kind, text: text, dismissible: dismissible !== false };
     renderBanners();
+  }
+
+  /*
+   * Is the page the same version as the app answering it?
+   *
+   * They can disagree, silently, in one specific way: start the app and then unzip a newer
+   * version over the top of it. The running process keeps its old code in memory while every
+   * page it serves is read from the new files on disk, so the half that draws the screen and
+   * the half that answers it are different versions — new buttons call endpoints that do not
+   * exist yet.
+   *
+   * It presents as the app being broken with no clue why: some things work and some do not,
+   * and nothing on screen explains it. Preventing the situation is not this app's business, so
+   * it does the next best thing and makes it visible, loudly and undismissibly, because it
+   * will keep happening until the app is fully restarted.
+   *
+   * @returns {boolean} true when they agree
+   */
+  function checkVersionMatch(data) {
+    var theirs = (data && data.version) ? String(data.version) : '';
+    if (theirs && PAGE_BUILD && theirs !== PAGE_BUILD) {
+      setBanner('version', 'warn', 'This page is version ' + PAGE_BUILD + ', but the app running behind it is version ' + theirs + '. Two versions in one place — usually because a newer copy was unzipped over one that was still running. Quit NEA Coach completely (close its window, or press Control-C in it) and open it again.', true);
+      return false;
+    }
+    clearBanner('version');
+    return true;
   }
 
   function clearBanner(id) {
@@ -7225,6 +7266,8 @@
       state.data = data;
       state.lastLoadedAt = Date.now();
       clearBanner('fetch');
+
+      checkVersionMatch(data);
 
       /*
        * The moment the whole app exists for. Fired once, on the running→finished
