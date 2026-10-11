@@ -83,10 +83,15 @@ BODY='Reviews a D&T NEA portfolio and tells you what to fix, in order of what is
 
 **To use it:**
 
-**Windows** — download `NEA-Coach-windows.zip`, unzip it, double-click `Start NEA Coach.bat`.
+**Windows** — download `NEA-Coach-windows.zip`, unzip it, then double-click
+`Start NEA Coach.bat` inside the folder it creates.
 
-**Mac** — download `NEA-Coach-mac.zip`, unzip it, double-click `Start NEA Coach.command`.
+**Mac** — download `NEA-Coach-mac.zip`, unzip it, then double-click
+`Start NEA Coach.command` inside the folder it creates.
 (The first run downloads Node.js automatically; after that it opens instantly.)
+
+Each download unzips into a folder named after its version, so unzipping a newer one
+never lands beside an older one or overwrites it.
 
 Nothing needs installing by hand, and no bank card is needed.
 
@@ -94,6 +99,13 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
+- Downloads now unzip into a VERSIONED folder. Previously every one unzipped to
+  `NEA-Coach-mac`, so a second download became `NEA-Coach-mac 2`, then ` 3`, ` 4`... and
+  the older copy kept the port, leaving you looking at the old build.
+- The setup walkthrough no longer restarts when you do something. Uploading a portfolio
+  or saving a key used to throw you back to the first step.
+- The exam board can be chosen before your first check. It was previously impossible:
+  the board list came back empty until a check had been run.
 - A short setup walkthrough on first run: exam board, portfolio, free AI key, one step at a time. Every screen can be skipped, and it can be replayed from Settings.
 - Settings rebuilt into four groups — Your portfolio, Exam board, Free AI key, and Advanced (collapsed) — instead of one long list.
 - An **Advanced → "Set up for the best possible marks"** button, which turns on the predicted mark and uses the strongest model available.

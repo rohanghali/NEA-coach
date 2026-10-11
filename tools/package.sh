@@ -22,6 +22,12 @@ APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$APP_DIR/dist"
 WHICH="${1:-both}"
 NODE_VERSION="v22.14.0"
+# The version the app reports, used in the folder names. Folders MUST be versioned:
+# every download used to unzip to "NEA-Coach-mac", so a second one landed beside the
+# first as "NEA-Coach-mac 2", then " 3", " 4"... and the older copy kept the port.
+# Versioned folders cannot collide, so one app always means one folder.
+APP_VERSION="$(sed -n "s/^const VERSION = '\([0-9.]*\)'.*/\1/p" "$APP_DIR/server.js" | head -1)"
+[ -n "$APP_VERSION" ] || { echo "  Could not read VERSION from server.js"; exit 1; }
 
 # Everything a user needs. `state` is deliberately absent: it is regenerated on first
 # run, and shipping it would leak the student's report, their portfolio and their key.
@@ -117,7 +123,7 @@ EOF
 }
 
 build_windows() {
-  local target="$DIST/NEA-Coach-windows"
+  local target="$DIST/NEA-Coach-windows-$APP_VERSION"
   say "Building for Windows..."
   rm -rf "$target"
   copy_common "$target"
@@ -156,12 +162,12 @@ EOF
     perl -pi -e 's/\r?\n/\r\n/' "$bat"
     say "converted Start NEA Coach.bat to CRLF line endings"
   fi
-  ( cd "$DIST" && zip -qr "NEA-Coach-windows.zip" "NEA-Coach-windows" )
+  ( cd "$DIST" && zip -qr "NEA-Coach-windows.zip" "NEA-Coach-windows-$APP_VERSION" )
   say "wrote $DIST/NEA-Coach-windows.zip ($(du -h "$DIST/NEA-Coach-windows.zip" | cut -f1 | tr -d ' '))"
 }
 
 build_mac() {
-  local target="$DIST/NEA-Coach-mac"
+  local target="$DIST/NEA-Coach-mac-$APP_VERSION"
   say "Building for macOS..."
   rm -rf "$target"
   copy_common "$target"
@@ -170,11 +176,16 @@ build_mac() {
   rm -f "$target/Start NEA Coach.bat"
   say "NOTE: this build does NOT bundle Node — the Mac launcher downloads the matching"
   say "      runtime on first run, which is why there is no runtime folder here."
-  ( cd "$DIST" && zip -qr "NEA-Coach-mac.zip" "NEA-Coach-mac" )
+  ( cd "$DIST" && zip -qr "NEA-Coach-mac.zip" "NEA-Coach-mac-$APP_VERSION" )
   say "wrote $DIST/NEA-Coach-mac.zip ($(du -h "$DIST/NEA-Coach-mac.zip" | cut -f1 | tr -d ' '))"
 }
 
 mkdir -p "$DIST"
+# Clear unpacked folders from earlier builds ONCE, before either platform runs.
+# Leftovers were being swept into the zip by the glob, shipping an archive that
+# contained two app folders. This must NOT live in copy_common: that runs per
+# platform, and would delete the other platform's finished output.
+rm -rf "$DIST"/NEA-Coach-mac* "$DIST"/NEA-Coach-windows* 2>/dev/null
 say "App folder: $APP_DIR"
 echo
 case "$WHICH" in
