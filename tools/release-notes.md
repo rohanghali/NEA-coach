@@ -18,16 +18,18 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The "Worth adding" suggestions have colour now.** It was a white card of grey text with three
-  small pills on it, which is why it read as the drab one:
-  - each suggestion carries a **pale accent wash**, so the section is visibly its own thing
-  - the **number badge is solid accent** instead of the fix list's grey
-  - **"Why it is worth it" and "What to do"** are accented — and it turned out those two labels
-    had no styling at all. `.finding-block` is a class the app emitted and the stylesheet had
-    never heard of, so the two lines that give a suggestion its structure were plain bold text.
-- Suggestions deliberately do **not** use the Fix list's severity colours: nothing there is a
-  mistake. Green still means "quick and worthwhile", grey still means "small gain", so the
-  colours that carry meaning are unchanged.
+- **The background actually moves now — you were right that it did not.** It was moving, technically:
+  about **a pixel a second**, which is indistinguishable from still. The bands crossed roughly 3% of
+  their width over 54 seconds.
+- **Now: about four times faster and three times further.** A pass takes 19, 27 and 37 seconds, each
+  band travels about a tenth of its own width — roughly 150px on a laptop — and leans up to three
+  degrees, which swings its ends by about 100px. The three move in **different directions**, so they
+  read as folds crossing rather than one sheet sliding.
+- **This costs nothing.** A composited transform is the same work whether it moves a little or a
+  lot, and fast or slow: the layer is drawn once and the graphics card re-places it. The rule that
+  keeps it cheap — transform only, never a blur or a shadow — is unchanged, and tested.
+- If it still looks still to you, check **System Settings → Accessibility → Display → Reduce motion**.
+  That setting switches the whole background off by design, and it is meant to.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 

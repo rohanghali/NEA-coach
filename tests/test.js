@@ -5886,6 +5886,31 @@ section('12ai. The moving background stays off the main thread');
   ok('and the layers use translate3d, which keeps them on the GPU',
     frames.every((m) => /translate3d\(/.test(m[2])));
 
+  /*
+   * ---- and it has to be VISIBLE -------------------------------------------------
+   *
+   * It was 3.5% of travel over 54 seconds, which is about a PIXEL A SECOND: the background read as
+   * static, and that is a fair complaint about an animation whose entire purpose is to be noticed.
+   *
+   * The floors below are set from that complaint, not from taste, and they matter because the
+   * failure mode is silent — nothing breaks, it just stops being worth having. Speeding a
+   * composited transform up costs nothing, so there is no performance reason to be timid here.
+   */
+  const travel = frames.map((m) => Math.max(...[...m[2].matchAll(/translate3d\(\s*(-?[\d.]+)%/g)]
+    .map((x) => Math.abs(Number(x[1])))));
+  ok('every band travels far enough to be seen at all',
+    travel.length === 3 && travel.every((v) => v >= 5), travel.join('%, ') + '%');
+  const lean = frames.map((m) => Math.max(...[...m[2].matchAll(/rotate\((-?[\d.]+)deg\)/g)]
+    .map((x) => Math.abs(Number(x[1])))));
+  ok('and leans enough to swing its ends across the screen',
+    lean.length === 3 && lean.every((v) => v >= 1.5), lean.join('deg, ') + 'deg');
+  const durs = [...css.matchAll(/animation: wave-[abc] (\d+)s/g)].map((m) => Number(m[1]));
+  eq('there is one duration per band', durs.length, 3);
+  ok('and none is slow enough to look still',
+    durs.every((d) => d <= 40), durs.join('s, ') + 's (a pass must finish inside 40s)');
+  ok('the three are not multiples of each other, so they cannot settle into a visible repeat',
+    new Set(durs).size === 3 && durs[2] % durs[0] !== 0 && durs[1] % durs[0] !== 0);
+
   /* ---- what would defeat all of that ------------------------------------------ */
   const waveRules = [...css.matchAll(/\.wave[^{}]*\{([^}]*)\}/g)].map((m) => m[1]).join('\n');
   ok('no blur or filter anywhere in the moving layers',

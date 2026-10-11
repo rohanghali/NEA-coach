@@ -1128,35 +1128,50 @@
   }
 
   /*
-   * The speeds are deliberately slow and NOT multiples of each other, so the three never settle
-   * into a visible repeat. 54, 71 and 88 seconds.
+   * 19, 27 and 37 seconds, and NOT multiples of each other so the three never settle into a
+   * visible repeat.
+   *
+   * THEY WERE 54, 71 AND 88 SECONDS, AND THAT WAS TOO SLOW TO SEE. The movement is about a pixel a
+   * second at that pace, so the background looked static — which is a fair complaint about an
+   * animation whose whole purpose is to be noticed.
+   *
+   * Speeding this up costs NOTHING. A composited transform is the same amount of work whether it
+   * moves a little or a lot, and whether it moves fast or slow: the layer is rasterised once and
+   * the graphics card re-places it. What would cost something is animating a property that needs a
+   * repaint, and that is still forbidden — see the test in tests/test.js.
    */
-  .wave-1 { top: 26%; height: 44vh; animation: wave-a 54s ease-in-out infinite alternate; }
+  .wave-1 { top: 26%; height: 44vh; animation: wave-a 19s ease-in-out infinite alternate; }
   .wave-2 {
     top: 46%;
     height: 56vh;
     background: linear-gradient(180deg, var(--wave-far) 0%, var(--wave-lo) 62%, transparent 100%);
-    animation: wave-b 71s ease-in-out infinite alternate;
+    animation: wave-b 27s ease-in-out infinite alternate;
   }
   .wave-3 {
     top: 66%;
     height: 68vh;
     background: linear-gradient(180deg, var(--wave-lo) 0%, var(--wave-far) 70%, transparent 100%);
-    animation: wave-c 88s ease-in-out infinite alternate;
+    animation: wave-c 37s ease-in-out infinite alternate;
   }
 
   /* Transform and scale only. Nothing here can trigger a repaint. */
+  /*
+   * Each band travels about a tenth of its own width — roughly 150px on a laptop screen — and
+   * leans by up to three degrees, which at this width swings its ends by about 100px. The three
+   * move in DIFFERENT directions on purpose: bands that drift together read as one sheet sliding,
+   * where bands crossing each other read as folds.
+   */
   @keyframes wave-a {
-    from { transform: translate3d(-3.5%, 1.4%, 0) rotate(-1.5deg) scale(1.02); }
-    to   { transform: translate3d(3.5%, -1.4%, 0) rotate(1.5deg) scale(1.07); }
+    from { transform: translate3d(-9%, 3%, 0) rotate(-3.4deg) scale(1.02); }
+    to   { transform: translate3d(9%, -3%, 0) rotate(3.4deg) scale(1.08); }
   }
   @keyframes wave-b {
-    from { transform: translate3d(2.5%, -1.1%, 0) rotate(1.1deg) scale(1.05); }
-    to   { transform: translate3d(-2.5%, 1.6%, 0) rotate(-1.1deg) scale(1.0); }
+    from { transform: translate3d(7%, -2.6%, 0) rotate(2.8deg) scale(1.06); }
+    to   { transform: translate3d(-7%, 3%, 0) rotate(-2.8deg) scale(1.0); }
   }
   @keyframes wave-c {
-    from { transform: translate3d(-2%, 1.2%, 0) rotate(-0.8deg) scale(1.0); }
-    to   { transform: translate3d(2.6%, -1.8%, 0) rotate(0.8deg) scale(1.05); }
+    from { transform: translate3d(-6%, 3.2%, 0) rotate(-2.2deg) scale(1.0); }
+    to   { transform: translate3d(8%, -3%, 0) rotate(2.2deg) scale(1.06); }
   }
 
   /*
@@ -3644,7 +3659,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.48';
+  var PAGE_BUILD = '1.0.49';
 
   var state = {
     data: null,
