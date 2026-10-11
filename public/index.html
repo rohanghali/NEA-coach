@@ -1138,6 +1138,7 @@
 
   .toptabs {
     display: flex;
+    align-items: center;
     gap: 4px;
     margin: 0 0 14px;
     padding: 4px;
@@ -1145,13 +1146,56 @@
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-    /* One row, swiped sideways. The scrollbar is hidden because the fade at the edge already
-       says there is more. */
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
   }
-  .toptabs::-webkit-scrollbar { display: none; }
+
+  /*
+   * The only part that scrolls. min-width: 0 is what lets a flex child shrink below its content
+   * and scroll at all — without it the strip pushes the pinned Settings button off the edge,
+   * which is the opposite of the point.
+   */
+  .toptabs-scroll {
+    display: flex;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* A visible one, because an invisible scroller is a strip with tabs you cannot find. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  .toptabs-scroll::-webkit-scrollbar { height: 5px; }
+  .toptabs-scroll::-webkit-scrollbar-track { background: transparent; }
+  .toptabs-scroll::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 3px;
+  }
+
+  .toptabs-arrow {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 34px;
+    padding: 0;
+    background: var(--accent-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--accent-dark);
+    font-family: inherit;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .toptabs-arrow:hover:not([disabled]) { background: var(--accent); color: var(--card); }
+  .toptabs-arrow[disabled] { opacity: 0.35; cursor: default; }
+
+  /* Settings sits outside the scroller, at the end, with a divider to mark it apart. */
+  .toptab-end {
+    flex: 0 0 auto;
+    border-left: 1px solid var(--line);
+    margin-left: 2px;
+    padding-left: 14px;
+  }
 
   .toptab {
     flex: 0 0 auto;
@@ -1179,6 +1223,30 @@
    * still driven by setTab(), which is what the three new tabs call.
    */
   .tabs { display: none; }
+
+  /*
+   * Nothing folds away any more.
+   *
+   * These were collapsible cards on a page you scrolled; now each one IS its own tab, so a second
+   * "open me" step in front of it is one click too many. The summary stays as a heading — it
+   * carries a useful line, like the statistics summary — but it no longer toggles, and the body is
+   * forced visible so a stray click cannot leave a section apparently empty.
+   */
+  .panel > .details-card > summary {
+    pointer-events: none;
+    cursor: default;
+    list-style: none;
+  }
+  .panel > .details-card > summary::-webkit-details-marker { display: none; }
+  .panel > .details-card > .details-body { display: block !important; }
+
+  /* On a phone the arrows are noise: a swipe is the natural gesture, and they would take 60px of
+     a narrow strip away from the tabs themselves. */
+  @media (max-width: 700px) {
+    .toptabs-arrow { display: none; }
+    .toptabs-scroll { scrollbar-width: none; }
+    .toptabs-scroll::-webkit-scrollbar { display: none; }
+  }
 
   /* ---------- the moving background ---------- */
 
@@ -2905,17 +2973,31 @@
   and wrapping them would push the content off the bottom of it.
 -->
 <nav class="toptabs" id="topTabs" role="tablist" aria-label="Sections">
-  <button class="toptab" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview" type="button">Overview</button>
-  <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panel-fixlist" data-tab="fixlist" type="button">Fix list</button>
-  <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panel-suggest" data-tab="suggest" type="button">Things to add</button>
-  <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panel-predicted" data-tab="predicted" type="button">Predicted mark</button>
-  <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panel-coverage" data-tab="coverage" type="button">Coverage grid</button>
-  <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panel-since" data-tab="since" type="button">Since your last check</button>
-  <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panel-slides" data-tab="slides" type="button">Slides</button>
-  <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-tab="stats" type="button">Statistics</button>
-  <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" type="button">Past checks</button>
-  <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panel-info" data-tab="info" type="button">Information</button>
-  <button class="toptab" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" type="button">Settings</button>
+  <!--
+    Eleven sections do not fit across a window, so the strip scrolls. Three things make that
+    discoverable rather than mysterious: a scrollbar (on a wide screen), arrow buttons, and a
+    fade at each end. A strip that scrolls invisibly looks like a strip with missing tabs.
+  -->
+  <button class="toptabs-arrow" id="topTabsPrev" type="button" aria-label="Scroll the tabs left">&#8249;</button>
+  <div class="toptabs-scroll" id="topTabsScroll">
+    <button class="toptab" id="topTab-overview" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview" type="button">Overview</button>
+    <button class="toptab" id="topTab-fixlist" role="tab" aria-selected="false" aria-controls="panel-fixlist" data-tab="fixlist" type="button">Fix list</button>
+    <button class="toptab" id="topTab-suggest" role="tab" aria-selected="false" aria-controls="panel-suggest" data-tab="suggest" type="button">Things to add</button>
+    <button class="toptab" id="topTab-predicted" role="tab" aria-selected="false" aria-controls="panel-predicted" data-tab="predicted" type="button">Predicted mark</button>
+    <button class="toptab" id="topTab-coverage" role="tab" aria-selected="false" aria-controls="panel-coverage" data-tab="coverage" type="button">Coverage grid</button>
+    <button class="toptab" id="topTab-since" role="tab" aria-selected="false" aria-controls="panel-since" data-tab="since" type="button">Since your last check</button>
+    <button class="toptab" id="topTab-slides" role="tab" aria-selected="false" aria-controls="panel-slides" data-tab="slides" type="button">Slides</button>
+    <button class="toptab" id="topTab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-tab="stats" type="button">Statistics</button>
+    <button class="toptab" id="topTab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" type="button">Past checks</button>
+    <button class="toptab" id="topTab-info" role="tab" aria-selected="false" aria-controls="panel-info" data-tab="info" type="button">Information</button>
+  </div>
+  <button class="toptabs-arrow" id="topTabsNext" type="button" aria-label="Scroll the tabs right">&#8250;</button>
+  <!--
+    Settings is OUTSIDE the scrolling strip, pinned to the end, so it is reachable whatever
+    the strip is showing. It is the one section you need when something is wrong — which is
+    exactly when hunting for it across a scroll is least welcome.
+  -->
+  <button class="toptab toptab-end" id="topTab-settings" role="tab" aria-selected="false" aria-controls="panel-settings" data-tab="settings" type="button">Settings</button>
 </nav>
 
   <!--
@@ -3012,7 +3094,7 @@
 
   </div>
   <div class="panel" id="panelSettings">
-  <details class="card details-card" id="settingsDetails">
+  <details class="card details-card" id="settingsDetails" open>
     <summary>
       <span class="summary-title">Settings</span>
       <span class="summary-note muted">your portfolio, exam board and AI key</span>
@@ -3317,7 +3399,7 @@
   -->
   </div>
   <div class="panel" id="panelSince">
-  <details class="card details-card" id="compareCard" style="display:none">
+  <details class="card details-card" id="compareCard" open style="display:none">
     <summary>
       <span class="summary-title">Since your last check</span>
       <span class="summary-note muted" id="compareWhen"></span>
@@ -3407,7 +3489,7 @@
 
   </div>
   <div class="panel" id="panelSlides">
-  <details class="card details-card" id="slidesDetails">
+  <details class="card details-card" id="slidesDetails" open>
     <summary>
       <span class="summary-title">Slides</span>
       <span class="summary-note muted" id="slidesSummaryLabel"></span>
@@ -3432,7 +3514,7 @@
   -->
   </div>
   <div class="panel" id="panelInfo">
-  <details class="card details-card" id="infoDetails">
+  <details class="card details-card" id="infoDetails" open>
     <summary>
       <span class="summary-title">Information</span>
       <span class="summary-note muted">allowance, checking, your files, privacy</span>
@@ -3527,7 +3609,7 @@
   -->
   </div>
   <div class="panel" id="panelStats">
-  <details class="card details-card" id="statsDetails" style="display:none">
+  <details class="card details-card" id="statsDetails" open style="display:none">
     <summary>
       <span class="summary-title">Portfolio statistics</span>
       <span class="summary-note muted" id="statsSummary"></span>
@@ -3949,7 +4031,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.51';
+  var PAGE_BUILD = '1.0.52';
 
   var state = {
     data: null,
@@ -5435,7 +5517,7 @@
      * scrollLeft is set directly rather than calling scrollIntoView: scrollIntoView can also move
      * the PAGE vertically, and this must not fight the scroll to the top that follows.
      */
-    var strip = ui.topTabs;
+    var strip = ui.topTabsScroll || ui.topTabs;
     var active = document.getElementById('topTab-' + id);
     if (strip && active && typeof strip.scrollLeft === 'number') {
       var offset = Number(active.offsetLeft);
@@ -5461,16 +5543,50 @@
       if (TOP_TABS[m].id === id && TOP_TABS[m].inner) { setTab(TOP_TABS[m].inner, false); }
     }
 
+    renderTabArrows();
+
     if (!quiet) {
       try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (err) { window.scrollTo(0, 0); }
     }
     return id;
   }
 
+  /*
+   * The arrows light up only when there is somewhere to go. A permanently live arrow that does
+   * nothing at the end of the strip is the same lie as a dead button.
+   */
+  function renderTabArrows() {
+    var strip = ui.topTabsScroll;
+    if (!strip) { return; }
+    var max = 0;
+    var wide = Number(strip.scrollWidth);
+    var view = Number(strip.clientWidth);
+    if (isFinite(wide) && isFinite(view)) { max = Math.max(0, wide - view); }
+    var left = Number(strip.scrollLeft) || 0;
+    if (ui.topTabsPrev) { ui.topTabsPrev.disabled = left <= 1; }
+    if (ui.topTabsNext) { ui.topTabsNext.disabled = left >= max - 1; }
+  }
+
+  /** Scroll the strip by most of a screenful. */
+  function nudgeTabs(direction) {
+    var strip = ui.topTabsScroll;
+    if (!strip) { return; }
+    var view = Number(strip.clientWidth) || 240;
+    strip.scrollLeft = (Number(strip.scrollLeft) || 0) + (direction * view * 0.7);
+    renderTabArrows();
+  }
+
   /** Put the tab strip on screen in whatever state the page is already in. */
   function wireTopTabs() {
     var host = ui.topTabs;
     if (!host) { return; }
+    on(ui.topTabsPrev, 'click', function () { nudgeTabs(-1); });
+    on(ui.topTabsNext, 'click', function () { nudgeTabs(1); });
+    if (ui.topTabsScroll) {
+      on(ui.topTabsScroll, 'scroll', renderTabArrows);
+      renderTabArrows();
+    }
+    window.addEventListener('resize', renderTabArrows, false);
     on(host, 'click', function (event) {
       var node = event.target;
       while (node && node !== host) {
@@ -8485,7 +8601,7 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs',
+      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel', 'topTabs', 'topTabsScroll', 'topTabsPrev', 'topTabsNext',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',

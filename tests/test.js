@@ -2472,7 +2472,8 @@ section('11q. Collapsible check summary');
 
   // Hidden until there is a comparison to show, exactly as before.
   ok('it stays hidden until there are two checks to compare',
-    /id="compareCard" style="display:none"/.test(page));
+    /id="compareCard"[^>]*style="display:none"/.test(page),
+    'it is hidden until there is a comparison, which is what the style attribute does');
 
   // Open by default, and the choice is remembered.
   ok('it opens by default', /lsGet\(LS_COMPARE_OPEN, 'open'\)/.test(page));
@@ -2691,7 +2692,15 @@ section('11i. Phone layout keeps up with the desktop');
       if (depth === 0) { end = i; break; }
     }
   }
-  const mobile = page.slice(start, end);
+  /*
+   * EVERY @media (max-width: 700px) block, concatenated.
+   *
+   * This read only the first one, which happened to be the large phone block near the top. Adding
+   * a second, smaller one further down — for the tab arrows — silently emptied this list and made
+   * this assertion blame nineteen innocent classes. A rule belongs to the phone layout wherever it
+   * is written.
+   */
+  const mobile = (page.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n');
 
   /*
    * Elements that would overflow or crowd a 428px screen without a rule. Listed
@@ -5988,7 +5997,9 @@ section('12aj. Every section is a tab');
 
   const SECTIONS = ['overview', 'fixlist', 'suggest', 'predicted', 'coverage', 'since',
     'slides', 'stats', 'history', 'info', 'settings'];
-  const buttons = [...html.matchAll(/class="toptab"[^>]*data-tab="([a-z]+)"/g)].map((m) => m[1]);
+  // class="toptab[^"]*" rather than "toptab", because the pinned Settings button carries a
+  // second class for its divider.
+  const buttons = [...html.matchAll(/class="toptab[^"]*"[^>]*data-tab="([a-z]+)"/g)].map((m) => m[1]);
   eq('there is one tab button per section, in order', buttons.join(','), SECTIONS.join(','));
 
   const panels = [...html.matchAll(/<div class="panel" id="panel([A-Za-z]+)">/g)].map((m) => m[1]);
@@ -6038,6 +6049,56 @@ section('12aj. Every section is a tab');
   ok('and the open one is the accent, with a label colour that flips with the theme',
     /\.toptab\[aria-selected="true"\] \{[\s\S]{0,160}background: var\(--accent\)/.test(css)
     && /\.toptab\[aria-selected="true"\] \{[\s\S]{0,200}color: var\(--card\)/.test(css));
+  /*
+   * ---- the strip has to be usable, and Settings has to be findable -----------------
+   *
+   * Reported: "i cannot access all the sections there needs to be a scroller", and "settings
+   * should always be accessible". The strip scrolled but said nothing about it — no scrollbar, no
+   * arrows — so it looked like a strip with tabs missing off the end.
+   */
+  ok('only the middle of the strip scrolls, so the pinned button cannot be pushed off it',
+    /<div class="toptabs-scroll" id="topTabsScroll">/.test(html)
+    && /\.toptabs-scroll \{[\s\S]{0,400}min-width: 0;/.test(css),
+    'without min-width: 0 a flex child will not shrink below its content, so it never scrolls');
+  /*
+   * Asserted by POSITION rather than by a pattern across the markup: the Settings button must come
+   * after the scroll container closes. That is the actual property, and it does not care how many
+   * arrows or comments sit in between.
+   */
+  ok('Settings sits outside the scroller, at the end',
+    (() => {
+      const scrollStart = html.indexOf('id="topTabsScroll"');
+      const scrollEnd = scrollStart < 0 ? -1 : html.indexOf('</div>', scrollStart);
+      const settings = html.indexOf('data-tab="settings"');
+      const firstTab = html.indexOf('data-tab="overview"');
+      return scrollStart > 0 && scrollEnd > scrollStart && settings > scrollEnd && firstTab > scrollStart && firstTab < scrollEnd;
+    })(),
+    'inside the scroller it would be exactly as hard to reach as everything else');
+  ok('there are arrows, because an invisible scroller is a strip with missing tabs',
+    /id="topTabsPrev"/.test(html) && /id="topTabsNext"/.test(html)
+    && /function nudgeTabs\(direction\)/.test(html));
+  ok('and they switch off at each end rather than looking live when they do nothing',
+    /renderTabArrows/.test(html) && /topTabsPrev\.disabled = left <= 1/.test(html)
+    && /topTabsNext\.disabled = left >= max - 1/.test(html));
+  ok('the scrollbar is visible, so a mouse user can see there is more to the right',
+    /\.toptabs-scroll \{[\s\S]{0,500}scrollbar-width: thin/.test(css));
+  ok('but on a phone the arrows and the scrollbar go, because a swipe is the natural gesture',
+    /@media \(max-width: 700px\) \{[\s\S]{0,200}\.toptabs-arrow \{ display: none; \}/.test(css));
+
+  /* ---- and nothing folds away any more ------------------------------------------ */
+  /*
+   * Each of these was a collapsible card on a long page. Now each one IS its own tab, so an
+   * "open me" step in front of it is one click too many.
+   */
+  ['settingsDetails', 'compareCard', 'slidesDetails', 'infoDetails', 'statsDetails'].forEach((id) => {
+    ok('the ' + id + ' section starts open, since the tab already opened it',
+      new RegExp('<details[^>]*id="' + id + '"[^>]*\\sopen').test(html));
+  });
+  ok('and its summary cannot fold it again',
+    /\.panel > \.details-card > summary \{[\s\S]{0,160}pointer-events: none/.test(css));
+  ok('with the body forced visible, so a stray click cannot leave a section looking empty',
+    /\.panel > \.details-card > \.details-body \{ display: block !important; \}/.test(css));
+
   ok('the open tab is scrolled into view, since the strip is one scrolling row',
     /strip\.scrollLeft = Math\.max\(0, offset/.test(html),
     'eleven tabs means the selected one is usually off the right-hand edge');
@@ -6059,6 +6120,47 @@ section('12aj. Every section is a tab');
     !/var APP_VERSION = /.test(html)
     && /setText\(ui\.appVersion, \(data && data\.version\)/.test(html),
     'a hardcoded version is a version that will be wrong');
+}
+
+section('12ak. A running header is not a slide title');
+{
+  /*
+   * Reported: "on the slides section it thinks all my slides are named candidate name".
+   *
+   * A PDF has no title field, so the title is guessed from the first line of the page. On a real
+   * export the first line is a running header — the same text on every page — so every slide came
+   * out with the same name. It also made the missing-title check useless on a PDF, because every
+   * page appeared to have a title.
+   *
+   * The distinguishing property is REPETITION. Fixing it by taking line two, then line three, just
+   * walked down the list of headers one wrong answer at a time — this portfolio has three.
+   */
+  const pdfdeck = require(path.join(ROOT, 'lib', 'pdfdeck.js'));
+  ok('the header detector is exported for testing', typeof pdfdeck.runningHeaders === 'function');
+
+  const page = (first, second, third, body) => [first, second, third, body].filter(Boolean).join('\n');
+  const pages = [
+    page('Candidate name', 'Candidate number: 17632', 'Centre: 12345', 'Design brief\nThe client wants a lamp.'),
+    page('Candidate name', 'Candidate number: 17632', 'Centre: 12345', 'Research\nI looked at lamps.'),
+    page('Candidate name', 'Candidate number: 17632', 'Centre: 12345', 'Ideas\nSeveral sketches.'),
+    page('Candidate name', 'Candidate number: 17632', 'Centre: 12345', 'Making\nI cut the wood.'),
+    page('Candidate name', 'Candidate number: 17632', 'Centre: 12345', 'Testing\nIt held the weight.'),
+  ];
+  const headers = pdfdeck.runningHeaders(pages);
+  ok('a line repeated at the top of every page is recognised as a header',
+    headers.has('candidate name') && headers.has('centre: 12345'),
+    [...headers].join(' | '));
+
+  /*
+   * And the title is then the first line that is NOT one of them — skipping, rather than giving
+   * up, because the real title sits below the headers.
+   */
+  const shortPdf = Buffer.from('%PDF-1.4 not a real pdf');
+  ok('the detector needs a few pages before it will call something a header',
+    pdfdeck.runningHeaders(['Candidate name\nTitle', 'Candidate name\nTitle', 'Candidate name\nTitle']).size === 0,
+    'on three pages a repeated line is as likely to be a real title');
+  ok('and a one-off line is never treated as a header',
+    pdfdeck.runningHeaders(['Intro\nA', 'Middle\nB', 'End\nC', 'More\nD', 'Last\nE']).size === 0);
 }
 
 })().then(summary, (err) => {
