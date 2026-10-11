@@ -511,6 +511,46 @@ which sets the attribute AND the inline style AND removes the attribute, so visi
 no longer depends on CSS specificity at all. Verified by firing real click events at
 the page's own handlers with the overlay in its true post-completion state.
 
+### Two false positives found on a real 90/100 AQA GCSE portfolio
+
+Arjun Patel's portfolio (24 pages, 13,113 words, AQA GCSE, **really scored 90/100**)
+was added as a test document. The structural score came out at 97 with four findings,
+and **two of the four were wrong**:
+
+1. **`near-empty-page` flagged the cover page as "carries only 4 words" — severity
+   high.** The guard for this has always existed ("a big annotated picture page can be
+   fine"), but it read `s.images.length`, and **the PDF path never populates image
+   OBJECTS, only a `imageCount`**. So on any PDF the guard was always 0 and every
+   image-heavy page was judged on words alone. Now reads `imageCount` with a fallback,
+   and a cover with few words plus an image is not a finding. **This was a high-severity
+   lie about a page that is entirely correct.**
+2. **`font-inconsistency` reported "3 different sizes" for two.** The sizes were 18pt,
+   32pt and **32.1pt** — the last is float noise from the page transform, not a design
+   choice. Measured sizes are now clustered within 2% (and at least 0.35pt) before being
+   counted, so 32 and 32.1 are one heading size.
+
+After both fixes: **99 structural, 2 findings** (both genuine — body text genuinely
+drops to 10.6pt on pages 6 and 19). The sample deck and all 558 tests are unaffected.
+
+**Board note:** Arjun is **AQA GCSE**, while the existing score anchors (99/96/89) are
+**Eduqas A-level**. The 12 rules in `lib/calibration.js` are fitted per MODEL and must
+never pool anchors across boards, so Arjun is recorded as a data point but is NOT
+folded into the fit. Validating the GCSE prediction properly would need a GCSE anchor
+with a known app prediction, not just a known real mark.
+
+### The app kept running an old build after an update
+
+Reported twice as "Show setup again does nothing". It was not the button: every
+download unzipped into a NEW folder (`NEA-Coach-mac 2`, `NEA-Coach-mac 3`, ...) because
+the previous one still existed, so the new launcher found port 4173 already answered by
+the OLD server, printed "Opening http://127.0.0.1:4173" and exited. **The browser then
+talks to the stale server forever.** Verified by reading `/api/health` (it reported
+`1.0.4`) while the newest folder on disk was 1.0.5.
+
+Worth knowing before chasing any "fix does not work" report: check
+`curl -s http://127.0.0.1:4173/api/health` and compare its `version` against the folder.
+The launcher's port check and the folder names are both involved, and neither warns.
+
 ---
 
 ## 7. Still to do
