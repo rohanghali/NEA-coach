@@ -410,7 +410,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.36';
+const VERSION = '1.0.37';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -426,6 +426,79 @@ const THINKING_BUDGET_TOKENS = 4096;
 /* ------------------------------------------------------------------ *
  * Small utilities
  * ------------------------------------------------------------------ */
+
+/**
+ * Is the thing holding this port NEA Coach?
+ *
+ * Asked rather than guessed, because the two cases need opposite answers: the student's own
+ * earlier copy should be opened, and anything else's port should be stepped over. The shape of
+ * /api/state is specific enough to be sure of, and the timeout keeps a silent socket — which
+ * accepts a connection and then says nothing — from holding up the launch.
+ */
+function probeExisting(port, cb) {
+  let settled = false;
+  const done = (value) => {
+    if (settled) return;
+    settled = true;
+    cb(value);
+  };
+  const req = http.request({ host: '127.0.0.1', port: port, path: '/api/state', method: 'GET', timeout: 1200 }, (res) => {
+    let body = '';
+    res.setEncoding('utf8');
+    res.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 16384) req.destroy();
+    });
+    res.on('end', () => {
+      try {
+        const j = JSON.parse(body);
+        done(!!(j && j.ok === true && typeof j.version === 'string' && j.scan));
+      } catch (err) {
+        done(false);
+      }
+    });
+  });
+  req.on('timeout', () => { req.destroy(); done(false); });
+  req.on('error', () => done(false));
+  req.end();
+}
+
+/**
+ * The first free port at or after `from`, or null if there is none within reach.
+ *
+ * Tested on the SAME address the server is about to bind, and that is not a detail. Testing
+ * without a host binds every interface, which does NOT conflict with a port already held on
+ * 127.0.0.1 alone — so the check would report a taken port as free, the server would fail to
+ * bind it, and the whole probe-and-step-aside dance would start again from the top.
+ */
+function findFreePort(from, host, cb) {
+  const net = require('net');
+  // 0.0.0.0 and :: both mean "every interface", which is what omitting the host does.
+  const bindHost = (host === '0.0.0.0' || host === '::') ? undefined : host;
+  const attempt = (p) => {
+    if (p > from + 25) { cb(null); return; }
+    const tester = net.createServer();
+    tester.once('error', () => attempt(p + 1));
+    tester.once('listening', () => tester.close(() => cb(p)));
+    tester.listen(p, bindHost);
+  };
+  attempt(from);
+}
+
+/** Open a URL in the default browser. Best effort — the address is printed either way. */
+function openInBrowser(url) {
+  // NEA_COACH_NO_OPEN=1 keeps a launch from taking over the browser: useful on a machine being
+  // driven by a script or a test, and for anyone who would rather open the address by hand.
+  if (process.env.NEA_COACH_NO_OPEN === "1") return;
+  try {
+    const { spawn } = require('child_process');
+    const cmd = process.platform === 'darwin' ? 'open' : (process.platform === 'win32' ? 'cmd' : 'xdg-open');
+    const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
+    spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
+  } catch (err) {
+    /* opening the browser is a courtesy, not the point */
+  }
+}
 
 function log(msg) {
   const line = `[${new Date().toISOString().slice(11, 19)}] ${msg}`;
@@ -3373,7 +3446,11 @@ function start() {
 
   lastReport = readJsonSafe(LAST_REPORT_PATH, null);
 
-  const port = Number(process.env.NEA_COACH_PORT || cfg.port || DEFAULT_PORT);
+  /*
+   * Reassignable: if the port is held by something that is not NEA Coach, the app moves to the
+   * next free one rather than refusing to start.
+   */
+  let port = Number(process.env.NEA_COACH_PORT || cfg.port || DEFAULT_PORT);
   const host = process.env.NEA_COACH_HOST || cfg.host || '127.0.0.1';
 
   const server = http.createServer((req, res) => {
@@ -3385,16 +3462,59 @@ function start() {
   });
 
   server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`\n  Port ${port} is already in use.`);
-      console.error(`  NEA Coach may already be running — try opening http://${host}:${port}\n`);
-    } else {
+    if (err.code !== 'EADDRINUSE') {
       console.error(`\n  Could not start the server: ${err.message}\n`);
+      process.exit(1);
+      return;
     }
-    process.exit(1);
+    /*
+     * The port is taken.
+     *
+     * This used to print an error and exit, which made the app look broken in the two
+     * situations it happens most often:
+     *
+     *   - a second double-click, and
+     *   - an UPGRADE while an older copy is still running. Every version asks for the same
+     *     saved port, so the new copy died on the spot and the student was left with a window
+     *     that said "already in use" and closed.
+     *
+     * Two situations, so two answers. Ask whoever holds the port what it is: if it is NEA
+     * Coach, this launch has nothing to do and the useful thing is to open the copy that is
+     * already there. If it is anything else, step to the next free port and say so.
+     */
+    probeExisting(port, (isUs) => {
+      if (isUs) {
+        const url = `http://127.0.0.1:${port}`;
+        console.log('');
+        console.log('  NEA Coach is already running.');
+        console.log(`  Opening it: ${url}`);
+        console.log('');
+        console.log('  Two copies cannot share a port, and the one already open is the one to use,');
+        console.log('  so this copy is stopping. Your work is in the window that is already open.');
+        console.log('');
+        openInBrowser(url);
+        process.exit(0);
+        return;
+      }
+      findFreePort(port + 1, host, (free) => {
+        if (!free) {
+          console.error(`\n  Ports ${port} to ${port + 25} are all in use, so NEA Coach cannot start.`);
+          console.error('  Quit whatever is using them, or set NEA_COACH_PORT to a free one.\n');
+          process.exit(1);
+          return;
+        }
+        console.log('');
+        console.log(`  Port ${port} is in use by something else.`);
+        console.log(`  Using ${free} instead, and remembering it for next time.`);
+        port = free;
+        // Best effort: if the config cannot be written the app still runs, it just asks again.
+        try { cfg.port = free; saveConfig(cfg); } catch (e) { /* not fatal */ }
+        server.listen(port, host, onListening);
+      });
+    });
   });
 
-  server.listen(port, host, () => {
+  function onListening() {
     const url = `http://${host}:${port}`;
     console.log('');
     console.log('  ┌──────────────────────────────────────────────┐');
@@ -3426,7 +3546,9 @@ function start() {
     console.log('');
 
     startWatching();
-  });
+  }
+
+  server.listen(port, host, onListening);
 
   // Shut down cleanly when the launcher window closes or the user presses Ctrl-C.
   const shutdown = () => {
@@ -3455,4 +3577,4 @@ if (require.main === module) {
   start();
 }
 
-module.exports = { start, performScan, buildStateResponse, findDeck, defaultConfig, stateDir: STATE_DIR, perUserDataDir, adoptPreviousState, repairAdoptedPaths, loadConfig, publicConfig, checkAccess, newAccessCode, handle, compareReports, findingKey, matchAiFindings, snapshotOf, appendHistory, quotaDate, quotaReset, readQuota, noteRequest, quotaReport, learnQuotaLimit, quotaLimitFromError, buildStats, exportHtml, escapeHtml };
+module.exports = { probeExisting, findFreePort, start, performScan, buildStateResponse, findDeck, defaultConfig, stateDir: STATE_DIR, perUserDataDir, adoptPreviousState, repairAdoptedPaths, loadConfig, publicConfig, checkAccess, newAccessCode, handle, compareReports, findingKey, matchAiFindings, snapshotOf, appendHistory, quotaDate, quotaReset, readQuota, noteRequest, quotaReport, learnQuotaLimit, quotaLimitFromError, buildStats, exportHtml, escapeHtml };

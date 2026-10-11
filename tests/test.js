@@ -5180,6 +5180,93 @@ section('12y. Cancelling a check');
     /apiPost\('\/api\/cancel'/.test(html), 'the page must not fake a stop it cannot perform');
 }
 
+section('12z. Starting when the port is already taken');
+{
+  /*
+   * Reported: "the app is currently not working".
+   *
+   * The port was the reason. The server saved `port: 4173` in the config, and every version asks
+   * for that same port, so:
+   *
+   *   - a second double-click, and
+   *   - an UPGRADE while an older copy is still running
+   *
+   * both ended with "Port 4173 is already in use", process.exit(1), and a window that closed.
+   * To the student that is indistinguishable from the app being broken — and upgrading is
+   * exactly when it happens, because the old copy is still running on the port the new one
+   * wants.
+   */
+  const srv = require(path.join(ROOT, 'server.js'));
+  const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const http = require('http');
+
+  ok('the port can be reassigned, or a busy one would be fatal',
+    /\n  let port = Number\(process\.env\.NEA_COACH_PORT/.test(src));
+  ok('a busy port is asked about BEFORE anything gives up',
+    /if \(err\.code !== 'EADDRINUSE'\)[\s\S]{0,900}probeExisting\(port,/.test(src),
+    'the old handler exited on EADDRINUSE without finding out who held the port');
+
+  /* ---- recognising our own copy, for real --------------------------------------- */
+  /*
+   * Bound to EVERY interface, not just loopback, which is what a real program holding the port
+   * looks like — and the app asks for every interface. macOS happily lets an all-interface bind
+   * sit alongside a loopback-only one, so a loopback-held port would not be a fair test of
+   * stepping aside.
+   */
+  const listen = (handler) => new Promise((resolve) => {
+    const s = http.createServer(handler);
+    s.listen(0, () => resolve(s));
+  });
+  const close = (s) => new Promise((r) => s.close(r));
+  const probe = (port) => new Promise((r) => srv.probeExisting(port, r));
+
+  let server = await listen((req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ ok: true, version: '1.0.36', scan: { running: false } }));
+  });
+  eq('a second copy is recognised as NEA Coach', await probe(server.address().port), true);
+  await close(server);
+
+  server = await listen((req, res) => { res.end('hello, not nea coach'); });
+  eq('some other program on the port is NOT mistaken for it', await probe(server.address().port), false);
+  await close(server);
+
+  /*
+   * A socket that accepts the connection and then says nothing. Getting this wrong is the
+   * failure mode that looks worst: the launch would appear to hang with no message at all.
+   */
+  server = await listen(() => { /* accepts, never answers */ });
+  const started = Date.now();
+  eq('a port that accepts but never answers is not NEA Coach', await probe(server.address().port), false);
+  const waited = Date.now() - started;
+  ok('and it gives up quickly rather than hanging the launch', waited < 4000, waited + 'ms');
+  await close(server);
+
+  eq('a closed port is not NEA Coach', await probe(9), false);
+
+  ok('finding our own copy exits CLEANLY, because nothing has gone wrong',
+    /NEA Coach is already running\.[\s\S]{0,700}process\.exit\(0\)/.test(src),
+    'exiting non-zero would leave the launcher reporting a failure');
+  ok('and it opens the copy that is already running, which is what was wanted',
+    /openInBrowser\(url\)/.test(src));
+  ok('the browser is not taken over when NEA_COACH_NO_OPEN=1',
+    /NEA_COACH_NO_OPEN === "1"/.test(src));
+
+  /* ---- and stepping over a port that is somebody else's -------------------------- */
+  const held = await listen(() => {});
+  const free = await new Promise((r) => srv.findFreePort(held.address().port, '0.0.0.0', r));
+  ok('a port held by something else is stepped over',
+    free > held.address().port, 'got ' + free);
+  await close(held);
+
+  ok('the new port is saved, so the student is not asked the same question every launch',
+    /try \{ cfg\.port = free; saveConfig\(cfg\); \}/.test(src));
+  ok('and it says so rather than silently using a different address',
+    /is in use by something else/.test(src) && /Using \$\{free\} instead/.test(src));
+  ok('with a way out if every port it tries is busy',
+    /are all in use, so NEA Coach cannot start/.test(src) && /NEA_COACH_PORT/.test(src));
+}
+
 })().then(summary, (err) => {
   ok('AI pass end-to-end test ran', false, err && err.stack);
   summary();

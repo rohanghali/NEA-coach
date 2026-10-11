@@ -18,20 +18,20 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **A Cancel check button.** It appears only while a check is running, and it is a request
-  rather than a kill — the scan stops at its next safe point, so the button says *"Stopping…"*
-  instead of pretending it stopped the instant it was pressed.
-- **Cancelling does not throw away what you have paid for.** Every page already read was cached
-  before the scan stops, so pressing Check now again carries on from where it left off rather
-  than starting over.
-- **A cancelled check is not a finished one**, and it is not dressed up as one: no celebration,
-  no partial result presented as a mark, just a plain note saying the free checks ran, the AI
-  review did not finish, and there is therefore no mark.
+- **Fixed the app appearing not to start at all.** If the port it wants is already taken, the app
+  used to print one line and close — which looks exactly like the app being broken. That happens
+  in the two most ordinary situations there are: opening it twice, and installing an update while
+  the old copy is still running, because every version asks for the same saved port.
+- **Now it works out which case it is.** If NEA Coach is already running, it says so and opens
+  that copy — your work is in the window that is already open, so there is no reason to start a
+  second one. If something *else* is on the port, the app moves to the next free one and
+  remembers it.
+- Nothing about the report, the marking or the checks has changed.
 
-**In v1.0.35**
+**In v1.0.36**
 
-- **The app checks that your PowerPoint and your PDF are the same portfolio**, by comparing
-  their actual words rather than their filenames.
+- **A Cancel check button**, which stops at a safe boundary and keeps every page already read, so
+  the next Check now carries on rather than starting over.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

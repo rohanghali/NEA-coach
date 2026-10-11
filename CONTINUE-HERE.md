@@ -908,6 +908,50 @@ the only case that can be wrong.
 
 ---
 
+## 6k. "The app is not working" — the port, fixed in v1.0.37
+
+Reported twice-diagnosed. What made it hard to see: the SERVER was healthy the whole time. A scan
+had completed with no errors, `/api/state` answered, and `/api/log` showed a clean run. The
+failure was never in a request — it was at STARTUP, and the evidence for it had already scrolled
+off the screen.
+
+The port is saved in the config (`port: 4173`) and **every version asks for the same one**. The
+error handler did this:
+
+```js
+if (err.code === 'EADDRINUSE') { ...print... }
+process.exit(1);
+```
+
+So the two most common situations both ended in a dead window:
+
+- a second double-click, and
+- **an upgrade while the old copy is still running** — which is exactly when it happens, because
+  the old copy holds the port the new one wants.
+
+To a student, "Port 4173 is already in use" followed by the window closing IS the app being
+broken. Two different situations now get two answers:
+
+1. **Ask who holds the port** (`probeExisting`, reading `/api/state` for our own shape). If it is
+   NEA Coach, this launch has nothing to do — print the address, open it, `exit(0)`. Exiting
+   non-zero would leave the launcher reporting a failure for something that worked.
+2. Otherwise, **step to the next free port**, save it, and say so.
+
+**A bug inside the fix, caught by the test.** `findFreePort` first tested with no host, which
+binds every interface — and macOS allows that alongside a port already held on 127.0.0.1 alone.
+It would have reported a taken port as free, the server would have failed to bind it, and the
+whole probe-and-step-aside dance would have started again from the top. It must test **the same
+address the server is about to bind**.
+
+Also worth knowing: `probeExisting` has a 1.2s timeout, because a socket that accepts a
+connection and then says nothing would otherwise hang the launch with no message at all.
+
+**Diagnosing this again**: `lsof -nP -iTCP:<port>` shows who holds it, and
+`lsof -p <pid> -a -d cwd -Fn` shows which instalment is running. That second one is how the
+running v1.0.34 in `~/Downloads` was told apart from the repo.
+
+---
+
 ## 7. Still to do
 
 ### Already built, waiting on a Gemini API key
