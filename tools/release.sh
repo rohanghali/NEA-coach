@@ -100,7 +100,10 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 **New in this version**
 
 - Settings save themselves. Change the model, the marking model or Predict a mark and it is applied immediately, with a "Saved" confirmation - no Save button to forget. The folder path keeps its own button, because that is the one that can be wrong.
-- The model list now says how many checks a day each model allows.
+- The model dropdowns are readable. Every option used to repeat an identical
+  "about 47 requests per check" suffix, so all thirteen rows looked the same apart
+  from the model name. The figure is on the line underneath instead, where it
+  updates with your deck.
 - Settings shows whether your free AI key is saved without opening the group.
 - Fixed Test key, Save key and Forget key in Settings, which silently did nothing.
 - "Start setup" moved to the top of the page. It used to be buried in Settings,
