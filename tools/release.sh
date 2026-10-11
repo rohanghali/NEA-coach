@@ -100,6 +100,9 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 **New in this version**
 
 - Settings save themselves. Change the model, the marking model or Predict a mark and it is applied immediately, with a "Saved" confirmation - no Save button to forget. The folder path keeps its own button, because that is the one that can be wrong.
+- Marking now uses the wording the exam board itself uses for each criterion,
+  including what AQA says is typically missing at each level, taken from its
+  candidate record form.
 - The predicted mark no longer contradicts itself. It showed a headline of 94 while
   the criteria beneath added up to 75 with no total and no explanation. Each number
   is now labelled, the criteria table states its own total, and the reason for the
