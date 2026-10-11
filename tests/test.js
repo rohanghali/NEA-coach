@@ -6152,8 +6152,15 @@ section('12aj. Every section is a tab');
     'a scroller that does not track the thing it scrolls is decoration');
   ok('the bar is the visible cue that there is more to the right',
     /\.toptabs-rail \{[\s\S]{0,300}background: var\(--fill-soft\)/.test(css));
-  ok('on a phone the strip hides its native scrollbar, since the bar is the scroller there',
-    // Gathered here rather than reusing the later variable: this runs before it is declared.
+  /*
+   * And on a phone there is no bar at all — a finger swiping the tabs is the gesture everyone already
+   * makes, and the rail was taking 16px of a narrow screen to offer a worse version of it.
+   */
+  ok('a phone gets no scroller bar, just a row of tabs to pull sideways',
+    (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')
+      .indexOf('.toptabs-rail { display: none; }') >= 0,
+    'gathered here rather than reusing the later variable: this runs before it is declared');
+  ok('and the native scrollbar stays hidden there too',
     (html.match(/@media \(max-width: 700px\) \{[\s\S]*?\n  \}/g) || []).join('\n')
       .indexOf('.toptabs-scroll { scrollbar-width: none; }') >= 0);
 

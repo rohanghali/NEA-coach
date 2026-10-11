@@ -1336,9 +1336,15 @@
 
   /* On a phone the arrows are noise: a swipe is the natural gesture, and they would take 60px of
      a narrow strip away from the tabs themselves. */
+  /*
+   * On a phone there is no scroller bar at all.
+   *
+   * A finger swiping the tabs is the gesture everyone already makes, and it needs no handle — the rail
+   * was taking 16px of a narrow screen to offer a worse version of something the device does natively.
+   * The native scrollbar stays hidden too, so the strip is simply a row of tabs you pull sideways.
+   */
   @media (max-width: 700px) {
-    /* The strip itself still swipes; the rail gives the same drag on a narrow screen, under the
-       thumb rather than across the page. */
+    .toptabs-rail { display: none; }
     .toptabs-scroll { scrollbar-width: none; }
     .toptabs-scroll::-webkit-scrollbar { display: none; }
   }
@@ -4205,7 +4211,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.60';
+  var PAGE_BUILD = '1.0.61';
 
   var state = {
     data: null,
