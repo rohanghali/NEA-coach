@@ -99,6 +99,8 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
+- Settings now shows whether your free AI key is saved without opening the group.
+- Fixed Test key, Save key and Forget key in Settings, which silently did nothing.
 - "Start setup" moved to the top of the page. It used to be buried in Settings,
   which is the wrong place for the one control a new user needs.
 - Downloads now unzip into a VERSIONED folder. Previously every one unzipped to
