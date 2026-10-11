@@ -5612,6 +5612,18 @@
       state.settingsFilled = true;
     }
 
+    /*
+     * Keep the exam-board dropdown in step with the server ALWAYS, even on a
+     * re-render where the rest of the form is left alone.
+     *
+     * A <select> is a stored ANSWER, not half-typed text, so there is nothing to
+     * protect by leaving it stale - and leaving it stale is exactly the bug: set
+     * the board in the setup walkthrough and the dropdown still showed the old
+     * value. syncSpecSelect only assigns .value, so it cannot fight the choices in
+     * the block above.
+     */
+    syncSpecSelect(config);
+
     renderUploadSection(data, config);
   }
 
@@ -5906,6 +5918,14 @@
    * never disagree about which qualifications exist. Falls back to the one board
    * it knows is shipped if the server is too old to send the list.
    */
+  /** Point the board dropdown at the saved board, without touching the options. */
+  function syncSpecSelect(config) {
+    var select = ui.specSelect;
+    if (!select || !select.options) { return; }
+    var wanted = config && config.specId ? String(config.specId) : '';
+    if (wanted && select.value !== wanted) { select.value = wanted; }
+  }
+
   function fillSpecSelect(config) {
     var select = ui.specSelect;
     if (!select) { return; }
@@ -7090,6 +7110,15 @@
     if (status) { setText(status, 'Saving…'); }
     apiPost('/api/config', { specId: chosen }).then(function (res) {
       if (res && res.config && state.data) { state.data.config = res.config; }
+      /*
+       * Invalidate the filled-form cache.
+       *
+       * renderSettings() only writes the controls when this is false, so without
+       * resetting it the board was SAVED but the Settings dropdown went on showing
+       * whatever it was filled with earlier - the choice appeared not to have
+       * registered. saveBoard() already did this; this path did not.
+       */
+      state.settingsFilled = false;
       if (status) { setText(status, ''); }
       next();
     }).catch(function () {

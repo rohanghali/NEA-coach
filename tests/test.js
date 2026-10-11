@@ -3079,6 +3079,62 @@ section('11b. AI pass applies the cross-check');
       /'modelNote'/.test(src.match(/function cacheElements\(\)[\s\S]*?\];/)[0]));
   }
 
+section('12i. Setting the board in the walkthrough updates the Settings dropdown');
+{
+  /*
+   * Reported: "the exam board drop down menu doesnt update if you set it during
+   * the setup".
+   *
+   * renderSettings() only writes the controls when !state.settingsFilled, and the
+   * wizard's introSaveBoard() never cleared that flag - while the Settings button
+   * (saveBoard) did. So the board was saved to the server and the dropdown went on
+   * showing the old value.
+   *
+   * Two fixes, and the test covers the second one on its own because it is the one
+   * that holds even if some future code path forgets the flag again.
+   */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  page.window.fetch = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, config: { specId: 'aqa-gcse' } }) });
+
+  const PRESETS = [
+    { id: 'eduqas-alevel', label: 'WJEC Eduqas A-level Design and Technology (NEA)' },
+    { id: 'aqa-gcse', label: 'AQA GCSE Design and Technology (8552)' },
+  ];
+  page.state.data = { config: { specId: 'eduqas-alevel', specPresets: PRESETS } };
+  page.call('renderSettings');
+  const sel = page.ui.specSelect;
+  ok('the board dropdown starts on the saved board', sel.value === 'eduqas-alevel', sel.value);
+
+  // The wizard saves a different board and the state comes back updated.
+  page.state.data.config.specId = 'aqa-gcse';
+  page.call('renderSettings');
+  ok('after the board is saved the dropdown shows the NEW board',
+    sel.value === 'aqa-gcse', 'dropdown shows ' + sel.value);
+
+  /*
+   * And it must hold even when the form is NOT refilled - the exact stale path.
+   * settingsFilled is deliberately left true here, which is what the wizard used
+   * to do.
+   */
+  page.state.data.config.specId = 'eduqas-alevel';
+  page.call('renderSettings');
+  page.state.settingsFilled = true;
+  page.state.data.config.specId = 'aqa-gcse';
+  page.call('renderSettings');
+  ok('a re-render that skips the form still syncs the board dropdown',
+    sel.value === 'aqa-gcse', 'dropdown shows ' + sel.value);
+
+  // The wizard must also clear the flag, so the rest of the form refreshes too.
+  const src = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const wizard = src.slice(src.indexOf('function introSaveBoard'), src.indexOf('function introUpload'));
+  ok('the walkthrough invalidates the filled-form cache, like the Save button does',
+    /state\.settingsFilled = false/.test(wizard),
+    'introSaveBoard does not clear settingsFilled');
+  ok('and there is a single helper for syncing the dropdown',
+    (src.match(/function syncSpecSelect/g) || []).length === 1);
+}
+
 section('12e2. The exam board\'s own guidance reaches the marking prompt');
 {
   /*
