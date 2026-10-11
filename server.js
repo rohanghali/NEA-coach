@@ -410,7 +410,7 @@ function noteRequest(model) {
  * first thing worth knowing is which build they are on. Kept in step with the
  * release tag in tools/release.sh.
  */
-const VERSION = '1.0.35';
+const VERSION = '1.0.36';
 const DEFAULT_PORT = 4173;
 
 /*
@@ -981,6 +981,16 @@ function findDeck(cfg) {
 
 const scanState = {
   running: false,
+  /*
+   * Set by /api/cancel and read by the scan between steps — never inside one.
+   *
+   * Between, because a half-read batch cannot be cached: stopping at a boundary keeps
+   * everything already done, so pressing Check now again resumes instead of starting over.
+   */
+  cancelRequested: false,
+  // True once a scan actually stopped early, so the page can say so rather than implying a
+  // full review that never happened.
+  cancelled: false,
   phase: 'idle',
   progress: 0,
   message: 'Ready',
@@ -1029,6 +1039,8 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
   }
 
   scanState.running = true;
+  scanState.cancelRequested = false;
+  scanState.cancelled = false;
   scanState.phase = 'starting';
   scanState.progress = 0;
   scanState.message = 'Starting';
@@ -1254,6 +1266,11 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
           thinkingBudget: (thinking == null ? !!cfg.thinking : !!thinking) ? THINKING_BUDGET_TOKENS : 0,
           onProgress,
           onLog: log,
+          /*
+           * Asked between steps, never during one. The check happens before each batch and
+           * between the visual review's runs, so cancelling keeps every page already read.
+           */
+          isCancelled: () => scanState.cancelRequested,
         });
       } catch (err) {
         aiResult = {
@@ -1282,6 +1299,16 @@ async function performScan({ force = false, deep = false, thinking = null, reaso
       cache.deckFile = filePath;
       cache.savedAt = new Date().toISOString();
       writeJsonSafe(CACHE_PATH, cache);
+
+      /*
+       * A cancelled check is not a failure and must not be dressed as one. The pages already
+       * read were cached just above, so the next Check now picks up where this stopped rather
+       * than paying for them again.
+       */
+      if (aiResult && aiResult.cancelled) {
+        scanState.cancelled = true;
+        log('Check cancelled. Pages already read are remembered, so pressing Check now again carries on from here rather than starting over.');
+      }
 
       if (aiResult && (aiResult.tokensIn || aiResult.tokensOut)) {
         const nextCost = {
@@ -2877,6 +2904,21 @@ async function handle(req, res) {
     requestScan({ force: !!body.force, deep: !!body.deep, thinking: typeof body.thinking === 'boolean' ? body.thinking : null, reason: 'manual' }).catch(() => {});
     await sleep(60);
     return sendJson(res, 200, { ok: true, scanId: scanState.scanId, running: scanState.running });
+  }
+
+  if (p === '/api/cancel' && req.method === 'POST') {
+    /*
+     * Ask the running scan to stop. It is a REQUEST rather than a kill: the scan reads this
+     * between steps, because stopping in the middle of a network call would waste the request
+     * it had already paid for and a half-finished batch cannot be cached.
+     */
+    if (!scanState.running) {
+      return sendJson(res, 200, { ok: true, running: false, alreadyDone: true });
+    }
+    scanState.cancelRequested = true;
+    scanState.message = 'Stopping…';
+    log('Cancelling the check at the next safe point.');
+    return sendJson(res, 200, { ok: true, running: true, stopping: true });
   }
 
   if (p === '/api/config' && req.method === 'GET') {

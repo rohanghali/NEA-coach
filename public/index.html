@@ -2449,6 +2449,13 @@
       </button>
       <button class="btn btn-secondary btn-lg" id="btnRecheck" type="button">Re-check everything</button>
       <!--
+        Only offered while a check is actually running. It ASKS the scan to stop rather than
+        killing it: the scan reads the flag between pages read and before each batch, so the
+        work already paid for is kept and the next Check now carries on from there instead of
+        starting again.
+      -->
+      <button class="btn btn-quiet btn-lg" id="btnCancel" type="button" style="display:none">Cancel check</button>
+      <!--
         One downloadable file with everything in it. A plain link rather than a
         fetch-plus-blob: the download then behaves exactly as the browser expects, and
         needs no memory held in the page.
@@ -3956,6 +3963,17 @@
     var ready = cfg.portfolioChosen !== false;
     if (ui.btnCheck) { ui.btnCheck.disabled = busy || !ready; }
     if (ui.btnRecheck) { ui.btnRecheck.disabled = busy || !ready; }
+    /*
+     * Cancelling is offered only while something is running, and it says "Stopping…" rather
+     * than pretending it stopped the instant it was clicked: the scan finishes the step it is
+     * on, because abandoning a network call wastes the request already being made.
+     */
+    var stopping = !!(state.data && state.data.scan && state.data.scan.cancelRequested);
+    if (ui.btnCancel) {
+      show(ui.btnCancel, busy);
+      ui.btnCancel.disabled = stopping;
+      setText(ui.btnCancel, stopping ? 'Stopping…' : 'Cancel check');
+    }
     if (ui.thinkingToggle) { ui.thinkingToggle.disabled = busy; }
     show(ui.checkSpinner, busy);
     setText(ui.btnCheckLabel, busy ? 'Checking…' : (ready ? 'Check now' : 'Add a portfolio first'));
@@ -7216,8 +7234,19 @@
       var runningNow = !!(data.scan && data.scan.running);
       if (runningNow) {
         scanWasRunning = true;
+        // A fresh check clears any note about the last one having been stopped.
+        clearBanner('cancel');
       } else if (scanWasRunning) {
         scanWasRunning = false;
+        /*
+         * Cancelled is NOT finished, and the difference matters: no celebration, no new mark
+         * presented as a result, and a plain account of what did and did not happen. The
+         * pages already read were cached before the scan stopped, so the last sentence is
+         * true rather than encouraging.
+         */
+        if (data.scan && data.scan.cancelled) {
+          setBanner('cancel', 'info', 'Check cancelled. The free checks ran, but the AI review did not finish, so there is no mark. The pages already read are remembered, so pressing Check now again carries on from here rather than starting over.', true);
+        } else {
         /*
          * Fired from the MARK rather than the middle of the top of the page.
          *
@@ -7235,6 +7264,7 @@
             celebrate(window.innerWidth / 2, Math.max(96, window.innerHeight * 0.22), 3);
           }
         }, 420);
+        }
       }
 
       if (data.scan && data.scan.running) {
@@ -7334,6 +7364,20 @@
       pollTimer = null;
     }
     state.scanning = false;
+  }
+
+  /**
+   * Ask the running check to stop.
+   *
+   * A request, not a kill. The server reads the flag between steps, so this returns as soon as
+   * the message is sent and the scan stops a moment later — which is why the button says
+   * "Stopping…" instead of vanishing.
+   */
+  function cancelScan() {
+    if (ui.btnCancel) { ui.btnCancel.disabled = true; setText(ui.btnCancel, 'Stopping…'); }
+    apiPost('/api/cancel', {}).catch(function () {
+      setBanner('cancel', 'warn', 'Could not ask the check to stop — is NEA Coach still running?', true);
+    });
   }
 
   function startScan(force) {
@@ -7687,7 +7731,7 @@
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock',
+      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock', 'btnCancel',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
@@ -7719,6 +7763,7 @@
     on(ui.btnCheck, 'click', function () { startScan(false); });
     on(ui.btnQuickCheck, 'click', function () { startScan(false); });
     on(ui.btnRecheck, 'click', function () { startScan(true); });
+    on(ui.btnCancel, 'click', function () { cancelScan(); });
 
     on(ui.btnAllSev, 'click', function () {
       for (var i = 0; i < SEVERITIES.length; i++) { activeSeverity[SEVERITIES[i]] = true; }

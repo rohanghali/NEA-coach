@@ -1939,8 +1939,16 @@ section('11t. The bundled sample is never mistaken for the student\'s work');
   const page = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   ok('the page renders a notice when it is reading the sample',
     /function renderPortfolioNotice/.test(page));
+  /*
+   * Read the function's own body rather than a character window around it. The window was a
+   * proxy for "inside renderActions" and started failing the moment the function legitimately
+   * grew, which is a test measuring the wrong thing.
+   */
   ok('the notice is drawn by renderActions, beside the Check button',
-    /renderActions\(\) \{[\s\S]{0,1600}renderPortfolioNotice\(\)/.test(page));
+    (() => {
+      const body = /\n  function renderActions\(\) \{([\s\S]*?)\n  \}/.exec(page);
+      return !!body && /renderPortfolioNotice\(\)/.test(body[1]);
+    })(), 'the notice must be drawn by the same function as the Check button');
   ok('and it offers a way to add a real portfolio',
     /Add my portfolio/.test(page));
   ok('the notice is not dismissible, so it cannot be lost',
@@ -5057,6 +5065,119 @@ section('12x. Are the PowerPoint and the PDF the same portfolio?');
     && /sameWork\.pdfFile = path\.basename\(cfg\.pdfFile\)/.test(src));
   ok('a PDF that cannot be read is reported as unknown rather than as a mismatch',
     /verdict: 'unknown',\s*\n\s*reason: 'unreadable'/.test(src));
+}
+
+section('12y. Cancelling a check');
+{
+  /*
+   * Requested: a cancel button.
+   *
+   * The awkward part is not the button, it is what "cancel" can honestly mean. A scan is a
+   * sequence of paid API calls, so:
+   *
+   *   - it is a REQUEST, read between steps rather than a kill, because abandoning a call that
+   *     is already in flight wastes the request being made;
+   *   - it stops at BATCH BOUNDARIES, because a half-read batch cannot be cached and stopping
+   *     mid-batch would throw away work that has already been paid for;
+   *   - and a cancelled check is NOT a finished one, so it must not be celebrated or present a
+   *     partial result as a mark.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  const aiSrc = fs.readFileSync(path.join(ROOT, 'lib', 'ai.js'), 'utf8');
+
+  /* ---- the boundary, which is the part that matters ------------------------------ */
+  ok('the scan is asked between batches, never during one',
+    /for \(const batch of batches\) \{\n    \/\*[\s\S]{0,600}isCancelled\(\)/.test(aiSrc),
+    'checked inside a batch, a stop would discard a half-read batch that cannot be cached');
+  ok('and the visual review is asked before each run, which is the most expensive call',
+    /for \(let i = 0; i < wanted; i\+\+\) \{\n      if \(i > 0 && typeof isCancelled/.test(aiSrc));
+
+  const ai = require(path.join(ROOT, 'lib', 'ai.js'));
+  const { parsePresentation } = require(path.join(ROOT, 'lib', 'pptx.js'));
+  const deck = parsePresentation(path.join(ROOT, 'sample', 'AQA-GCSE-Portfolio-SAMPLE.pptx'));
+
+  /*
+   * Always true, so the pass stops at the first boundary it reaches.
+   *
+   * Deliberately NOT "false then true": returning false first lets a real request go out, and a
+   * test suite must never spend the student's quota. The placement of the check — before the
+   * batch rather than inside it — is asserted against the source above, which is where that
+   * belongs; this proves the stop itself works and costs nothing.
+   */
+  let asked = 0;
+  const cancelled = await ai.runAiPass({
+    deck,
+    apiKey: 'deliberately-not-a-key',
+    model: 'gemini-3.5-flash',
+    spec: {},
+    cache: {},
+    force: true,
+    onLog: () => {},
+    onProgress: () => {},
+    isCancelled: () => { asked += 1; return true; },
+  });
+  ok('it does not even reach the network, because the flag is read first', asked === 1,
+    'asked ' + asked + ' times');
+  ok('a cancelled pass says so rather than failing', cancelled.cancelled === true);
+  ok('and hands back its cache, so nothing already paid for is lost',
+    !!cancelled.cache && !!cancelled.cache.batches, 'the partial cache was dropped');
+  ok('and it is not reported as an error', !cancelled.error, String(cancelled.error));
+
+  /* ---- the server side ------------------------------------------------------------ */
+  ok('there is an endpoint to ask it to stop', /p === '\/api\/cancel' && req\.method === 'POST'/.test(src));
+  ok('it refuses to look like a kill, saying the scan stops at the next safe point',
+    /cancelRequested = true/.test(src) && /at the next safe point/.test(src));
+  ok('the flag is cleared when a new scan starts, or every scan after the first would stop',
+    /scanState\.cancelRequested = false;/.test(src));
+  ok('and a cancelled scan is recorded as cancelled, distinctly from an error',
+    /scanState\.cancelled = true;/.test(src) && /aiResult\.cancelled/.test(src));
+  ok('the flag is handed to the AI pass', /isCancelled: \(\) => scanState\.cancelRequested/.test(src));
+
+  /* ---- and the page --------------------------------------------------------------- */
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  ok('the button is cached, not an undefined ui.* reference', !!page.ui.btnCancel);
+
+  const draw = (scan, scanning) => {
+    page.state.data = {
+      ok: true,
+      config: { portfolioChosen: true },
+      deck: null,
+      local: { findings: [] },
+      ai: {},
+      scan: scan,
+    };
+    page.state.scanning = !!scanning;
+    page.call('renderActions');
+    return page.ui.btnCancel;
+  };
+
+  let btn = draw({ running: true }, true);
+  ok('the button appears while a check is running', btn.hidden === false, 'no way to stop it');
+  eq('offering to cancel', btn.textContent, 'Cancel check');
+  ok('and it is pressable', btn.disabled === false);
+
+  btn = draw({ running: true, cancelRequested: true }, true);
+  eq('once asked, it says it is stopping rather than pretending to have stopped',
+    btn.textContent, 'Stopping…');
+  ok('and cannot be pressed twice', btn.disabled === true);
+
+  btn = draw({ running: false }, false);
+  ok('it goes when nothing is running', btn.hidden === true,
+    'a cancel button on an idle page is a dead control');
+
+  /* ---- cancelled is not finished -------------------------------------------------- */
+  ok('a cancelled check raises a note instead of celebrating',
+    /if \(data\.scan && data\.scan\.cancelled\) \{[\s\S]{0,260}setBanner\('cancel'/.test(html));
+  ok('and the note says the free checks ran while the AI review did not',
+    /the AI review did not finish, so there is no mark/.test(html));
+  ok('and that the pages already read are kept, which is why that is true',
+    /pages already read are remembered, so pressing Check now again carries on/.test(html));
+  ok('the note is cleared when a new check starts, so it cannot linger',
+    /clearBanner\('cancel'\)/.test(html));
+  ok('the page asks the server rather than deciding for itself',
+    /apiPost\('\/api\/cancel'/.test(html), 'the page must not fake a stop it cannot perform');
 }
 
 })().then(summary, (err) => {

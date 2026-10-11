@@ -18,25 +18,20 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The app now checks that your PowerPoint and your PDF are the same portfolio.** They have to
-  be: the .pptx is what the layout checks measure and the PDF is what the AI looks at, so if they
-  are different pieces of work the report mixes a layout analysis of one with a visual mark of
-  the other, and every number in it is about neither of them properly.
-- **It compares the actual words, not the filenames.** A PDF export gets whatever name the export
-  tool chose, so names are a poor guide: a genuine pair can look mismatched, and two different
-  portfolios both called "Portfolio" would pass a name check without a murmur. Where it cannot be
-  sure, it says so rather than guessing — and it says what it found, in numbers.
-- When they match, the page says so, so a silent all-clear is not mistaken for never having
-  looked.
+- **A Cancel check button.** It appears only while a check is running, and it is a request
+  rather than a kill — the scan stops at its next safe point, so the button says *"Stopping…"*
+  instead of pretending it stopped the instant it was pressed.
+- **Cancelling does not throw away what you have paid for.** Every page already read was cached
+  before the scan stops, so pressing Check now again carries on from where it left off rather
+  than starting over.
+- **A cancelled check is not a finished one**, and it is not dressed up as one: no celebration,
+  no partial result presented as a mark, just a plain note saying the free checks ran, the AI
+  review did not finish, and there is therefore no mark.
 
-**In v1.0.34**
+**In v1.0.35**
 
-- **Much less crowded on a phone**: one welded report panel instead of three cards, tighter
-  spacing throughout, the score beside the verdict rather than above it, a tidier header, and
-  Check now always reachable from a bottom bar.
-- **More life in the marks**: the ring flares when a new figure lands, the finished-check burst
-  fires from the mark itself, clearing the list gets its own moment, and a particle trail runs
-  along the progress bar.
+- **The app checks that your PowerPoint and your PDF are the same portfolio**, by comparing
+  their actual words rather than their filenames.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.
