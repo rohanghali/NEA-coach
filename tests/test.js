@@ -3663,7 +3663,12 @@ section('12l. The feel layer: ripples, rolling figures and the reward for finish
        * what makes a long report stutter. Naming the three explicitly means a new
        * blurred surface has to be argued for here rather than slipped in.
        */
-      return blurred.length > 0 && blurred.every((s) => /topbar|intro|to-top/.test(s));
+      /*
+       * Four pieces of chrome now, one instance each and all of them fixed: the header bar,
+       * the wizard overlay, the back-to-top pill and the phone dock. Naming them explicitly
+       * means a new blurred surface has to be argued for here rather than slipped in.
+       */
+      return blurred.length > 0 && blurred.every((s) => /topbar|intro|to-top|dock/.test(s));
     })(), 'a scrolling surface was blurred, which is what makes a long report stutter');
   ok('cards rise in without being left holding a transform',
     /\.page > \.card \{[^}]*animation:\s*rise [^}]*backwards/.test(css)
@@ -3984,11 +3989,16 @@ section('12o. The back-to-top button');
     JSON.stringify(window.scrollCalls));
   page.T.setCalm(false);
 
-  ok('it sits above the pinned header but below the wizard overlay',
+  /*
+   * The z-index lives on the dock now rather than on the pill, because the dock owns where
+   * its children sit — that is what lets the same element be a floating pill on a desktop
+   * and half of a bottom bar on a phone.
+   */
+  ok('the dock sits above the pinned header but below the wizard overlay',
     (() => {
-      const z = /\.to-top \{[\s\S]*?z-index:\s*(\d+)/.exec(css);
+      const z = /\.dock \{[\s\S]*?z-index:\s*(\d+)/.exec(css);
       return !!z && Number(z[1]) > 60 && Number(z[1]) < 1000;
-    })());
+    })(), 'the dock would be hidden behind the header, or float over the wizard');
   ok('it is blurred like the rest of the chrome',
     /\.to-top \{[\s\S]*?backdrop-filter:\s*blur\(/.test(css));
   ok('and it stays out of the way on a phone, where the word is dropped',
@@ -4777,6 +4787,130 @@ section('12v. A stored PowerPoint copy can be seen and removed');
     'it deletes something other than a file it listed in its own folder');
   ok('and it reports how much space was freed',
     /MB freed/.test(body), 'the log does not say what was reclaimed');
+}
+
+section('12w. The aesthetic pass: a tighter phone, and more life in the marks');
+{
+  /*
+   * Requested: make it look even nicer, less crowded on an iPhone, and more of the dynamic
+   * thing the student liked. Thirteen items, all of them, so this section pins the ones that
+   * can silently stop working — chiefly the gating, because an animation that fires when it
+   * should not is worse than one that never fires.
+   */
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];
+
+  /* ---- the report is one panel, not three cards --------------------------------- */
+  ok('the marking line, report and actions are one welded panel',
+    /#reviewedCard, #statusCard, #actionsCard \{/.test(css));
+  ok('the welded parts cannot lift or rise independently',
+    /#reviewedCard, #statusCard, #actionsCard \{[\s\S]*?transform: none/.test(css)
+    && /#reviewedCard, #statusCard, #actionsCard \{[\s\S]*?animation-delay: 30ms/.test(css),
+    'three cards sliding up on different clocks gives the join away');
+  ok('and the middle and top sections square off so the seam is invisible',
+    /#statusCard \{[\s\S]*?border-radius: 0/.test(css)
+    && /#reviewedCard \{[\s\S]*?border-bottom-left-radius: 0/.test(css));
+  ok('the two cards the weld needs are actually addressable by id',
+    /id="statusCard"/.test(html) && /id="actionsCard"/.test(html));
+  ok('and the markup was not restructured to do it, so every id and render is untouched',
+    /id="reviewedCard"/.test(html) && /id="reviewedName"/.test(html));
+
+  /* ---- phone density ------------------------------------------------------------ */
+  const phone = /@media \(max-width: 700px\) \{\n    \/\*\n     \* Everything is tighter[\s\S]*?\n  \}/.exec(css);
+  ok('there is a phone density pass', !!phone);
+  ok('it tightens the card padding and gaps, which repeat 17 times down the page',
+    /\.card \{ padding: 13px; margin-bottom: 11px/.test(css), 'the repetition is the crowding');
+  ok('the ring sits beside the verdict instead of above it',
+    /\.status-top \{ display: flex; align-items: center; gap: 13px; \}/.test(css),
+    'stacking a 130px circle pushes the one sentence that matters off the first screen');
+  ok('and the ring is smaller on a phone', /\.ring-wrap, \.ring \{ width: 104px/.test(css));
+  ok('the file name is one truncated line rather than wrapping to three',
+    /\.app-sub \{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis/.test(css));
+  ok('and the setup button and badge share a row instead of taking one each',
+    /\.topbar-actions \{\n      flex-direction: row;/.test(css));
+
+  /* ---- the dock ------------------------------------------------------------------ */
+  ok('the dock owns the positioning, so one element is a pill on desktop and a bar on a phone',
+    /\.dock \{[\s\S]*?position: fixed/.test(css) && /\.to-top \{\n    position: static;/.test(css));
+  ok('the phone bar only gains a background when it has something to offer',
+    /\.dock\.has-quick \{/.test(css), 'an always-on bar would sit over the page for no reason');
+  ok('and the page is padded so the last card clears it',
+    /\.page \{ padding-bottom: 86px; \}/.test(css));
+
+  const { loadPage } = require(path.join(__dirname, 'dom.js'));
+  const page = loadPage(ROOT);
+  ok('the page still loads with all of it', page.errors.length === 0, JSON.stringify(page.errors));
+  ok('the dock and its two buttons are cached, not undefined ui.* references',
+    !!page.ui.actionDock && !!page.ui.btnQuickCheck && !!page.ui.btnToTop);
+
+  const gone = { top: -200, bottom: -180, left: 0, right: 100, width: 100, height: 20 };
+  const here = { top: 100, bottom: 120, left: 0, right: 100, width: 100, height: 20 };
+  page.ui.btnCheck.getBoundingClientRect = () => gone;
+  page.call('renderDock');
+  ok('the shortcut appears once the real button has scrolled away',
+    /has-quick/.test(page.ui.actionDock.className), page.ui.actionDock.className);
+  page.ui.btnCheck.getBoundingClientRect = () => here;
+  page.call('renderDock');
+  ok('and goes when the real one is back in view',
+    !/has-quick/.test(page.ui.actionDock.className), page.ui.actionDock.className);
+
+  page.state.scanning = false;
+  page.state.data = { ok: true, config: { portfolioChosen: false }, deck: null, local: { findings: [] }, ai: {} };
+  page.call('renderActions');
+  eq('the shortcut mirrors the real button rather than deciding for itself',
+    page.ui.btnQuickCheck.textContent, page.ui.btnCheckLabel.textContent);
+  ok('including being disabled for the same reason', page.ui.btnQuickCheck.disabled === true);
+
+  /* ---- the marks have more life -------------------------------------------------- */
+  const report = JSON.parse(fs.readFileSync(path.join(ROOT, 'state', 'last-report.json'), 'utf8'));
+
+  eq('a fresh page shows no flare, because there is nothing to have changed from yet',
+    page.ui.ring.className, 'ring');
+  page.state.data = report;
+  page.call('renderStatus');
+  ok('a new figure flares the ring', /is-pop/.test(page.ui.ring.className), page.ui.ring.className);
+  ok('and the flare is designed to clear itself rather than linger',
+    /ringPopTimer/.test(html), 'the class would stay on for good');
+
+  page.call('renderFixList');
+  ok('findings animate in when the list is first built',
+    /is-fresh/.test(page.ui.fixList.className), page.ui.fixList.className);
+  page.call('renderFixList');
+  ok('but NOT on a redraw with the same contents',
+    !/is-fresh/.test(page.ui.fixList.className),
+    'an entrance that replays on every re-render becomes noise');
+
+  const findings = page.T.allFindings();
+  ok('the real report has findings to work with', findings.length > 0, String(findings.length));
+  for (const f of findings) { page.T.toggleDone(f.id, true); }
+  page.call('renderFixList');
+  const rows = page.ui.fixList.children || [];
+  ok('clearing the whole list is acknowledged rather than left as struck-through text',
+    rows.some((c) => /all-clear/.test(c.className)), 'no all-clear shown');
+  page.T.toggleDone(findings[0].id, false);
+  page.call('renderFixList');
+  ok('and it goes the moment one comes back',
+    !(page.ui.fixList.children || []).some((c) => /all-clear/.test(c.className)));
+
+  /* ---- the rest, which are pure CSS but easy to lose ----------------------------- */
+  ok('the finished-check burst is aimed at the mark rather than the top of the page',
+    /ui\.predictedCard && !ui\.predictedCard\.hidden \? ui\.predictedBody : null\) \|\| ui\.scoreNumber/.test(html),
+    'a burst 600px above the mark lands as decoration, not as a response');
+  ok('a progress trail of particles runs while a check does',
+    /@keyframes trail/.test(css) && /\.bar-fill::before/.test(css));
+  ok('the primary action invites a press while it is idle and pressable',
+    /#btnCheck:not\(\[disabled\]\) \{ animation: invite/.test(css),
+    'a pulse on a dead control is a lie');
+  ok('the background tint leans towards the pointer', /var\(--aur-x, 0%\)/.test(css));
+  ok('and it is desktop only, because a finger drag should not drag the wallpaper',
+    /matchMedia\('\(pointer: fine\)'\)/.test(html));
+  ok('tab panels cross in rather than snapping', /@keyframes panel-in/.test(css));
+  ok('the tab underline slides', /\.tab\[aria-selected="true"\]::after \{ transform: scaleX\(1\)/.test(css));
+
+  // Reduced motion must still turn every one of these off. The global rule handles it; this
+  // is here so nobody "improves" that rule away later.
+  ok('every one of them is still covered by the reduced-motion rule',
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,220}animation-duration: 0\.01ms !important/.test(css));
 }
 
 })().then(summary, (err) => {

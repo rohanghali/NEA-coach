@@ -18,29 +18,42 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **Fixed a button that had quietly gone missing, and 528 MB of disk space with it.** Uploading
-  a PDF clears the PowerPoint reference, and the app then stopped believing it was holding one —
-  so the **Remove PowerPoint** button disappeared while its own copy of a 528 MB `.pptx` sat in
-  its folder, mentioned nowhere in the interface. That copy is now visible, and the button says
-  what it will delete and how big it is.
-- **"Remove PowerPoint" now actually removes it.** It used to clear the reference and leave the
-  file on disk, which is how the copy survived. It deletes the app's own copy now — and only
-  ever that. Your original file is never touched.
-- **A leftover copy is shown for what it is**: *"Rohan Ghali.pptx (528 MB) stored, but you are
-  being marked on the PDF — the button below removes it"*, flagged rather than ticked as though
-  it were in use.
-- **The list can no longer call a PDF a PowerPoint.** It once showed the PDF's name in the
-  PowerPoint row, because a PDF-only setup leaves no PowerPoint name to use and the row fell
-  back to whatever had been marked.
+**Less crowded on a phone**
 
-**In v1.0.32**
+- **The marking line, the report and the buttons are now one panel** instead of three stacked
+  cards. On a phone that was three lots of padding and two gaps for a single idea.
+- **Everything is tighter**, and the page carries 17 blocks — so trimming the repeated card
+  padding and gaps is the single biggest thing that was making it feel crowded.
+- **The score ring sits beside the verdict instead of above it**, and is smaller. On a phone the
+  stacked circle was pushing the one sentence that matters most off the first screen.
+- **A tidier header.** The file name is one truncated line rather than wrapping to three, and the
+  setup button and the read-only badge share a row instead of taking one each.
+- **Check now is always reachable.** On a phone a bar appears along the bottom once the real
+  button has scrolled out of view, with the back-to-top control folded in beside it. It only
+  appears when it has something to offer, and it mirrors the real button exactly — same words,
+  same disabled state, same function.
 
-- A build with no student names in the shipped source. Nothing behavioural.
+**More life in the marks**
 
-**In v1.0.31**
+- **The ring flares when a new figure lands**, so the count is announced rather than silently
+  updated. Only when it has actually changed, and it clears itself afterwards.
+- **The finished-check burst now fires from the mark itself**, not the top of the page. The mark
+  is the payoff, and a burst 600px above it landed as decoration rather than as a response.
+- **Clearing the whole list is a moment.** Ticking your last finding off gets a bigger burst and
+  an "Everything on this list is done" panel, rather than the same small sparkle as any other.
+- **A trail of particles runs along the progress bar** while a check is going.
+- **"Check now" breathes gently** while it is idle and pressable — and stops the moment it is
+  busy or unavailable, because a pulse on a dead button is a lie.
+- **The background tint leans towards your pointer** (desktop only — a finger dragging the page
+  should not drag the wallpaper with it).
+- **Panels cross in and the tab underline slides**, instead of both snapping.
 
-- **"Use it on your phone" is its own section at the bottom of the page**, with a "Check again"
-  button for when your router reassigns the address.
+Everything above is switched off if you have asked your system for reduced motion.
+
+**In v1.0.33**
+
+- **The stored PowerPoint copy is visible and removable.** Uploading a PDF clears the PowerPoint
+  reference, which had hidden a 528 MB copy of one with no way to remove it.
 
 **If you have an older copy already:** quit it first (close the black "NEA Coach server"
 window) before starting this one, or the old version will keep answering your browser.

@@ -1097,17 +1097,32 @@
   .filter-details > summary::-webkit-details-marker { display: none; }
 
   @media (max-width: 700px) {
-    .page { padding: 12px 10px 40px; }
-    .app-title { font-size: 21px; }
-    /* A three-digit count needs room; 112px was too tight for "103" plus a label. */
-    .ring-wrap, .ring { width: 130px; height: 130px; }
-    .ring-score { font-size: 30px; }
-    .ring-outof { font-size: 10.5px; max-width: 88px; }
-    .status-top { display: block; }
-    .ring-wrap { margin: 0 auto 14px; }
-    .status-text { min-width: 0; }
-    .verdict { font-size: 16px; }
-    .actions-row .btn { width: 100%; margin-right: 0; }
+    /*
+     * Everything is tighter. The page is long, and 17 blocks each carrying a full card's
+     * worth of padding and gaps was the single biggest reason a phone felt crowded — no
+     * one block was the problem, the repetition was.
+     */
+    .page { padding: 10px 10px 34px; }
+    .card { padding: 13px; margin-bottom: 11px; border-radius: 11px; }
+    .card-title { margin-bottom: 8px; }
+    .sub { margin: 15px 0 7px; }
+    .app-title { font-size: 20px; }
+
+    /*
+     * The ring sits BESIDE the verdict rather than above it. Stacked, a 130px circle
+     * pushed the one sentence that matters most off the first screen. 104px still holds
+     * a three-digit count comfortably.
+     */
+    .ring-wrap, .ring { width: 104px; height: 104px; }
+    .ring-score { font-size: 26px; }
+    .ring-outof { font-size: 9.5px; max-width: 72px; }
+    .status-top { display: flex; align-items: center; gap: 13px; }
+    .ring-wrap { margin: 0; flex: 0 0 auto; }
+    .status-text { min-width: 0; flex: 1 1 auto; }
+    .verdict { font-size: 15px; margin-bottom: 6px; }
+    .last-checked, .deck-meta { font-size: 13px; }
+
+    .actions-row .btn { width: 100%; margin-right: 0; margin-bottom: 8px; }
     .fact-key { flex: 0 0 100%; }
     .control-group { margin-right: 0; width: 100%; }
     .field { margin-right: 0; width: 100%; }
@@ -1115,13 +1130,23 @@
     .stat { min-width: 46%; }
     .btn-lg { min-height: 54px; }
 
-    /* Header: the read-only badge wrapped to its own line anyway; make it tidy. */
+    /*
+     * Header, in three rows instead of five. The file name gets one truncated line rather
+     * than wrapping to two or three, and the setup button and the read-only badge share a
+     * row instead of each taking their own.
+     */
     .topbar { display: block; }
-    .badge-readonly { margin-top: 8px; font-size: 11.5px; padding: 5px 9px; }
-    /* The setup button and badge go full width and left-aligned under the title. */
-    .topbar-actions { align-items: stretch; margin-top: 10px; }
-    .topbar-actions .btn-sm { width: 100%; }
-    .topbar-actions .badge-readonly { align-self: flex-start; }
+    .app-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+    .topbar-actions {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .topbar-actions .btn-sm { width: auto; }
+    .btn-sm { min-height: 34px; padding: 6px 12px; font-size: 13px; }
+    .badge-readonly { margin-top: 0; font-size: 10.5px; padding: 4px 8px; }
 
     /* Fold the filter controls away so the first screen is readable. */
     .filter-summary-toggle {
@@ -1852,6 +1877,41 @@
     border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
   }
 
+  /* ---------- one report panel, not three boxes ---------- */
+
+  /*
+   * The marking line, the report and the action buttons are one idea: what is being
+   * marked, what was found, and what to do about it. They were three separate cards,
+   * which on a phone meant three lots of padding, two gaps and two seams for one thing.
+   *
+   * Welded in CSS rather than by restructuring the markup, so every id, the
+   * accessibility wiring and all the render functions are exactly as they were.
+   */
+  #reviewedCard, #statusCard, #actionsCard {
+    /*
+     * Parts of one panel must not lift on their own, and must not rise into place at
+     * different times — three cards sliding up on slightly different clocks is what gives
+     * a welded join away.
+     */
+    transform: none;
+    animation-delay: 30ms;
+  }
+  #reviewedCard {
+    margin-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
+  }
+  #statusCard {
+    margin-bottom: 0;
+    border-radius: 0;
+    border-bottom-color: transparent;
+  }
+  #actionsCard {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
   /* ---------- press feedback ---------- */
 
   /*
@@ -1993,11 +2053,28 @@
    * The delay on visibility is what lets the fade finish before the element stops being
    * there; without it the fade is skipped in both directions.
    */
-  .to-top {
+  /*
+   * The dock owns where these sit; the pill itself is just a button inside it. That is
+   * what lets the same element be a floating pill on a desktop and half of a bottom bar
+   * on a phone.
+   */
+  .dock {
     position: fixed;
     right: 18px;
     bottom: 18px;
     z-index: 70;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Present but invisible until one of its buttons is worth showing. */
+    pointer-events: none;
+  }
+  .dock > * { pointer-events: auto; }
+  #btnQuickCheck { display: none; }
+
+  .to-top {
+    position: static;
+    z-index: auto;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -2048,9 +2125,141 @@
   }
   /* On a phone the word is the first thing to go, leaving a small round target. */
   @media (max-width: 700px) {
-    .to-top { right: 12px; bottom: 12px; padding: 13px; }
+    .to-top { padding: 13px; }
     .to-top-text { display: none; }
+
+    /*
+     * The bottom bar. It only gains its background when it has something to offer, so a
+     * phone near the top of the page sees no bar at all.
+     */
+    .dock {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      gap: 8px;
+      padding: 9px 12px calc(9px + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid transparent;
+      transition: background 200ms var(--ease-out), border-color 200ms var(--ease-out);
+    }
+    .dock.has-quick {
+      background: var(--glass);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      backdrop-filter: blur(18px) saturate(180%);
+      border-top-color: var(--glass-edge);
+    }
+    .dock.has-quick #btnQuickCheck { display: inline-flex; flex: 1 1 auto; justify-content: center; }
+    /* Room for the bar, so the last card is never hidden behind it. */
+    .page { padding-bottom: 86px; }
   }
+
+  /* ---------- the mark's own reward ---------- */
+
+  /*
+   * The ring flares as a new count lands, so the number is ANNOUNCED rather than merely
+   * updated. Applied by JS only when the figure has actually changed, so it means
+   * something each time it happens.
+   */
+  .ring.is-pop { animation: ring-pop 1250ms var(--ease-out); }
+  @keyframes ring-pop {
+    0%   { filter: drop-shadow(0 0 0 rgba(37, 99, 235, 0)); }
+    30%  { filter: drop-shadow(0 0 11px rgba(37, 99, 235, 0.55)); }
+    100% { filter: drop-shadow(0 0 0 rgba(37, 99, 235, 0)); }
+  }
+
+  /*
+   * A trail of particles along the progress bar while a check runs, so waiting feels alive
+   * rather than a bar sliding. The bar only exists on screen during a scan and `display:
+   * none` suspends animations, so this costs nothing at rest.
+   */
+  .bar-fill::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 1.5px, transparent 1.9px);
+    background-size: 24px 100%;
+    background-repeat: repeat-x;
+    opacity: 0.45;
+    animation: trail 1.05s linear infinite;
+  }
+  @keyframes trail {
+    from { background-position-x: 0; }
+    to { background-position-x: 24px; }
+  }
+
+  /*
+   * A slow halo on the one action that starts everything, while it is idle and pressable.
+   * An invitation rather than an alarm — and it stops the moment the button is busy or
+   * unavailable, because a pulse on a dead control is a lie.
+   */
+  #btnCheck:not([disabled]) { animation: invite 3.6s var(--ease-out) infinite; }
+  @keyframes invite {
+    0%, 100% { box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18), 0 0 0 0 rgba(37, 99, 235, 0.22); }
+    55%      { box-shadow: 0 2px 6px rgba(37, 99, 235, 0.26), 0 0 0 9px rgba(37, 99, 235, 0); }
+  }
+
+  /*
+   * The background tint leans towards the pointer. Desktop only — a phone has no pointer,
+   * and a finger drag should not drag the wallpaper around with it. `background-position`
+   * rather than `transform`, because the transform is already carrying the slow drift.
+   */
+  html::before {
+    background-position: var(--aur-x, 0%) var(--aur-y, 0%);
+    transition: background-position 600ms linear;
+  }
+
+  /* ---------- the small movements ---------- */
+
+  /*
+   * Panels cross in rather than snapping. Changing `display` restarts a CSS animation,
+   * which is exactly what a tab switch does, so this needs no JavaScript at all.
+   */
+  .tab-panel { animation: panel-in 240ms var(--ease-out); }
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /*
+   * Findings arrive rather than appearing, lightly staggered so a filtered list reads as it
+   * settles. The stagger is capped: without that, the fortieth item would wait most of a
+   * second to show up.
+   *
+   * Gated on `.is-fresh`, which JS sets only when the list's CONTENTS have changed. Left on
+   * unconditionally it would replay on every unrelated re-render, and animation that means
+   * nothing becomes noise.
+   */
+  .fix-list.is-fresh .finding { animation: rise 320ms var(--ease-out) backwards; }
+  .fix-list.is-fresh .finding:nth-child(2) { animation-delay: 20ms; }
+  .fix-list.is-fresh .finding:nth-child(3) { animation-delay: 40ms; }
+  .fix-list.is-fresh .finding:nth-child(4) { animation-delay: 60ms; }
+  .fix-list.is-fresh .finding:nth-child(n+5) { animation-delay: 80ms; }
+
+  /* The tab underline slides rather than jumping. */
+  .tab { position: relative; transition: color 160ms var(--ease-out); }
+  .tab::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 2px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    transform: scaleX(0);
+    transition: transform 240ms var(--ease-out);
+  }
+  .tab[aria-selected="true"]::after { transform: scaleX(1); }
+
+  /* Nothing left to fix: the list is empty because everything got ticked off, and that
+     deserves better than an empty box. */
+  .all-clear {
+    animation: rise 420ms var(--ease-out) backwards;
+    text-align: center;
+    padding: 22px 16px;
+  }
+  .all-clear-mark { font-size: 30px; line-height: 1; color: var(--good); display: block; margin-bottom: 8px; }
+  .all-clear-text { font-size: 15px; font-weight: 650; margin: 0 0 4px; }
+  .all-clear-sub { font-size: 13.5px; color: var(--muted); margin: 0; }
 
 </style>
 </head>
@@ -2189,7 +2398,7 @@
     <p class="reviewed-warn" id="reviewedWarn" style="display:none"></p>
   </section>
 
-  <section class="card" aria-labelledby="statusHeading">
+  <section class="card" id="statusCard" aria-labelledby="statusHeading">
     <!--
       These two cards carried screen-reader-only headings, so sighted users saw a
       ring and a row of buttons with no title at all and the page read as a stack
@@ -2199,7 +2408,7 @@
     <h2 class="card-title" id="statusHeading">Your report</h2>
     <div class="status-top">
       <div class="ring-wrap">
-        <svg class="ring" viewBox="0 0 120 120" role="img" aria-labelledby="ringTitle">
+        <svg class="ring" id="ring" viewBox="0 0 120 120" role="img" aria-labelledby="ringTitle">
           <title id="ringTitle">Number of points to check, and how many pages are already clear</title>
           <circle class="ring-track" cx="60" cy="60" r="52"></circle>
           <circle class="ring-value" id="ringValue" cx="60" cy="60" r="52"
@@ -2229,7 +2438,7 @@
   </section>
 
 
-  <section class="card" aria-labelledby="actionsHeading">
+  <section class="card" id="actionsCard" aria-labelledby="actionsHeading">
     <h2 class="card-title" id="actionsHeading">Run a check</h2>
     <!-- Filled by renderPortfolioNotice() when there is nothing of the student's own
          to describe: no portfolio chosen at all, or the bundled sample being read. -->
@@ -2836,10 +3045,22 @@
   invisible and inert until the reader is far enough down that the top is no longer a
   flick away — a control that is present at the top of the page is just furniture.
 -->
-<button type="button" class="to-top" id="btnToTop" aria-label="Back to the top">
-  <span class="to-top-arrow" aria-hidden="true"></span>
-  <span class="to-top-text">Top</span>
-</button>
+<!--
+  The dock. On a phone it is the bar along the bottom — Check now, always reachable
+  without scrolling back up, with the back-to-top control folded in beside it. On a wider
+  screen it is only the back-to-top pill, sitting exactly where it always did.
+
+  One element with two layouts rather than a second Check button to keep in step. The
+  quick one mirrors the real button's disabled state and label, and both call the same
+  function.
+-->
+<div class="dock" id="actionDock">
+  <button class="btn btn-primary" id="btnQuickCheck" type="button">Check now</button>
+  <button type="button" class="to-top" id="btnToTop" aria-label="Back to the top">
+    <span class="to-top-arrow" aria-hidden="true"></span>
+    <span class="to-top-text">Top</span>
+  </button>
+</div>
 
 <script>
 (function () {
@@ -2935,6 +3156,10 @@
 
 
   var CIRC = 2 * Math.PI * 52;
+  // The figure the ring last showed, so it only flares on a real change. null until first drawn.
+  var lastRingCount = null;
+  var ringPopTimer = null;
+  var lastFixSig = null;
 
   /* ------------------------------------------------------------------ *
    * Small helpers
@@ -3595,6 +3820,32 @@
       ui.ringValue.setAttribute('stroke-dasharray', String(CIRC));
       ui.ringValue.setAttribute('stroke-dashoffset', String(CIRC * (1 - cleanFraction)));
       ui.ringValue.setAttribute('class', 'ring-value ' + ringBand(cleanFraction * 100));
+
+      /*
+       * Flare the ring when the count really changes, so a new figure is ANNOUNCED rather
+       * than quietly swapped. Only on a change: a flare on every render would mean nothing.
+       */
+      if (ui.ring && lastRingCount !== totalIssues) {
+        if (lastRingCount !== null) {
+          /*
+           * Restart the animation. A class that is already present does nothing, so it is
+           * removed and the layout read back to force the browser to notice.
+           */
+          ui.ring.className = 'ring';
+          if (ui.ring.offsetWidth !== undefined) { void ui.ring.offsetWidth; }
+          ui.ring.className = 'ring is-pop';
+          /*
+           * Cleared once it has played. Leaving the class on would be harmless to look at —
+           * the animation has finished — but it makes the state impossible to read, and a
+           * class that means "a flare is happening" should not still be there afterwards.
+           */
+          if (ringPopTimer) { window.clearTimeout(ringPopTimer); }
+          ringPopTimer = window.setTimeout(function () {
+            if (ui.ring) { ui.ring.className = 'ring'; }
+          }, 1300);
+        }
+        lastRingCount = totalIssues;
+      }
     }
     rollFigure('issues', ui.scoreNumber, totalIssues ? String(totalIssues) : (data ? '0' : '–'));
     if (ui.ringOutOf) {
@@ -3708,6 +3959,14 @@
     if (ui.thinkingToggle) { ui.thinkingToggle.disabled = busy; }
     show(ui.checkSpinner, busy);
     setText(ui.btnCheckLabel, busy ? 'Checking…' : (ready ? 'Check now' : 'Add a portfolio first'));
+    /*
+     * The dock's button is a shortcut, never a second opinion: same enabled state, same
+     * words, and it calls the same function. Anything else and the two could disagree.
+     */
+    if (ui.btnQuickCheck) {
+      ui.btnQuickCheck.disabled = ui.btnCheck ? ui.btnCheck.disabled : busy;
+      setText(ui.btnQuickCheck, busy ? 'Checking…' : (ready ? 'Check now' : 'Add a portfolio first'));
+    }
     renderPortfolioNotice();
   }
 
@@ -4783,6 +5042,18 @@
     if (!host) { return; }
     clearNode(host);
 
+    /*
+     * Animate the findings in only when the list's CONTENTS have changed.
+     *
+     * Left on unconditionally the entrance would replay on every unrelated re-render, and
+     * animation that means nothing becomes noise. A signature of the ids is enough to tell
+     * a real change from a redraw.
+     */
+    var fixSig = allFindings().map(function (f) { return f.id; }).join('|');
+    var fresh = fixSig !== lastFixSig;
+    lastFixSig = fixSig;
+    host.className = 'fix-list' + (fresh ? ' is-fresh' : '');
+
     renderAiNotice();
     renderStrengths();
 
@@ -4796,6 +5067,20 @@
     if (total === 0) {
       fixListEmptyState(host);
       return;
+    }
+
+    /*
+     * Every one ticked off. Worth saying out loud: otherwise the list is a wall of
+     * struck-through text, which reads as "here is all the work" rather than "and it is
+     * done".
+     */
+    var outstanding = allFindings().filter(function (f) { return !isDone(f.id); }).length;
+    if (outstanding === 0) {
+      host.appendChild(el('div', { cls: 'all-clear' }, [
+        el('span', { cls: 'all-clear-mark', text: '\u2713', attrs: { 'aria-hidden': 'true' } }),
+        el('p', { cls: 'all-clear-text', text: 'Everything on this list is done.' }),
+        el('p', { cls: 'all-clear-sub', text: 'All ' + plural(total, 'point') + ' checked off. Add more pages and check again when you are ready.' })
+      ]));
     }
 
     var list = filteredFindings();
@@ -4916,6 +5201,21 @@
   function toggleDone(id, done) {
     if (done) { doneMap[id] = 1; } else { delete doneMap[id]; }
     saveDone();
+
+    /*
+     * The last one. Clearing the list is the moment the whole app exists for, and it used to
+     * get exactly the same small burst as any other tick. Measured from the list, before it
+     * is rebuilt, so the celebration lands where the student is looking.
+     */
+    if (done && ui.fixList && typeof ui.fixList.getBoundingClientRect === 'function') {
+      var remaining = allFindings().filter(function (f) { return !isDone(f.id); }).length;
+      if (remaining === 0) {
+        var listBox = ui.fixList.getBoundingClientRect();
+        if (listBox && listBox.width) {
+          celebrate(listBox.left + listBox.width / 2, listBox.top + 34, 4);
+        }
+      }
+    }
     try {
       apiPost('/api/finding', { id: id, done: !!done }).then(function () { }, function () { /* best effort only */ });
     } catch (err) { /* best effort only */ }
@@ -6888,7 +7188,23 @@
         scanWasRunning = true;
       } else if (scanWasRunning) {
         scanWasRunning = false;
-        celebrate(window.innerWidth / 2, Math.max(96, window.innerHeight * 0.22), 3);
+        /*
+         * Fired from the MARK rather than the middle of the top of the page.
+         *
+         * The mark is the payoff, and a burst 600px above it lands as decoration instead of
+         * as a response — which is exactly why the tick-off burst, which fires where the
+         * click was, reads so much better. The delay lets the panel finish drawing first, or
+         * there would be nothing on screen to aim at yet.
+         */
+        window.setTimeout(function () {
+          var target = (ui.predictedCard && !ui.predictedCard.hidden ? ui.predictedBody : null) || ui.scoreNumber;
+          var box = target && typeof target.getBoundingClientRect === 'function' ? target.getBoundingClientRect() : null;
+          if (box && box.width && isFinite(box.left) && isFinite(box.top)) {
+            celebrate(box.left + Math.min(box.width, 260) / 2, Math.max(80, box.top + 46), 3);
+          } else {
+            celebrate(window.innerWidth / 2, Math.max(96, window.innerHeight * 0.22), 3);
+          }
+        }, 420);
       }
 
       if (data.scan && data.scan.running) {
@@ -7336,12 +7652,12 @@
 
   function cacheElements() {
     var ids = [
-      'deckName', 'banners', 'ringValue', 'scoreNumber', 'ringOutOf', 'verdict', 'lastChecked', 'deckMeta',
+      'deckName', 'banners', 'ring', 'ringValue', 'scoreNumber', 'ringOutOf', 'verdict', 'lastChecked', 'deckMeta',
       'progressBox', 'progressPhase', 'progressPct', 'progressBar', 'progressBarFill', 'progressMsg', 'progressEta',
       'btnCheck', 'btnCheckLabel', 'checkSpinner', 'btnRecheck', 'btnExport', 'thinkingToggle', 'checkCoverage',
       'apiKeyFeedback',
       'scanCostHint', 'modelSelect', 'modelNote', 'specSelect', 'predictedCard', 'predictedBody', 'predictedBoard',
-      'sampleNotice', 'btnToTop',
+      'sampleNotice', 'btnToTop', 'btnQuickCheck', 'actionDock',
       'costBody', 'costNote', 'tiles', 'chips', 'btnAllSev', 'btnNoSev',
       'filterDetails', 'pageFilterInput', 'searchInput', 'btnClearFilters', 'filterSummary',
       'tabFix', 'tabSuggest', 'tabCoverage', 'panelFix', 'panelSuggest', 'panelCoverage', 'aiNotice', 'strengthsArea', 'fixList', 'suggestBody',
@@ -7371,6 +7687,7 @@
 
   function wireEvents() {
     on(ui.btnCheck, 'click', function () { startScan(false); });
+    on(ui.btnQuickCheck, 'click', function () { startScan(false); });
     on(ui.btnRecheck, 'click', function () { startScan(true); });
 
     on(ui.btnAllSev, 'click', function () {
@@ -8242,6 +8559,7 @@
    * ------------------------------------------------------------------ */
 
   var toTopShown = false;
+  var quickShown = false;
 
   /* How far down counts as "far enough that coming back is a chore". */
   function toTopThreshold() {
@@ -8268,10 +8586,27 @@
     ui.btnToTop.className = far ? 'to-top is-shown' : 'to-top';
   }
 
+  /*
+   * The quick Check button appears only once the real one has scrolled out of view.
+   *
+   * Two identical buttons on screen at once is clutter, and the point of this one is to
+   * save a scroll, not to be a second primary action. It mirrors the real button's label
+   * and disabled state rather than deciding anything itself.
+   */
+  function renderDock() {
+    if (!ui.btnQuickCheck || !ui.btnCheck) { return; }
+    var box = typeof ui.btnCheck.getBoundingClientRect === 'function' ? ui.btnCheck.getBoundingClientRect() : null;
+    var gone = !!box && box.bottom < 0;
+    if (gone === quickShown) { return; }
+    quickShown = gone;
+    ui.btnQuickCheck.className = gone ? 'btn btn-primary is-shown' : 'btn btn-primary';
+    if (ui.actionDock) { ui.actionDock.className = gone ? 'dock has-quick' : 'dock'; }
+  }
+
   function wireToTop() {
     if (!ui.btnToTop) { return; }
-    window.addEventListener('scroll', renderToTop, { passive: true });
-    window.addEventListener('resize', renderToTop, false);
+    window.addEventListener('scroll', function () { renderToTop(); renderDock(); }, { passive: true });
+    window.addEventListener('resize', function () { renderToTop(); renderDock(); }, false);
 
     ui.btnToTop.addEventListener('click', function () {
       /*
@@ -8295,6 +8630,42 @@
     }, false);
 
     renderToTop();
+    renderDock();
+  }
+
+  /*
+   * The background tint leans towards the pointer. Desktop only: a phone has no pointer, and
+   * a finger dragging the page should not drag the wallpaper with it.
+   *
+   * Throttled to about sixteen updates a second and written as two custom properties, so the
+   * work per move is a string and a style write, and the browser only has to repaint a
+   * background position it is already compositing.
+   */
+  function wireAurora() {
+    var fine = false;
+    try { fine = !!(window.matchMedia && window.matchMedia('(pointer: fine)').matches); } catch (err) { fine = false; }
+    if (!fine || calmMotion) { return; }
+
+    var pending = false;
+    var x = 0;
+    var y = 0;
+    document.addEventListener('pointermove', function (event) {
+      var width = Math.max(1, window.innerWidth || 1);
+      var height = Math.max(1, window.innerHeight || 1);
+      // A couple of percent either way: enough to feel, not enough to notice as movement.
+      x = ((event.clientX / width) - 0.5) * 4;
+      y = ((event.clientY / height) - 0.5) * 4;
+      if (pending) { return; }
+      pending = true;
+      window.setTimeout(function () {
+        pending = false;
+        var root = document.documentElement;
+        if (root && root.style && root.style.setProperty) {
+          root.style.setProperty('--aur-x', x.toFixed(2) + '%');
+          root.style.setProperty('--aur-y', y.toFixed(2) + '%');
+        }
+      }, 60);
+    }, { passive: true });
   }
 
   function init() {
@@ -8303,6 +8674,7 @@
     wireEvents();
     wireIntro();
     wireToTop();
+    wireAurora();
     if (ui.themeSelect) { ui.themeSelect.value = currentTheme(); }
     applyFilterFolding();
     loadModelChoices();
