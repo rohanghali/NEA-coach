@@ -1174,11 +1174,115 @@
     to   { transform: translate3d(8%, -3%, 0) rotate(2.2deg) scale(1.06); }
   }
 
+  /* ---------- the small things that move ---------- */
+
+  /*
+   * FOUR MORE LAYERS, and no more than that. Each one is a composited layer, so the count is a
+   * real cost — one layer carrying several shapes is much cheaper than several layers carrying
+   * one each. That is why the dust is a single tiled field rather than twenty animated dots.
+   *
+   * Transform and opacity only, exactly like the bands. The dust scrolls, the blobs drift, the
+   * glows fade, the streak crosses — none of it repaints anything.
+   */
+
+  /* Colour clouds, well behind everything, and slow enough to feel like depth rather than motion. */
+  .bg-blobs {
+    position: absolute;
+    inset: -20%;
+    /*
+     * --aurora-1 and --aurora-3 only: blue and teal. --aurora-2 is violet and --aurora-4 is pink,
+     * and using them here put colour back in the corners that the soft-blue theme does not want.
+     * The tokens are still defined; this just does not use those two.
+     */
+    background:
+      radial-gradient(34rem 30rem at 26% 34%, var(--aurora-3), transparent 64%),
+      radial-gradient(30rem 28rem at 76% 68%, var(--aurora-1), transparent 66%);
+    animation: blob-drift 104s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes blob-drift {
+    from { transform: translate3d(-5%, 3%, 0) scale(1.05); }
+    to   { transform: translate3d(6%, -4%, 0) scale(1.14); }
+  }
+
+  /*
+   * Dust.
+   *
+   * ONE element: a tile of dots repeated vertically and scrolled by exactly its own height, so the
+   * loop is seamless. A dozen individually animated dots would be a dozen layers to composite for
+   * the same picture, and would cost more than everything else here put together.
+   *
+   * The element is twice the viewport tall so that scrolling it by half still covers the screen.
+   */
+  .bg-motes {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 200%;
+    background-image:
+      radial-gradient(circle at 9% 6%, var(--mote) 0 1.5px, transparent 2.1px),
+      radial-gradient(circle at 27% 19%, var(--mote) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 46% 9%, var(--mote) 0 1.8px, transparent 2.4px),
+      radial-gradient(circle at 63% 24%, var(--mote) 0 1.2px, transparent 1.8px),
+      radial-gradient(circle at 81% 12%, var(--mote) 0 1.6px, transparent 2.2px),
+      radial-gradient(circle at 93% 28%, var(--mote) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 17% 34%, var(--mote) 0 1.3px, transparent 1.9px),
+      radial-gradient(circle at 72% 41%, var(--mote) 0 1.5px, transparent 2.1px);
+    background-size: 100% 50%;
+    background-repeat: repeat-y;
+    animation: mote-drift 150s linear infinite;
+    will-change: transform;
+  }
+  /* Exactly one tile, so the top and bottom halves meet without a seam. */
+  @keyframes mote-drift {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(0, -50%, 0); }
+  }
+
+  /* Soft glows that brighten and dim. Opacity, so no repaint. */
+  .bg-glow {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(22rem 18rem at 16% 72%, var(--aurora-1), transparent 72%),
+      radial-gradient(20rem 16rem at 84% 24%, var(--aurora-3), transparent 74%);
+    animation: glow-breathe 31s ease-in-out infinite alternate;
+    will-change: opacity;
+  }
+  @keyframes glow-breathe {
+    from { opacity: 0.28; }
+    to   { opacity: 0.85; }
+  }
+
+  /*
+   * The streak. It spends most of its cycle parked off-screen and invisible: the crossing takes
+   * about five seconds of every thirty-four, which is what makes it occasional rather than a
+   * repeating distraction.
+   */
+  .bg-streak {
+    position: absolute;
+    top: 22%;
+    left: 0;
+    width: 42%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--streak), transparent);
+    animation: streak-cross 34s ease-in-out infinite;
+    will-change: transform;
+    opacity: 0;
+  }
+  @keyframes streak-cross {
+    0%   { transform: translate3d(-110%, 0, 0) rotate(-7deg); opacity: 0; }
+    3%   { opacity: 1; }
+    15%  { transform: translate3d(330%, 0, 0) rotate(-7deg); opacity: 0; }
+    100% { transform: translate3d(330%, 0, 0) rotate(-7deg); opacity: 0; }
+  }
+
   /*
    * Off when the tab is in the background. CSS animations keep running in a hidden tab; there is
    * no reason to hold a GPU layer awake to animate something nobody is looking at.
    */
-  .is-hidden .wave { animation-play-state: paused; }
+  .is-hidden .waves > * { animation-play-state: paused; }
 
   /* ---------- the information panel ---------- */
 
@@ -1977,6 +2081,10 @@
     --wave-lo: rgba(191, 209, 240, 0.72);
     --wave-far: rgba(224, 233, 249, 0.6);
     --wave-wash: rgba(222, 231, 249, 0.85);
+    /* The floating dust and the passing streak. The blobs and glows reuse the aurora
+       colours, which the static wash no longer needs. */
+    --mote: rgba(120, 148, 200, 0.55);
+    --streak: rgba(160, 190, 240, 0.9);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -1997,6 +2105,10 @@
       --wave-lo: rgba(31, 44, 71, 0.75);
       --wave-far: rgba(26, 35, 54, 0.6);
       --wave-wash: rgba(24, 31, 46, 0.85);
+      /* The floating dust and the passing streak. The blobs and glows reuse the aurora
+         colours, which the static wash no longer needs. */
+      --mote: rgba(150, 178, 224, 0.42);
+      --streak: rgba(126, 158, 214, 0.55);
     }
   }
   :root[data-theme="dark"] {
@@ -2017,6 +2129,10 @@
     --wave-lo: rgba(31, 44, 71, 0.75);
     --wave-far: rgba(26, 35, 54, 0.6);
     --wave-wash: rgba(24, 31, 46, 0.85);
+    /* The floating dust and the passing streak. The blobs and glows reuse the aurora
+       colours, which the static wash no longer needs. */
+    --mote: rgba(150, 178, 224, 0.42);
+    --streak: rgba(126, 158, 214, 0.55);
   }
 
   /* ---------- ambient background ---------- */
@@ -2568,6 +2684,14 @@
   <span class="wave wave-1"></span>
   <span class="wave wave-2"></span>
   <span class="wave wave-3"></span>
+  <!-- Big soft colour clouds, drifting at their own much slower speed, for depth. -->
+  <span class="bg-blobs"></span>
+  <!-- A tiled field of dust, scrolled by exactly one tile so the loop is seamless. -->
+  <span class="bg-motes"></span>
+  <!-- Two soft glows that breathe, like something alive off to the side. -->
+  <span class="bg-glow"></span>
+  <!-- And once in a while, a faint streak of light crossing the page. -->
+  <span class="bg-streak"></span>
 </div>
 
 <!-- First-run setup. Hidden by default and revealed by the script only when the
@@ -3659,7 +3783,7 @@
    * tools/release.sh writes this line alongside VERSION in server.js, and the test suite fails
    * if the two ever disagree, so it cannot quietly go stale.
    */
-  var PAGE_BUILD = '1.0.49';
+  var PAGE_BUILD = '1.0.50';
 
   var state = {
     data: null,

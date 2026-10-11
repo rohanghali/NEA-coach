@@ -5923,9 +5923,42 @@ section('12ai. The moving background stays off the main thread');
     /html::before \{[\s\S]{0,500}background: linear-gradient\(180deg, var\(--wave-wash\)/.test(css));
 
   /* ---- and it stops when nobody is looking ------------------------------------ */
-  ok('the animation is paused while the tab is in the background',
-    /\.is-hidden \.wave \{ animation-play-state: paused; \}/.test(css)
+  /*
+   * One selector covers every background layer, so a layer added later is paused by default rather
+   * than forgotten.
+   */
+  ok('every background layer is paused while the tab is in the background',
+    /\.is-hidden \.waves > \* \{ animation-play-state: paused; \}/.test(css)
     && /wireVisibility\(\)/.test(html), 'a hidden tab has no reason to hold a GPU layer awake');
+
+  /* ---- the four extra layers, held to the same rule ---------------------------- */
+  ok('the dust, the blobs, the glows and the streak animate transform or opacity only',
+    (() => {
+      const names = ['blob-drift', 'mote-drift', 'glow-breathe', 'streak-cross'];
+      return names.every((nm) => {
+        const m = new RegExp('@keyframes ' + nm + ' \\{([\\s\\S]*?)\\n  \\}').exec(css);
+        if (!m) { return false; }
+        const props = [...m[1].matchAll(/([a-z-]+)\s*:/g)].map((x) => x[1]);
+        return props.length > 0 && props.every((pr) => pr === 'transform' || pr === 'opacity');
+      });
+    })(), 'a repainting property here undoes the whole point of the design');
+  /*
+   * The dust is ONE tiled field rather than an element per mote. Twenty animated dots would be
+   * twenty composited layers for the same picture.
+   */
+  ok('the dust is a single scrolling layer, not an element per mote',
+    /<span class="bg-motes"><\/span>/.test(html)
+    // 1200 chars: the rule carries eight gradient stops before it reaches this line.
+    && /\.bg-motes \{[\s\S]{0,1200}background-repeat: repeat-y/.test(css),
+    'one layer per mote would cost more than everything else in the background together');
+  ok('and the dust element is twice the viewport tall, so scrolling it half still covers the screen',
+    /\.bg-motes \{[\s\S]{0,200}height: 200%/.test(css));
+  ok('the streak spends most of its cycle invisible, so it reads as occasional',
+    /@keyframes streak-cross \{[\s\S]{0,400}100% \{ transform: translate3d\(330%/.test(css),
+    'sweeping continuously would be a distraction rather than a detail');
+  ok('the new colours are theme tokens too',
+    /--mote:/.test(html) && /--streak:/.test(html)
+    && (html.match(/--mote:/g) || []).length === 3, 'light and both dark paths');
   ok('reduced motion still switches all of it off',
     /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,220}animation-duration: 0\.01ms !important/.test(css));
 

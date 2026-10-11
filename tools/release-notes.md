@@ -18,18 +18,32 @@ Get a free Google API key — the app explains it, and `SETUP-AI.md` is in the f
 
 **New in this version**
 
-- **The background actually moves now — you were right that it did not.** It was moving, technically:
-  about **a pixel a second**, which is indistinguishable from still. The bands crossed roughly 3% of
-  their width over 54 seconds.
-- **Now: about four times faster and three times further.** A pass takes 19, 27 and 37 seconds, each
-  band travels about a tenth of its own width — roughly 150px on a laptop — and leans up to three
-  degrees, which swings its ends by about 100px. The three move in **different directions**, so they
-  read as folds crossing rather than one sheet sliding.
-- **This costs nothing.** A composited transform is the same work whether it moves a little or a
-  lot, and fast or slow: the layer is drawn once and the graphics card re-places it. The rule that
-  keeps it cheap — transform only, never a blur or a shadow — is unchanged, and tested.
-- If it still looks still to you, check **System Settings → Accessibility → Display → Reduce motion**.
-  That setting switches the whole background off by design, and it is meant to.
+Four more things move in the background, on top of the drape bands:
+
+- **Dust motes** drifting slowly upward — tiny specks, like dust in sunlight.
+- **Colour clouds** — two big soft ones, well behind everything and much slower, so the background
+  has some depth to it.
+- **Two soft glows** that slowly brighten and fade.
+- **Once in a while, a faint streak of light** crossing the page. It spends most of its cycle
+  invisible; the crossing takes about five seconds out of every thirty-four.
+
+**Still built so it cannot make the page stutter.** Every one of them animates *transform* or
+*opacity* only, which the graphics card handles without touching the main thread or repainting
+anything. There are seven moving layers in total, and a test fails if that rule is broken or if the
+count grows without someone deciding to.
+
+The dust is worth a note: it is **one** layer carrying a tiled field of specks, scrolled by exactly
+its own height so the loop is seamless. Twenty individually animated dots would have been twenty
+layers to composite for the same picture, and would have cost more than everything else here
+together.
+
+It is all blue and teal — the violet and pink are gone, since the background is meant to stay soft
+blue.
+
+**Next:** the tabs. Overview, Fix list, Things to add, Predicted mark, Coverage grid, Since your
+last check, Slides, Statistics, Past checks, Information, Settings — across the top, in one
+scrollable row on a phone, with "use it on your phone" moved into Information. That is a large
+restructure of the page, so it is getting its own release rather than being rushed alongside this.
 
 **If you are updating:** quit NEA Coach completely first, then open the new copy.
 
